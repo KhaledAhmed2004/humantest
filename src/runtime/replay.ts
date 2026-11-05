@@ -171,7 +171,8 @@ const D = __DATA__;
 const $ = (id) => document.getElementById(id);
 // Inside the HumanTest UI (?embed), the UI already shows the title and status.
 if (new URLSearchParams(location.search).has('embed')) {
-  document.querySelector('header').hidden = true;
+  // style.display, not .hidden: the header's own "display: flex" would win over the hidden attribute.
+  document.querySelector('header').style.display = 'none';
   document.querySelector('main').style.height = 'calc(100vh - 74px)';
 }
 const fmt = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };

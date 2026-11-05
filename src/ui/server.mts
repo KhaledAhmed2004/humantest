@@ -207,6 +207,32 @@ function serveFile(req: http.IncomingMessage, res: http.ServerResponse, ref: Pro
   }
 }
 
+// ---------------- the React app (ui/dist, built by `npm run build -w ui`) ----------------
+
+const APP_DIR = path.join(TOOL_ROOT, 'ui', 'dist');
+const APP_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json',
+};
+
+function serveApp(res: http.ServerResponse, pathname: string) {
+  const index = path.join(APP_DIR, 'index.html');
+  if (!fs.existsSync(index)) {
+    res.writeHead(503, { 'content-type': 'text/html; charset=utf-8' });
+    res.end('<p style="font:16px system-ui;padding:40px">The HumanTest UI isn\'t built yet. Run <code>npm run ui</code> (it builds it first), or <code>npm run build -w ui</code>.</p>');
+    return;
+  }
+  const file = path.resolve(APP_DIR, '.' + decodeURIComponent(pathname));
+  const isFile = file.startsWith(APP_DIR + path.sep) && fs.existsSync(file) && fs.statSync(file).isFile();
+  const target = isFile ? file : index;   // unknown paths get the app itself
+  const hashed = target.includes(`${path.sep}assets${path.sep}`);
+  res.writeHead(200, {
+    'content-type': APP_TYPES[path.extname(target)] ?? 'application/octet-stream',
+    'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache',
+  });
+  fs.createReadStream(target).pipe(res);
+}
+
 // ---------------- HTTP ----------------
 
 const json = (res: http.ServerResponse, status: number, body: unknown) => {
@@ -222,14 +248,8 @@ async function readBody(req: http.IncomingMessage): Promise<any> {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
   try {
-    if (req.method === 'GET' && url.pathname === '/') {
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(fs.readFileSync(path.join(TOOL_ROOT, 'src', 'ui', 'app.html')));
-      return;
-    }
-    if (req.method === 'GET' && url.pathname === '/favicon.ico') {
-      res.writeHead(204).end();
-      return;
+    if (req.method === 'GET' && !url.pathname.startsWith('/api/') && !url.pathname.startsWith('/files/')) {
+      return serveApp(res, url.pathname);
     }
     if (req.method === 'GET' && url.pathname === '/api/projects') {
       return json(res, 200, { projects: projects.map(({ id, name }) => ({ id, name })), running: run ? { project: run.project.id, done: run.done, total: run.total } : null });

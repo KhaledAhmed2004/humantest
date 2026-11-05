@@ -47,13 +47,13 @@ Extra Playwright options go after `--`, for example `npm test -- --grep "signup"
 ## The HumanTest UI
 
 ```bash
-npm run ui        # opens http://localhost:4800 in your browser
+npm run ui        # builds the UI, then opens http://localhost:4800 in your browser
 ```
 
 Everything without the terminal:
 
 - every test of a project, grouped by file, with its last result, its duration and its last 8 runs as dots
-- **Run all**, run one file, or run one test, with or without video (🎬 Demo mode)
+- **Run all**, run one file, or run one test, with or without video ("Record video")
 - live progress while tests run: which test is running, and which of its steps is running right now
 - for the selected test: the error in plain words, watchdog warnings, every step with ✓ / ✗ / not run,
   and the replay (videos and steps) right on the page
@@ -61,8 +61,16 @@ Everything without the terminal:
 - a project picker: this folder plus every `pilots/<name>/`
 - **Output** at the bottom shows the raw Playwright output
 
+- light and dark mode (follows your system, or use the button in the top right)
+
 It only listens on your own computer (127.0.0.1). Results are kept in `.humantest/history.json`
 inside each project, so they're still there after a restart. Options: `npm run ui -- --port 4900 --no-open`.
+
+**Working on the UI itself.** The UI is a React app in `ui/` (Vite, Tailwind, shadcn/ui with the same
+`radix-rhea` style as Dintel). Run `npm run ui` in one terminal for the server, and `npm run ui:dev`
+in another for hot reload at the address Vite prints; it forwards `/api` and `/files` to the server.
+Add components with `npx shadcn add <name>` inside `ui/`. The shadcn MCP server in `.mcp.json`
+lets Claude Code search and add them too.
 
 ## Videos and the replay page
 
