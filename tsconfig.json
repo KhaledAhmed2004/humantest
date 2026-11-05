@@ -10,5 +10,5 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["src/compiler/**/*.mts", "src/cli.mts"]
+  "include": ["src/compiler/**/*.mts", "src/cli.mts", "src/ui/*.mts"]
 }

@@ -44,6 +44,26 @@ npm run demo       # slow mode: captions, click highlights, one video per user
 
 Extra Playwright options go after `--`, for example `npm test -- --grep "signup" --headed`.
 
+## The HumanTest UI
+
+```bash
+npm run ui        # opens http://localhost:4800 in your browser
+```
+
+Everything without the terminal:
+
+- every test of a project, grouped by file, with its last result, its duration and its last 8 runs as dots
+- **Run all**, run one file, or run one test, with or without video (🎬 Demo mode)
+- live progress while tests run: which test is running, and which of its steps is running right now
+- for the selected test: the error in plain words, watchdog warnings, every step with ✓ / ✗ / not run,
+  and the replay (videos and steps) right on the page
+- mistakes in `.ht` files shown with "did you mean", before anything runs
+- a project picker: this folder plus every `pilots/<name>/`
+- **Output** at the bottom shows the raw Playwright output
+
+It only listens on your own computer (127.0.0.1). Results are kept in `.humantest/history.json`
+inside each project, so they're still there after a restart. Options: `npm run ui -- --port 4900 --no-open`.
+
 ## Videos and the replay page
 
 `npm run demo` runs the tests slowly, with a caption for every step and a highlight on every click.

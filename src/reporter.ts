@@ -1,5 +1,8 @@
 // A plain-English console reporter for HumanTest.
-import type { FullResult, Reporter, TestCase, TestResult } from '@playwright/test/reporter';
+// With HUMANTEST_EVENTS=1 (set by the HumanTest UI) it also prints one JSON event per line,
+// prefixed with @@HT@@, so the UI can follow a run live.
+import path from 'node:path';
+import type { FullConfig, FullResult, Reporter, Suite, TestCase, TestResult, TestStep } from '@playwright/test/reporter';
 
 const c = {
   green: (s: string) => `\x1b[32m${s}\x1b[0m`,
@@ -9,13 +12,33 @@ const c = {
   bold: (s: string) => `\x1b[1m${s}\x1b[0m`,
 };
 
+const EVENTS = !!process.env.HUMANTEST_EVENTS;
+const stripAnsi = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, '');
+/** HumanTest's own steps are titled "line N · ...". */
+const isHumanStep = (s: TestStep) => s.category === 'test.step' && /^line \d+ · /.test(s.title);
+
+function emit(event: Record<string, unknown>) {
+  if (EVENTS) process.stdout.write(`@@HT@@${JSON.stringify(event)}\n`);
+}
+
+const id = (test: TestCase) => ({ spec: path.basename(test.location.file), title: test.title });
+
 export default class HumanReporter implements Reporter {
   private passed = 0;
   private failed = 0;
   private warnings = 0;
 
-  onBegin() {
+  onBegin(_config: FullConfig, suite: Suite) {
     console.log(c.bold('\nHumanTest\n'));
+    emit({ type: 'begin', total: suite.allTests().length });
+  }
+
+  onTestBegin(test: TestCase) {
+    emit({ type: 'test-begin', ...id(test) });
+  }
+
+  onStepBegin(test: TestCase, _result: TestResult, step: TestStep) {
+    if (isHumanStep(step)) emit({ type: 'step', ...id(test), step: step.title });
   }
 
   onTestEnd(test: TestCase, result: TestResult) {
@@ -25,6 +48,23 @@ export default class HumanReporter implements Reporter {
     const source = annotations.find((a) => a.type === 'source')?.description ?? '';
     const watchdog = [...new Set(annotations.filter((a) => a.type === 'watchdog').map((a) => a.description ?? ''))];
     const secs = (result.duration / 1000).toFixed(1);
+
+    emit({
+      type: 'test-end',
+      ...id(test),
+      status: result.status,
+      duration: result.duration,
+      errors: result.errors.map((e) => stripAnsi(e.message ?? String(e.value))),
+      watchdog,
+      replay: annotations.find((a) => a.type === 'replay')?.description,
+      sideBySide: annotations.find((a) => a.type === 'video')?.description?.replace(/^.*?: /, ''),
+      steps: result.steps.filter(isHumanStep).map((s) => ({
+        title: s.title,
+        status: s.error ? 'failed' : 'passed',
+        duration: s.duration,
+        error: s.error ? stripAnsi(s.error.message ?? '') : undefined,
+      })),
+    });
 
     if (result.status === 'passed') {
       this.passed++;
@@ -53,6 +93,7 @@ export default class HumanReporter implements Reporter {
     console.log(`\n${parts.join(' · ')}`);
     console.log(c.dim('Full report with traces: npx playwright show-report\n'));
     if (result.status === 'timedout') console.log(c.red('The run timed out.'));
+    emit({ type: 'end', status: result.status });
   }
 
   printsToStdio() {

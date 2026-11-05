@@ -11,7 +11,8 @@
     "test": "node src/cli.mts run",
     "demo": "node src/cli.mts run --demo",
     "demo-app": "node demo-app/server.mjs",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "ui": "node src/ui/server.mts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

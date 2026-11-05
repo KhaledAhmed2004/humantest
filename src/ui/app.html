@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HumanTest</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --panel-2: #f9fafb; --text: #18202b; --muted: #667085; --line: #e3e6eb;
+    --accent: #2563eb; --accent-soft: #e8efff; --ok: #15803d; --ok-soft: #e7f6ec; --bad: #c62828; --bad-soft: #fdecec;
+    --warn: #b45309; --warn-soft: #fef5e6; --run: #7c3aed; --run-soft: #f1ebfe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1116; --panel: #161a21; --panel-2: #1b2029; --text: #e6e9ef; --muted: #98a2b3; --line: #29303b;
+      --accent: #6b9bff; --accent-soft: #1c2840; --ok: #4ade80; --ok-soft: #14301f; --bad: #f87171; --bad-soft: #3a1c1c;
+      --warn: #fbbf24; --warn-soft: #3a2c10; --run: #b794ff; --run-soft: #2a1f45;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; display: flex; flex-direction: column; }
+  button, select, input { font: inherit; color: inherit; }
+  button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.danger { color: var(--bad); }
+  select, input[type=search] { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 10px; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 18px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .logo { font-weight: 750; font-size: 16px; letter-spacing: -.01em; margin-right: 6px; }
+  .logo span { color: var(--accent); }
+  .grow { flex: 1; }
+  .toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; color: var(--muted); }
+  .pill { font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
+  .pill.running { background: var(--run-soft); color: var(--run); }
+
+  .layout { flex: 1; display: grid; grid-template-columns: minmax(280px, 380px) 1fr; min-height: 0; }
+  .list { border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+  .list-head { padding: 12px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+  .list-head input { flex: 1; min-width: 0; }
+  .summary { padding: 8px 14px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line); display: flex; gap: 12px; }
+  .summary b.ok { color: var(--ok); } .summary b.bad { color: var(--bad); }
+  .tests { overflow: auto; flex: 1; }
+  .file { padding: 10px 14px 4px; font-size: 12px; color: var(--muted); font-family: ui-monospace, monospace; display: flex; justify-content: space-between; align-items: center; }
+  .file button { padding: 1px 8px; font-size: 12px; font-family: system-ui, sans-serif; }
+  .file .bad { color: var(--bad); }
+  .test { display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; align-items: start; padding: 8px 14px; cursor: pointer; border-left: 3px solid transparent; }
+  .test:hover { background: var(--panel-2); }
+  .test.selected { background: var(--accent-soft); border-left-color: var(--accent); }
+  .test .name { word-break: break-word; }
+  .test .meta { font-size: 12px; color: var(--muted); white-space: nowrap; text-align: right; }
+  .dots { display: flex; gap: 3px; justify-content: flex-end; margin-top: 4px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+  .dot.passed { background: var(--ok); } .dot.failed, .dot.timedOut { background: var(--bad); }
+
+  .icon { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800; margin-top: 1px; }
+  .icon.passed { background: var(--ok-soft); color: var(--ok); }
+  .icon.failed, .icon.timedOut, .icon.interrupted { background: var(--bad-soft); color: var(--bad); }
+  .icon.running { background: var(--run-soft); color: var(--run); animation: pulse 1s infinite alternate; }
+  .icon.queued, .icon.never, .icon.skipped { background: var(--panel-2); color: var(--muted); border: 1px dashed var(--line); }
+  .icon.problem { background: var(--warn-soft); color: var(--warn); }
+  @keyframes pulse { from { opacity: .45; } to { opacity: 1; } }
+
+  .detail { overflow: auto; min-height: 0; padding: 20px 24px 40px; }
+  .empty { color: var(--muted); padding: 60px 20px; text-align: center; }
+  .d-head { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .d-head h1 { font-size: 20px; margin: 0 0 4px; line-height: 1.3; }
+  .d-sub { color: var(--muted); font-size: 13px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .d-sub code { font-family: ui-monospace, monospace; font-size: 12.5px; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); }
+  .actions { display: flex; gap: 8px; margin-left: auto; }
+  .status-line { margin: 16px 0; display: flex; gap: 10px; align-items: center; font-weight: 600; }
+  .status-line .when { font-weight: 400; color: var(--muted); font-size: 13px; }
+  .box { border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+  .box h3 { margin: 0 0 6px; font-size: 13px; }
+  .box.bad { background: var(--bad-soft); color: var(--bad); }
+  .box.bad pre { margin: 0; white-space: pre-wrap; font: 12.5px/1.5 ui-monospace, monospace; }
+  .box.warn { background: var(--warn-soft); color: var(--warn); }
+  .box.warn ul { margin: 0; padding-left: 18px; }
+  .box.info { background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
+  .section-title { font-size: 13px; font-weight: 650; margin: 22px 0 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  .section-title a { font-weight: 400; color: var(--accent); }
+  iframe.replay { width: 100%; height: 620px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+
+  .steps { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .group { padding: 8px 14px 4px; font-weight: 650; font-size: 13px; background: var(--panel-2); border-top: 1px solid var(--line); }
+  .group:first-child { border-top: 0; }
+  .step { display: grid; grid-template-columns: 22px 38px 1fr auto; gap: 6px; padding: 7px 14px; border-top: 1px solid var(--line); align-items: start; }
+  .group + .step { border-top: 0; }
+  .step.sub { padding-left: 28px; }
+  .step .ln { color: var(--muted); font: 12px ui-monospace, monospace; padding-top: 2px; }
+  .step .who { font-size: 11.5px; color: var(--muted); }
+  .step .dur { color: var(--muted); font-size: 12px; }
+  .step .err { grid-column: 3 / -1; color: var(--bad); white-space: pre-wrap; font: 12px/1.5 ui-monospace, monospace; }
+  .step.running { background: var(--run-soft); }
+  .step.failed { background: var(--bad-soft); }
+  .step.notrun { opacity: .5; }
+
+  .problems { margin: 12px; }
+  .problem { font-size: 12.5px; margin: 6px 0; }
+  .problem code { font-family: ui-monospace, monospace; }
+
+  .drawer { border-top: 1px solid var(--line); background: var(--panel); }
+  .drawer summary { padding: 8px 18px; cursor: pointer; color: var(--muted); font-size: 13px; }
+  .drawer pre { margin: 0; max-height: 240px; overflow: auto; padding: 8px 18px 14px; font: 12px/1.5 ui-monospace, monospace; color: var(--muted); white-space: pre-wrap; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    .list { border-right: 0; border-bottom: 1px solid var(--line); max-height: 45vh; }
+    iframe.replay { height: 480px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Human<span>Test</span></div>
+  <label>Project <select id="project" aria-label="Project"></select></label>
+  <span class="grow"></span>
+  <span id="progress" class="pill">Idle</span>
+  <label class="toggle" title="Slow, with captions, and a video replay for each test"><input type="checkbox" id="demo"> 🎬 Demo mode (video)</label>
+  <button id="runAll" class="primary">▶ Run all</button>
+  <button id="stop" class="danger" hidden>■ Stop</button>
+</header>
+
+<div class="layout">
+  <section class="list" aria-label="Tests">
+    <div class="list-head"><input type="search" id="filter" placeholder="Filter tests…" aria-label="Filter tests"></div>
+    <div class="summary" id="summary"></div>
+    <div id="globalProblems"></div>
+    <div class="tests" id="tests"></div>
+  </section>
+  <section class="detail" id="detail"><div class="empty">Pick a test on the left.</div></section>
+</div>
+
+<details class="drawer" id="drawer"><summary>Output</summary><pre id="log"></pre></details>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const fmtDur = (ms) => ms == null ? '' : ms < 1000 ? ms + 'ms' : (ms / 1000).toFixed(1) + 's';
+const fmtWhen = (iso) => iso ? new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+const ICON = { passed: '✓', failed: '✗', timedOut: '✗', interrupted: '✗', running: '●', queued: '○', never: '○', skipped: '–', problem: '!' };
+
+const S = {
+  project: null, files: [], problems: [], history: { last: {}, runs: [] },
+  selected: store.get('ht.selected'), filter: '',
+  running: false, live: {},   // key -> { state: 'queued' | 'running', steps: [titles] }
+  progress: null, logs: [],
+};
+
+// ---------------- data ----------------
+
+async function loadProjects() {
+  const r = await fetch('/api/projects').then((r) => r.json());
+  const sel = $('project');
+  sel.innerHTML = '';
+  for (const p of r.projects) { const o = el('option', null, p.name); o.value = p.id; sel.appendChild(o); }
+  const saved = store.get('ht.project');
+  S.project = r.projects.some((p) => p.id === saved) ? saved : r.projects[0]?.id;
+  sel.value = S.project;
+  setRunning(!!r.running);
+  await loadTests();
+}
+
+async function loadTests() {
+  if (!S.project) return;
+  const r = await fetch('/api/tests?project=' + encodeURIComponent(S.project)).then((r) => r.json());
+  S.files = r.files || []; S.problems = r.problems || []; S.history = r.history || { last: {}, runs: [] };
+  const all = allTests();
+  if (!all.some((t) => t.key === S.selected)) S.selected = all[0]?.key ?? null;
+  render();
+}
+
+const allTests = () => S.files.flatMap((f) => f.tests.map((t) => ({ ...t, file: f.file, fileHasProblems: f.diagnostics.length > 0 })));
+
+function statusOf(t) {
+  if (t.fileHasProblems) return 'problem';
+  if (S.live[t.key]) return S.live[t.key].state;
+  return S.history.last[t.key]?.status ?? 'never';
+}
+
+// ---------------- running ----------------
+
+async function run(body) {
+  const res = await fetch('/api/run', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project: S.project, demo: $('demo').checked, ...body }) });
+  const r = await res.json();
+  if (!res.ok) {
+    alert(r.error + (r.diagnostics ? '\n\n' + r.diagnostics.map((d) => d.file + ':' + d.line + '  ' + d.message).join('\n') : ''));
+    return;
+  }
+  // Mark what is about to run.
+  for (const t of allTests()) {
+    if (body.key ? t.key === body.key : body.file ? t.file === body.file : true) S.live[t.key] = { state: 'queued', steps: [] };
+  }
+  render();
+}
+
+function setRunning(on) {
+  S.running = on;
+  $('runAll').disabled = on;
+  $('stop').hidden = !on;
+  $('progress').className = 'pill' + (on ? ' running' : '');
+  $('progress').textContent = on ? (S.progress ? `Running ${S.progress.done}/${S.progress.total}` : 'Starting…') : 'Idle';
+  document.querySelectorAll('[data-run]').forEach((b) => { b.disabled = on; });
+}
+
+function connect() {
+  const es = new EventSource('/api/events');
+  es.onmessage = (m) => {
+    const e = JSON.parse(m.data);
+    if (e.type === 'run-start') { S.progress = null; S.logs = []; setRunning(true); }
+    if (e.type === 'progress') { S.progress = e; setRunning(true); }
+    if (e.type === 'test-begin') { S.live[e.key] = { state: 'running', steps: [] }; }
+    if (e.type === 'step') { (S.live[e.key] ??= { state: 'running', steps: [] }).steps.push(e.step); }
+    if (e.type === 'test-end') {
+      delete S.live[e.key];
+      S.history.last[e.key] = e.result;
+      S.progress = { done: e.done, total: e.total };
+      setRunning(true);
+    }
+    if (e.type === 'log') { S.logs.push(e.line); if (S.logs.length > 800) S.logs.shift(); $('log').textContent = S.logs.join('\n'); $('log').scrollTop = 1e9; return; }
+    if (e.type === 'run-end') { S.live = {}; setRunning(false); loadTests(); return; }
+    render();
+  };
+}
+
+// ---------------- rendering ----------------
+
+function render() { renderList(); renderDetail(); }
+
+function renderList() {
+  const box = $('tests');
+  box.innerHTML = '';
+  const q = S.filter.toLowerCase();
+  const counts = { passed: 0, failed: 0, other: 0 };
+  for (const t of allTests()) {
+    const s = statusOf(t);
+    if (s === 'passed') counts.passed++; else if (['failed', 'timedOut', 'interrupted'].includes(s)) counts.failed++; else counts.other++;
+  }
+  $('summary').innerHTML = '';
+  $('summary').append(el('span', null, allTests().length + ' tests'));
+  const ok = el('b', 'ok', counts.passed + ' passed'); const bad = el('b', 'bad', counts.failed + ' failed');
+  $('summary').append(ok, bad);
+  if (counts.other) $('summary').append(el('span', null, counts.other + ' not run'));
+
+  const gp = $('globalProblems');
+  gp.innerHTML = '';
+  if (S.problems.length) {
+    const b = el('div', 'box warn problems');
+    b.append(el('h3', null, 'Problems outside the test files'));
+    for (const d of S.problems) b.append(problemEl(d));
+    gp.append(b);
+  }
+
+  for (const f of S.files) {
+    const tests = f.tests.filter((t) => !q || t.name.toLowerCase().includes(q));
+    if (!tests.length && q) continue;
+    const head = el('div', 'file');
+    const name = el('span', f.diagnostics.length ? 'bad' : null, f.file + (f.diagnostics.length ? '  · ' + f.diagnostics.length + ' problem(s)' : ''));
+    const btn = el('button', null, '▶ file');
+    btn.dataset.run = '1'; btn.disabled = S.running || f.diagnostics.length > 0;
+    btn.title = 'Run every test in this file';
+    btn.onclick = (ev) => { ev.stopPropagation(); run({ file: f.file }); };
+    head.append(name, btn);
+    box.append(head);
+    for (const t of tests) {
+      const s = statusOf({ ...t, fileHasProblems: f.diagnostics.length > 0 });
+      const row = el('div', 'test' + (t.key === S.selected ? ' selected' : ''));
+      row.tabIndex = 0;
+      row.setAttribute('role', 'button');
+      row.append(el('span', 'icon ' + s, ICON[s] ?? '○'));
+      row.append(el('span', 'name', t.name));
+      const meta = el('div', 'meta');
+      const last = S.history.last[t.key];
+      meta.append(el('div', null, s === 'running' ? 'running…' : s === 'queued' ? 'waiting' : last ? fmtDur(last.duration) : ''));
+      const dots = el('div', 'dots');
+      for (const r of S.history.runs.slice(-8)) if (r.results[t.key]) dots.append(el('span', 'dot ' + r.results[t.key]));
+      meta.append(dots);
+      row.append(meta);
+      row.onclick = () => select(t.key);
+      row.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); select(t.key); } };
+      box.append(row);
+    }
+  }
+}
+
+function select(key) { S.selected = key; store.set('ht.selected', key); render(); }
+
+function problemEl(d) {
+  const p = el('div', 'problem');
+  p.append(el('code', null, d.file + ':' + d.line + '  '), document.createTextNode(d.message + (d.hint ? '  💡 ' + d.hint : '')));
+  return p;
+}
+
+let lastReplay = null;
+function renderDetail() {
+  const box = $('detail');
+  const t = allTests().find((x) => x.key === S.selected);
+  if (!t) { box.innerHTML = '<div class="empty">Pick a test on the left.</div>'; lastReplay = null; return; }
+  const file = S.files.find((f) => f.file === t.file);
+  const result = S.history.last[t.key];
+  const live = S.live[t.key];
+  const s = statusOf(t);
+
+  // Keep the replay iframe alive between renders, so a playing video isn't reset.
+  const keepFrame = box.querySelector('iframe.replay');
+  box.innerHTML = '';
+
+  const head = el('div', 'd-head');
+  const left = el('div');
+  left.append(el('h1', null, t.name));
+  const sub = el('div', 'd-sub');
+  sub.append(el('code', null, t.file + ':' + t.line));
+  for (const u of t.users) sub.append(el('span', 'chip', '👤 ' + u));
+  if (t.state) sub.append(el('span', 'chip', 'starts with: ' + t.state));
+  left.append(sub);
+  const actions = el('div', 'actions');
+  const runBtn = el('button', 'primary', '▶ Run'); runBtn.dataset.run = '1';
+  const demoBtn = el('button', null, '🎬 Run with video'); demoBtn.dataset.run = '1';
+  runBtn.disabled = demoBtn.disabled = S.running || t.fileHasProblems;
+  runBtn.onclick = () => { $('demo').checked = false; run({ key: t.key }); };
+  demoBtn.onclick = () => { $('demo').checked = true; run({ key: t.key }); };
+  actions.append(runBtn, demoBtn);
+  head.append(left, actions);
+  box.append(head);
+
+  if (file.diagnostics.length) {
+    const b = el('div', 'box warn');
+    b.append(el('h3', null, 'This file has problems, so it can\'t run yet'));
+    for (const d of file.diagnostics) b.append(problemEl(d));
+    box.append(b);
+  }
+
+  const line = el('div', 'status-line');
+  line.append(el('span', 'icon ' + s, ICON[s] ?? '○'));
+  const label = { passed: 'Passed', failed: 'Failed', timedOut: 'Timed out', interrupted: 'Stopped', running: 'Running…', queued: 'Waiting to run', never: 'Not run yet', problem: 'Has problems', skipped: 'Skipped' }[s] ?? s;
+  line.append(el('span', null, label));
+  if (result && !live) line.append(el('span', 'when', fmtDur(result.duration) + ' · ' + fmtWhen(result.finishedAt) + (result.demo ? ' · with video' : '')));
+  box.append(line);
+
+  if (result && !live && result.errors?.length) {
+    const b = el('div', 'box bad');
+    b.append(el('pre', null, result.errors[0].replace(/^Error:\s*/, '')));
+    box.append(b);
+  }
+  if (result && !live && result.watchdog?.length) {
+    const b = el('div', 'box warn');
+    b.append(el('h3', null, '⚠ The watchdog noticed hidden problems'));
+    const ul = el('ul');
+    for (const w of result.watchdog) ul.append(el('li', null, w));
+    b.append(ul);
+    box.append(b);
+  }
+
+  // Replay
+  if (result?.replay && !live) {
+    const st = el('div', 'section-title');
+    st.append(el('span', null, '🎬 Replay'));
+    const links = el('span');
+    const open = el('a', null, 'open in a new tab'); open.href = result.replay; open.target = '_blank';
+    links.append(open);
+    if (result.sideBySide) { const v = el('a', null, 'side-by-side video'); v.href = result.sideBySide; v.target = '_blank'; links.append(document.createTextNode('  ·  '), v); }
+    st.append(links);
+    box.append(st);
+    let frame = keepFrame && lastReplay === result.replay ? keepFrame : null;
+    if (!frame) { frame = el('iframe', 'replay'); frame.src = result.replay + '?embed'; frame.title = 'Replay'; }
+    lastReplay = result.replay;
+    box.append(frame);
+  } else if (!live) {
+    lastReplay = null;
+    const b = el('div', 'box info', 'No video for the last run. Click "🎬 Run with video" to record one, with every step captioned.');
+    box.append(b);
+  }
+
+  // Steps: the planned steps, marked with what happened to each.
+  box.append(el('div', 'section-title', 'Steps'));
+  const steps = el('div', 'steps');
+  const marks = stepMarks(t, result, live);
+  let prevStory = null;
+  t.steps.forEach((st, i) => {
+    const story = st.story ? st.story + '|' + st.line : null;
+    if (story && story !== prevStory) steps.append(el('div', 'group', st.line + ' · ' + st.story));
+    prevStory = story;
+    const m = marks[i];
+    const row = el('div', 'step' + (story ? ' sub' : '') + ' ' + m.state);
+    row.append(el('span', 'icon ' + (m.state === 'notrun' ? 'never' : m.state), ICON[m.state] ?? '○'));
+    row.append(el('span', 'ln', String(st.line)));
+    const body = el('div');
+    body.append(el('div', 'who', st.user));
+    body.append(el('div', null, st.text));
+    row.append(body);
+    row.append(el('span', 'dur', m.duration != null ? fmtDur(m.duration) : ''));
+    if (m.error) row.append(el('div', 'err', m.error.split('\n').filter((l) => l.trim() && !/^\s*(Line \d+ ·|📄)/.test(l)).join('\n').trim()));
+    steps.append(row);
+  });
+  box.append(steps);
+}
+
+/** For each planned step: passed / failed / running / notrun, matched by title in order. */
+function stepMarks(t, result, live) {
+  if (live) {
+    // Steps that have started are done, except the latest one, which is still running.
+    const pool = [...live.steps];
+    let latest = -1;
+    const marks = t.steps.map((st, i) => {
+      const j = pool.indexOf(st.title);
+      if (j < 0) return { state: 'notrun' };
+      pool.splice(j, 1);
+      latest = i;
+      return { state: 'passed' };
+    });
+    if (latest >= 0 && live.state === 'running') marks[latest] = { state: 'running' };
+    return marks;
+  }
+  if (!result) return t.steps.map(() => ({ state: 'notrun' }));
+  const pool = [...(result.steps || [])];
+  return t.steps.map((st) => {
+    const i = pool.findIndex((r) => r.title === st.title);
+    if (i < 0) return { state: 'notrun' };
+    const r = pool.splice(i, 1)[0];
+    return { state: r.status, duration: r.duration, error: r.error };
+  });
+}
+
+// ---------------- wiring ----------------
+
+$('project').onchange = (e) => { S.project = e.target.value; store.set('ht.project', S.project); S.live = {}; loadTests(); };
+$('filter').oninput = (e) => { S.filter = e.target.value; renderList(); };
+$('runAll').onclick = () => run({});
+$('stop').onclick = () => fetch('/api/stop', { method: 'POST' });
+$('demo').checked = store.get('ht.demo') === '1';
+$('demo').onchange = (e) => store.set('ht.demo', e.target.checked ? '1' : '0');
+
+connect();
+loadProjects();
+</script>
+</body>
+</html>

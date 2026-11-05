@@ -10,6 +10,17 @@ export { parseFile } from './parser.mts';
 export { loadPhrases } from './phrases.mts';
 export type { ParsedFile, Diagnostic } from './parser.mts';
 
+/** The generated Playwright file for a .ht file, e.g. e2e/tests/a/b.ht -> a__b.spec.ts */
+export function specFileName(project: Project, htFile: string): string {
+  const relToTests = path.relative(project.testsDir, htFile).replace(/\.ht$/, '');
+  return `${relToTests.replace(/[\\/]/g, '__')}.spec.ts`;
+}
+
+/** The title Playwright gives a step, exactly as the runtime builds it ("line N · user · text"). */
+export function stepTitle(step: { line: number; user: string; text: string; story?: { text: string } }): string {
+  return `line ${step.line} · ${step.user} · ${step.story ? `${step.story.text} › ${step.text}` : step.text}`;
+}
+
 export interface BuildResult { parsed: ParsedFile[]; diagnostics: Diagnostic[]; written: string[] }
 
 export function check(project: Project, files = listTestFiles(project)): BuildResult {
@@ -34,8 +45,7 @@ export function build(project: Project): BuildResult {
     if (old.endsWith('.spec.ts')) fs.rmSync(path.join(project.outDir, old));
   }
   for (const p of result.parsed) {
-    const relToTests = path.relative(project.testsDir, p.file).replace(/\.ht$/, '');
-    const out = path.join(project.outDir, `${relToTests.replace(/[\\/]/g, '__')}.spec.ts`);
+    const out = path.join(project.outDir, specFileName(project, p.file));
     fs.writeFileSync(out, generate(project, p));
     result.written.push(out);
   }

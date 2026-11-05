@@ -169,6 +169,11 @@ const PAGE = /* html */ `<!doctype html>
 <script>
 const D = __DATA__;
 const $ = (id) => document.getElementById(id);
+// Inside the HumanTest UI (?embed), the UI already shows the title and status.
+if (new URLSearchParams(location.search).has('embed')) {
+  document.querySelector('header').hidden = true;
+  document.querySelector('main').style.height = 'calc(100vh - 74px)';
+}
 const fmt = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
 $('title').textContent = D.title;
