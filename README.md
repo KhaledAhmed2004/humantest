@@ -84,11 +84,18 @@ phone width, and accessibility (axe, WCAG 2.1 AA) in light and dark mode.
 For each test it writes `humantest-videos/<test>/`:
 
 - `replay.html`: open it in any browser. Every user's video plays side by side and in sync. The user
-  whose step is running is highlighted. Next to the videos is the list of steps, with the backend calls
-  each step made. Click a step to jump there. Space plays or pauses, ↑/↓ move between steps, and you can
-  play at 0.5x to 2x. A failed test opens just before the failing step, with the error at the top.
+  whose step is running is highlighted, and the step shows as a caption under their video. Next to the
+  videos is the list of steps, with the backend calls each step made. Click a step to jump there.
+  A failed test opens just before the failing step, with the error at the top.
+  Keys: Space play/pause · ↑/↓ previous/next step · ←/→ 5 seconds · `c` captions · `s` steps list · `f` fullscreen.
+  Hover the timeline to see which step was running at that moment. Play at 0.5x to 2x.
 - `<user>.mp4`: one video per user.
-- `side-by-side.mp4`: all users in one video, for sharing in chat (only when a test has several users).
+- `side-by-side.mp4`: all users in one video with captions, for sharing in chat (only when a test has several users).
+
+**How the videos are made.** With ffmpeg, each user's page is recorded with Playwright's screencast:
+every frame comes with the exact time it was painted, so videos and steps line up within a few
+milliseconds. Playwright draws a moving cursor and highlights the element of each click.
+Without ffmpeg, Playwright's own video recorder is used instead (captions painted into the video).
 
 The folder can be zipped and sent as is. Videos need ffmpeg, which comes with the `ffmpeg-static` package.
 If npm blocked its install script, run `npm install-scripts approve ffmpeg-static` and `npm rebuild ffmpeg-static`.

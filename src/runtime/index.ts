@@ -6,7 +6,7 @@
 
 import fs from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
-import { sideBySide, toMp4, videoDuration, writeReplay, type ReplayStep } from './replay';
+import { encodeFrames, hasFfmpeg, sideBySide, toMp4, writeReplay, type Frame, type ReplayStep } from './replay';
 import path from 'node:path';
 import {
   test, expect, request as apiRequest,
@@ -102,21 +102,26 @@ export class Scenario {
 
   async user(line: number, name: string): Promise<User> {
     const info = this.opts.testInfo;
+    // Demo videos: with ffmpeg, we record screencast frames that carry their exact paint time,
+    // so the replay lines videos and steps up to a few ms. Without ffmpeg, Playwright's own video.
+    const useScreencast = DEMO && hasFfmpeg();
     const context = await this.opts.browser.newContext({
       baseURL: this.config.baseURL,
       viewport: { width: 1280, height: 720 },
-      recordVideo: DEMO ? { dir: info.outputPath(`videos-${fileSlug(name)}`), size: { width: 1280, height: 720 } } : undefined,
+      recordVideo: DEMO && !useScreencast ? { dir: info.outputPath(`videos-${fileSlug(name)}`), size: { width: 1280, height: 720 } } : undefined,
     });
     const page = await context.newPage();
     if (DEMO) {
-      // Playwright only starts a video once the page paints something, so paint right away.
-      // It also tells whoever watches the replay that this user is waiting for their turn.
+      // Tells whoever watches the replay that this user is waiting for their turn.
+      // (It also makes Playwright's own video start now: it only starts on the first paint.)
       const label = name.replace(/[&<>"]/g, '');
       await page.setContent(`<body style="margin:0;display:grid;place-items:center;height:100vh;background:#f3f4f6;` +
         `font:600 30px system-ui,sans-serif;color:#6b7280">👤 ${label} · waiting</body>`);
     }
     this.videoStarts.set(name, Date.now());
-    const u = new User(this, name, context, page);
+    const recorder = useScreencast ? new FrameRecorder(page, info.outputPath(`frames-${fileSlug(name)}`)) : undefined;
+    await recorder?.start();
+    const u = new User(this, name, context, page, recorder);
     await u.init();
     this.users.push(u);
 
@@ -167,30 +172,40 @@ export class Scenario {
   async finish(passed: boolean) {
     const info = this.opts.testInfo;
     const videoDir = path.join(process.cwd(), 'humantest-videos', fileSlug(info.title));
-    const saved: { user: string; file: string; started: number }[] = [];
+    const saved: { user: string; file: string; started: number; burnedCaptions?: boolean }[] = [];
     for (const u of this.users) {
+      if (u.recorder) {
+        // Screencast: the video starts at its first frame's own timestamp.
+        fs.mkdirSync(videoDir, { recursive: true });
+        const rec = await u.recorder.stop(path.join(videoDir, `${fileSlug(u.name)}.mp4`));
+        await u.context.close().catch(() => {});
+        if (rec) {
+          saved.push({ user: u.name, ...rec });
+          await info.attach(`🎬 ${u.name}`, { path: rec.file, contentType: 'video/mp4' });
+        }
+        continue;
+      }
       const video = u.page.video();
-      const stopped = Date.now();
       await u.context.close().catch(() => {});
       if (!video) continue;
       fs.mkdirSync(videoDir, { recursive: true });
       const webm = path.join(videoDir, `${fileSlug(u.name)}.webm`);
       await video.saveAs(webm).catch(() => {});
       if (!fs.existsSync(webm)) continue;
-      // Browsers can't seek in Playwright's webm, so make an mp4 when ffmpeg is available.
       const mp4 = webm.replace(/\.webm$/, '.mp4');
       const file = toMp4(webm, mp4) ? (fs.rmSync(webm), mp4) : webm;
-      // The video ends when the context closes, so its real start is "stopped − length".
-      const length = videoDuration(file);
-      const started = length ? stopped - length : this.videoStarts.get(u.name) ?? stopped;
-      saved.push({ user: u.name, file, started });
+      // Playwright's video starts on the page's first paint, which happens right when the page is made
+      // (the "waiting" screen). Measured: within ~20-80 ms. (Its length can't be used: the last
+      // ~1.4 s after the final change aren't written, which would put the video 1.5 s ahead.)
+      const started = this.videoStarts.get(u.name) ?? Date.now();
+      saved.push({ user: u.name, file, started, burnedCaptions: true });
       await info.attach(`🎬 ${u.name}`, { path: file, contentType: file.endsWith('.mp4') ? 'video/mp4' : 'video/webm' });
     }
 
     if (saved.length) {
       const zero = Math.min(...saved.map((s) => s.started));
       const at = (ms: number) => ms - zero;
-      const videos = saved.map((s) => ({ user: s.user, file: path.basename(s.file), offset: at(s.started) }));
+      const videos = saved.map((s) => ({ user: s.user, file: path.basename(s.file), offset: at(s.started), burnedCaptions: s.burnedCaptions }));
       const replay = writeReplay(videoDir, {
         title: info.title,
         source: `${this.opts.source}:${this.opts.line}`,
@@ -205,7 +220,16 @@ export class Scenario {
       info.annotations.push({ type: 'replay', description: path.relative(process.cwd(), replay) });
       if (saved.length > 1) {
         const out = path.join(videoDir, 'side-by-side.mp4');
-        if (sideBySide(saved.map((s) => ({ file: s.file, offset: at(s.started) })), out)) {
+        // Each caption stays a little after its step, but never past the start of that user's next step.
+        const captionsFor = (user: string) => {
+          const mine = this.records.filter((r) => r.user === user);
+          return mine.map((r, i) => ({
+            start: at(r.start),
+            end: Math.min(at(r.end || Date.now()) + 400, mine[i + 1] ? at(mine[i + 1].start) : Infinity),
+            text: `${user} · line ${r.line} · ${r.text.split(' › ').pop()}`,
+          }));
+        };
+        if (sideBySide(saved.map((s) => ({ file: s.file, offset: at(s.started), captions: captionsFor(s.user) })), out)) {
           info.annotations.push({ type: 'video', description: `everyone side by side: ${path.relative(process.cwd(), out)}` });
         }
       }
@@ -218,6 +242,52 @@ export class Scenario {
       throw new HumanError(`The test steps passed, but the watchdog found ${this.warnings.length} problem(s):\n` +
         this.warnings.map((w) => `   ⚠ line ${w.line} · ${w.user} · ${w.message}`).join('\n'));
     }
+  }
+}
+
+/**
+ * Records a page with Playwright's screencast: every frame arrives as a JPEG with the exact time
+ * it was painted. Frames go straight to disk (long tests would not fit in memory) and are
+ * turned into an mp4 at the end. Playwright's showActions draws a moving cursor and highlights
+ * the element each action targets.
+ */
+class FrameRecorder {
+  private readonly frames: Frame[] = [];
+
+  constructor(private readonly page: Page, private readonly dir: string) {}
+
+  async start() {
+    fs.rmSync(this.dir, { recursive: true, force: true });
+    fs.mkdirSync(this.dir, { recursive: true });
+    await this.page.screencast.start({
+      size: { width: 1280, height: 720 },
+      quality: 90,
+      onFrame: (f) => {
+        const file = path.join(this.dir, `f${String(this.frames.length).padStart(6, '0')}.jpg`);
+        fs.writeFileSync(file, f.data);
+        this.frames.push({ file, ts: f.timestamp });
+      },
+    });
+    await this.page.screencast.showActions({
+      cursor: 'pointer',
+      duration: 900,
+      style: {
+        point: 'width: 22px; height: 22px; border-radius: 50%; border: 3px solid #7c3aed; background: rgba(124,58,237,.18)',
+        highlight: 'outline: 3px solid #7c3aed; outline-offset: 2px; border-radius: 6px; background: rgba(124,58,237,.10)',
+        title: 'display: none',   // the replay shows our own step text instead
+      },
+    });
+    // The browser only sends a frame when something changes, so nudge one out now: the video starts here.
+    await this.page.evaluate(() => { document.body.style.outline = '1px solid transparent'; }).catch(() => {});
+  }
+
+  /** Stops recording and writes the mp4. Returns it with the time of its first frame. */
+  async stop(out: string): Promise<{ file: string; started: number } | undefined> {
+    await this.page.screencast.stop().catch(() => {});
+    const end = Date.now();
+    const ok = encodeFrames(this.frames, end, out);
+    fs.rmSync(this.dir, { recursive: true, force: true });
+    return ok && this.frames.length ? { file: out, started: this.frames[0].ts } : undefined;
   }
 }
 
@@ -260,7 +330,8 @@ export class User {
     });
   }
 
-  constructor(readonly ht: Scenario, readonly name: string, readonly context: BrowserContext, readonly page: Page) {
+  constructor(readonly ht: Scenario, readonly name: string, readonly context: BrowserContext, readonly page: Page,
+    readonly recorder?: FrameRecorder) {
     const prefix = ht.config.apiPrefix ?? '/api';
     const slowMs = ht.config.watchdog?.slowApiMs ?? 2000;
     const isApi = (r: Request) => { try { return new URL(r.url()).pathname.startsWith(prefix); } catch { return false; } };
@@ -662,7 +733,9 @@ export class User {
   // ---------------- demo mode visuals ----------------
 
   private async showCaption() {
-    if (!DEMO || !this.caption) return;
+    // With the screencast recorder, the replay page draws captions itself (sharp at any size),
+    // and the side-by-side video gets them from ffmpeg, so nothing is painted into the page.
+    if (!DEMO || !this.caption || this.recorder) return;
     await this.page.evaluate((text) => {
       let el = document.getElementById('__ht_caption');
       if (!el) {
@@ -681,6 +754,7 @@ export class User {
   }
 
   private async highlight(loc: Locator) {
+    if (this.recorder) return;   // Playwright's showActions already draws the cursor and the highlight.
     const box = await loc.boundingBox().catch(() => null);
     if (!box) return;
     await this.page.evaluate(({ x, y }) => {

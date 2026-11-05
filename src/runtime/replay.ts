@@ -15,7 +15,8 @@ export interface ReplayStep {
   error?: string;
 }
 export interface ReplayRequest { user: string; method: string; path: string; status?: number; at: number; simulated?: boolean }
-export interface ReplayVideo { user: string; file: string; offset: number }
+/** burnedCaptions: the video already has captions painted in (Playwright's own video), so the page adds none. */
+export interface ReplayVideo { user: string; file: string; offset: number; burnedCaptions?: boolean }
 export interface ReplayData {
   title: string;
   source: string;
@@ -36,21 +37,14 @@ function ffmpegPath(): string | undefined {
   }
 }
 
-function ffmpeg(args: string[]): boolean {
+export const hasFfmpeg = () => !!ffmpegPath();
+
+function ffmpeg(args: string[], cwd?: string): boolean {
   const bin = ffmpegPath();
   if (!bin) return false;
-  const r = spawnSync(bin, ['-y', '-loglevel', 'error', ...args], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const r = spawnSync(bin, ['-y', '-loglevel', 'error', ...args], { stdio: ['ignore', 'ignore', 'pipe'], cwd });
   if (r.status !== 0) console.warn(`ffmpeg failed: ${r.stderr?.toString().slice(0, 500)}`);
   return r.status === 0;
-}
-
-/** Length of a video in ms, read from ffmpeg's own report. */
-export function videoDuration(file: string): number | undefined {
-  const bin = ffmpegPath();
-  if (!bin) return undefined;
-  const r = spawnSync(bin, ['-hide_banner', '-i', file], { stdio: ['ignore', 'ignore', 'pipe'] });
-  const m = r.stderr?.toString().match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
-  return m ? ((Number(m[1]) * 60 + Number(m[2])) * 60 + Number(m[3])) * 1000 : undefined;
 }
 
 /** Playwright's webm has no seek index, so browsers can't jump around in it. An mp4 can. */
@@ -59,15 +53,74 @@ export function toMp4(webm: string, mp4: string): boolean {
     '-pix_fmt', 'yuv420p', '-g', '25', '-movflags', '+faststart', mp4]);
 }
 
-/** One video with every user next to each other, each starting at the right moment. */
-export function sideBySide(inputs: { file: string; offset: number }[], out: string): boolean {
+export interface Frame { file: string; ts: number }
+
+/**
+ * Turns screencast frames (JPEGs, each with the exact time it was painted) into an mp4.
+ * The browser only sends a frame when something changes, so each frame is held until the next one.
+ */
+export function encodeFrames(frames: Frame[], endTs: number, out: string): boolean {
+  if (!frames.length) return false;
+  const q = (f: string) => `'${f.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`;
+  const lines = frames.map((f, i) => {
+    const next = frames[i + 1]?.ts ?? endTs;
+    return `file ${q(f.file)}\nduration ${Math.max(0.001, (next - f.ts) / 1000).toFixed(3)}`;
+  });
+  // The concat format ignores the last duration unless the last file is listed once more.
+  lines.push(`file ${q(frames[frames.length - 1].file)}`);
+  const list = `${out}.frames.txt`;
+  fs.writeFileSync(list, lines.join('\n'));
+  const ok = ffmpeg(['-f', 'concat', '-safe', '0', '-i', list,
+    '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=white,fps=30,format=yuv420p',
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-g', '30', '-movflags', '+faststart', '-an', out]);
+  fs.rmSync(list, { force: true });
+  return ok;
+}
+
+/** A font ffmpeg can draw captions with, or undefined (then the side-by-side video has no captions). */
+function captionFont(): string | undefined {
+  return [
+    'C:/Windows/Fonts/segoeui.ttf', 'C:/Windows/Fonts/arial.ttf',
+    '/System/Library/Fonts/Supplemental/Arial.ttf', '/Library/Fonts/Arial.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/dejavu/DejaVuSans.ttf',
+  ].find((f) => fs.existsSync(f));
+}
+
+export interface Caption { start: number; end: number; text: string }
+
+/**
+ * One video with every user next to each other, each starting at the right moment,
+ * with each user's current step written under their side (the replay page shows captions itself).
+ */
+export function sideBySide(inputs: { file: string; offset: number; captions?: Caption[] }[], out: string): boolean {
   if (inputs.length < 2) return false;
-  const filters = inputs.map((v, i) =>
-    `[${i}:v]scale=960:540,setsar=1,tpad=start_duration=${(v.offset / 1000).toFixed(3)}:start_mode=add:color=0xf3f4f6[v${i}]`);
+  const font = captionFont();
+  // Caption texts go in small files next to the output, so no step text needs ffmpeg escaping.
+  const capDir = `${out}.captions`;
+  fs.mkdirSync(capDir, { recursive: true });
+  let n = 0;
+  const filters = inputs.map((v, i) => {
+    let chain = `[${i}:v]scale=960:540,setsar=1,tpad=start_duration=${(v.offset / 1000).toFixed(3)}:start_mode=add:color=0xf3f4f6`;
+    if (font) {
+      for (const c of v.captions ?? []) {
+        const name = `c${n++}.txt`;
+        fs.writeFileSync(path.join(capDir, name), c.text);
+        chain += `,drawtext=fontfile='${font.replace(':', '\\:')}':textfile='${name}':fontsize=20:fontcolor=white` +
+          `:box=1:boxcolor=0x111827@0.88:boxborderw=10:x=(w-tw)/2:y=h-th-22` +
+          `:enable='between(t,${(c.start / 1000).toFixed(2)},${(c.end / 1000).toFixed(2)})'`;
+      }
+    }
+    return `${chain}[v${i}]`;
+  });
   const stack = `${inputs.map((_, i) => `[v${i}]`).join('')}hstack=inputs=${inputs.length}[out]`;
-  return ffmpeg([...inputs.flatMap((v) => ['-i', v.file]), '-filter_complex', [...filters, stack].join(';'),
-    '-map', '[out]', '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-pix_fmt', 'yuv420p',
-    '-movflags', '+faststart', out]);
+  const graph = path.join(capDir, 'graph.txt');
+  fs.writeFileSync(graph, [...filters, stack].join(';\n'));
+  // ffmpeg runs inside the captions folder, so textfile='c0.txt' resolves there.
+  const ok = ffmpeg([...inputs.flatMap((v) => ['-i', path.resolve(v.file)]), '-filter_complex_script', 'graph.txt',
+    '-map', '[out]', '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24', '-pix_fmt', 'yuv420p',
+    '-movflags', '+faststart', path.resolve(out)], capDir);
+  fs.rmSync(capDir, { recursive: true, force: true });
+  return ok;
 }
 
 export function writeReplay(dir: string, data: ReplayData): string {
@@ -114,6 +167,23 @@ const PAGE = /* html */ `<!doctype html>
   .card .who { display: flex; justify-content: space-between; padding: 8px 12px; font-weight: 600; font-size: 13px; }
   .card .who span:last-child { color: var(--muted); font-weight: 500; }
   .card video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+  main.single { grid-template-columns: 1fr 340px; }
+  /* One video: as big as fits the window's height too, so its caption strip is never cut off. */
+  .videos.n1 .card { width: min(100%, calc((100vh - 290px) * 16 / 9)); justify-self: center; }
+  body.embed .videos.n1 .card { width: min(100%, calc((100vh - 230px) * 16 / 9)); }
+  body.wide main { grid-template-columns: 1fr; }
+  body.wide aside { display: none; }
+  /* Captions are drawn here, not painted into the video, so they stay sharp at any size.
+     They sit in a strip under the video rather than on top of it, so they never cover what's happening. */
+  .cap { display: flex; align-items: center; justify-content: center; gap: .6em; min-height: 2.6em; padding: .35em 1em;
+    background: #111827; color: #fff; font: 600 clamp(12px, 1.25vw, 17px)/1.35 system-ui, sans-serif; text-align: center; }
+  .cap .ln { opacity: .6; font-weight: 500; white-space: nowrap; }
+  .cap:empty::before { content: '\\00a0'; }
+  body.nocap .cap { display: none; }
+  :fullscreen main { height: calc(100vh - 74px); }
+  .tip { position: absolute; bottom: calc(100% + 4px); transform: translateX(-50%); background: #111827; color: #fff; font-size: 12px;
+    padding: 4px 8px; border-radius: 6px; white-space: nowrap; pointer-events: none; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
+  .tip[hidden] { display: none; }
   aside { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: auto; }
   aside h2 { font-size: 13px; margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
   .step { display: grid; grid-template-columns: 34px 1fr; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
@@ -162,9 +232,12 @@ const PAGE = /* html */ `<!doctype html>
 </main>
 <footer>
   <button id="play" title="Play / pause (space)">▶</button>
-  <div class="track" id="track"><input id="seek" type="range" min="0" step="10" value="0" aria-label="Position"></div>
+  <div class="track" id="track"><input id="seek" type="range" min="0" step="10" value="0" aria-label="Position"><div class="tip" id="tip" hidden></div></div>
   <span id="time">0:00 / 0:00</span>
   <span id="speeds"></span>
+  <button id="cc" title="Captions (c)" aria-pressed="true">CC</button>
+  <button id="side" title="Show or hide the steps (s)" aria-pressed="true">☰ Steps</button>
+  <button id="full" title="Fullscreen (f)" aria-label="Fullscreen">⛶</button>
 </footer>
 <script>
 const D = __DATA__;
@@ -174,6 +247,7 @@ if (new URLSearchParams(location.search).has('embed')) {
   // style.display, not .hidden: the header's own "display: flex" would win over the hidden attribute.
   document.querySelector('header').style.display = 'none';
   document.querySelector('main').style.height = 'calc(100vh - 74px)';
+  document.body.classList.add('embed');
 }
 const fmt = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
@@ -185,16 +259,19 @@ $('src').textContent = D.source;
 // ---------- videos ----------
 const vbox = $('videos');
 vbox.className = 'videos n' + Math.min(D.videos.length, 4);
+if (D.videos.length <= 1) document.querySelector('main').classList.add('single');
 const players = D.videos.map((v) => {
   const card = document.createElement('div');
   card.className = 'card';
-  card.innerHTML = '<div class="who"><span></span><span></span></div>';
+  card.innerHTML = '<div class="who"><span></span><span></span></div><div class="stage"></div>';
   card.querySelector('.who span').textContent = '👤 ' + v.user;
   const el = document.createElement('video');
   el.src = v.file; el.muted = true; el.preload = 'auto'; el.playsInline = true;
-  card.appendChild(el);
+  const cap = document.createElement('div');
+  cap.className = 'cap';
+  card.querySelector('.stage').append(el, cap);
   vbox.appendChild(card);
-  return { ...v, el, card, status: card.querySelector('.who span:last-child') };
+  return { ...v, el, card, cap, status: card.querySelector('.who span:last-child') };
 });
 if (!players.length) vbox.innerHTML = '<p class="note">No video was recorded. Run the tests with --demo to record one.</p>';
 
@@ -234,7 +311,7 @@ const stepEls = D.steps.map((s, i) => {
     d.textContent = s.error;
     body.appendChild(d);
   }
-  el.addEventListener('click', () => { seek(Math.max(0, s.start - 300)); });
+  el.addEventListener('click', () => { seek(s.start + 1); });
   stepsBox.appendChild(el);
   return el;
 });
@@ -292,6 +369,27 @@ function sync(force) {
       if (!playing && !p.el.paused) p.el.pause();
       p.status.textContent = fmt(local * 1000);
     }
+    // This user's step at this moment, as a caption over their video.
+    let mine = null;
+    if (!p.burnedCaptions) {
+      for (let i = D.steps.length - 1; i >= 0; i--) {
+        const s = D.steps[i];
+        if (s.user !== p.user || s.start > t) continue;
+        if (t <= s.end + 400) mine = s;
+        break;
+      }
+    }
+    const capText = mine ? mine.line + '|' + mine.text : '';
+    if (p.cap.dataset.text !== capText) {
+      p.cap.dataset.text = capText;
+      p.cap.textContent = '';
+      if (mine) {
+        const ln = document.createElement('span');
+        ln.className = 'ln';
+        ln.textContent = 'line ' + mine.line;
+        p.cap.append(ln, document.createTextNode((mine.status === 'failed' ? '✗ ' : '') + mine.text.split(' › ').pop()));
+      }
+    }
     p.card.classList.toggle('active', p.user === activeUser);
     p.card.classList.toggle('idle', activeUser !== null && p.user !== activeUser && players.length > 1);
   }
@@ -322,15 +420,62 @@ function seek(ms) { t = Math.min(Math.max(0, ms), total); sync(true); }
 
 $('play').addEventListener('click', () => setPlaying(!playing));
 seekEl.addEventListener('input', () => seek(Number(seekEl.value)));
+// ---------- view options (remembered per browser) ----------
+const pref = { get: (k) => { try { return localStorage.getItem('ht.replay.' + k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem('ht.replay.' + k, v); } catch {} } };
+function setCaptions(on) {
+  document.body.classList.toggle('nocap', !on);
+  $('cc').classList.toggle('on', on);
+  $('cc').setAttribute('aria-pressed', String(on));
+  pref.set('cc', on ? '1' : '0');
+}
+function setSteps(on) {
+  document.body.classList.toggle('wide', !on);
+  $('side').classList.toggle('on', on);
+  $('side').setAttribute('aria-pressed', String(on));
+  pref.set('steps', on ? '1' : '0');
+}
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen().catch(() => {});
+}
+// Captions only matter for videos that don't have them painted in.
+if (players.every((p) => p.burnedCaptions)) $('cc').hidden = true;
+setCaptions(pref.get('cc') !== '0');
+setSteps(pref.get('steps') !== '0');
+$('cc').addEventListener('click', () => setCaptions(document.body.classList.contains('nocap')));
+$('side').addEventListener('click', () => setSteps(document.body.classList.contains('wide')));
+$('full').addEventListener('click', toggleFullscreen);
+
+// ---------- hovering the timeline names the step at that moment ----------
+const track = $('track'), tip = $('tip');
+track.addEventListener('mousemove', (e) => {
+  const box = track.getBoundingClientRect();
+  const at = ((e.clientX - box.left) / box.width) * total;
+  const s = [...D.steps].reverse().find((x) => x.start <= at);
+  if (!s) { tip.hidden = true; return; }
+  tip.hidden = false;
+  tip.textContent = fmt(at) + ' · line ' + s.line + ' · ' + s.user + ' · ' + s.text.split(' › ').pop();
+  tip.style.left = Math.min(Math.max(e.clientX - box.left, 120), box.width - 120) + 'px';
+});
+track.addEventListener('mouseleave', () => { tip.hidden = true; });
+
 document.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement && e.target.type !== 'range') return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === 'Space') { e.preventDefault(); setPlaying(!playing); }
   const idx = D.steps.findIndex((s) => s.start > t + 50);
-  if (e.key === 'ArrowDown' && idx >= 0) seek(D.steps[idx].start - 300);
+  if (e.key === 'ArrowDown' && idx >= 0) { e.preventDefault(); seek(D.steps[idx].start + 1); }
   if (e.key === 'ArrowUp') {
-    const prev = [...D.steps].reverse().find((s) => s.start < t - 400);
-    seek(prev ? prev.start - 300 : 0);
+    e.preventDefault();
+    const prev = [...D.steps].reverse().find((s) => s.start < t - 50);
+    seek(prev ? prev.start + 1 : 0);
   }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); seek(t - 5000); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); seek(t + 5000); }
+  if (e.key === 'f') toggleFullscreen();
+  if (e.key === 'c' && !$('cc').hidden) setCaptions(document.body.classList.contains('nocap'));
+  if (e.key === 's') setSteps(document.body.classList.contains('wide'));
 });
 
 const speeds = $('speeds');

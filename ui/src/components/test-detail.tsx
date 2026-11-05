@@ -96,7 +96,7 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
             </div>
           </div>
           {/* key keeps the same iframe (and a playing video) across re-renders */}
-          <iframe key={result.replay} src={`${result.replay}?embed`} title={`Replay of ${test.name}`} className="h-[620px] w-full rounded-xl border bg-card" />
+          <iframe key={result.replay} src={`${result.replay}?embed`} title={`Replay of ${test.name}`} allowFullScreen className="h-[620px] w-full rounded-xl border bg-card" />
         </section>
       ) : done && (
         // A short note, not a big box: on a failed run the steps below matter more.
