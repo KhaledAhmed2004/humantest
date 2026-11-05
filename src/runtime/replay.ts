@@ -13,6 +13,8 @@ export interface ReplayStep {
   end: number;
   status: 'passed' | 'failed';
   error?: string;
+  /** The element the step acted on or checked, in page pixels (1280×720), for zooming in. */
+  box?: { x: number; y: number; w: number; h: number };
 }
 export interface ReplayRequest { user: string; method: string; path: string; status?: number; at: number; simulated?: boolean }
 /** burnedCaptions: the video already has captions painted in (Playwright's own video), so the page adds none. */
@@ -59,7 +61,7 @@ export interface Frame { file: string; ts: number }
  * Turns screencast frames (JPEGs, each with the exact time it was painted) into an mp4.
  * The browser only sends a frame when something changes, so each frame is held until the next one.
  */
-export function encodeFrames(frames: Frame[], endTs: number, out: string): boolean {
+export function encodeFrames(frames: Frame[], endTs: number, out: string, size = { width: 1280, height: 720 }): boolean {
   if (!frames.length) return false;
   const q = (f: string) => `'${f.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`;
   const lines = frames.map((f, i) => {
@@ -71,7 +73,7 @@ export function encodeFrames(frames: Frame[], endTs: number, out: string): boole
   const list = `${out}.frames.txt`;
   fs.writeFileSync(list, lines.join('\n'));
   const ok = ffmpeg(['-f', 'concat', '-safe', '0', '-i', list,
-    '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=white,fps=30,format=yuv420p',
+    '-vf', `scale=${size.width}:${size.height}:force_original_aspect_ratio=decrease,pad=${size.width}:${size.height}:(ow-iw)/2:(oh-ih)/2:color=white,fps=30,format=yuv420p`,
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-g', '30', '-movflags', '+faststart', '-an', out]);
   fs.rmSync(list, { force: true });
   return ok;
@@ -175,6 +177,10 @@ const PAGE = /* html */ `<!doctype html>
   body.wide aside { display: none; }
   /* Captions are drawn here, not painted into the video, so they stay sharp at any size.
      They sit in a strip under the video rather than on top of it, so they never cover what's happening. */
+  /* Smart zoom: the video moves and scales inside this frame; the frame clips it. */
+  .frame { position: relative; overflow: hidden; background: #000; }
+  .frame video { transform-origin: 0 0; transition: transform .75s cubic-bezier(.4, 0, .2, 1); will-change: transform; }
+  body.nozoom .frame video { transform: none !important; }
   .cap { display: flex; align-items: center; justify-content: center; gap: .6em; min-height: 2.6em; padding: .35em 1em;
     background: #111827; color: #fff; font: 600 clamp(12px, 1.25vw, 17px)/1.35 system-ui, sans-serif; text-align: center; }
   .cap .ln { opacity: .6; font-weight: 500; white-space: nowrap; }
@@ -235,6 +241,7 @@ const PAGE = /* html */ `<!doctype html>
   <div class="track" id="track"><input id="seek" type="range" min="0" step="10" value="0" aria-label="Position"><div class="tip" id="tip" hidden></div></div>
   <span id="time">0:00 / 0:00</span>
   <span id="speeds"></span>
+  <button id="zoom" title="Zoom in on each action (z)" aria-pressed="true">🔍 Zoom</button>
   <button id="cc" title="Captions (c)" aria-pressed="true">CC</button>
   <button id="side" title="Show or hide the steps (s)" aria-pressed="true">☰ Steps</button>
   <button id="full" title="Fullscreen (f)" aria-label="Fullscreen">⛶</button>
@@ -263,13 +270,14 @@ if (D.videos.length <= 1) document.querySelector('main').classList.add('single')
 const players = D.videos.map((v) => {
   const card = document.createElement('div');
   card.className = 'card';
-  card.innerHTML = '<div class="who"><span></span><span></span></div><div class="stage"></div>';
+  card.innerHTML = '<div class="who"><span></span><span></span></div><div class="frame"></div>';
   card.querySelector('.who span').textContent = '👤 ' + v.user;
   const el = document.createElement('video');
   el.src = v.file; el.muted = true; el.preload = 'auto'; el.playsInline = true;
   const cap = document.createElement('div');
   cap.className = 'cap';
-  card.querySelector('.stage').append(el, cap);
+  card.querySelector('.frame').append(el);
+  card.append(cap);
   vbox.appendChild(card);
   return { ...v, el, card, cap, status: card.querySelector('.who span:last-child') };
 });
@@ -345,6 +353,72 @@ function drawTicks() {
   });
 }
 
+// ---------- smart zoom ----------
+// While a user acts on (or checks) an element, their video zooms toward it; between actions,
+// and when a step has no element (a page load, a backend check), it zooms back out.
+const VW = 1280, VH = 720;
+function zoomTarget(user) {
+  const mine = D.steps.filter((s) => s.user === user);
+  let latest = -1;
+  for (let i = 0; i < mine.length; i++) if (mine[i].start - 350 <= t) latest = i;
+  const cur = mine[latest];
+  if (cur && cur.box && t <= cur.end + 900) return { box: cur.box, ahead: lookAhead(mine, latest) };
+  // Zoom in a moment early when the next step is about to act on something.
+  const next = mine[latest + 1];
+  if (next && next.box && next.start - t <= 350 && (!cur || cur.box || t > cur.end)) return { box: next.box, ahead: lookAhead(mine, latest + 1) };
+  return null;
+}
+/** The boxes of this user's next few steps (within 2.5 s, until a step without one, like a page load). */
+function lookAhead(mine, i) {
+  const out = [];
+  for (let j = i + 1; j < mine.length && mine[j].start - mine[i].start <= 2500; j++) {
+    if (!mine[j].box) break;
+    out.push(mine[j].box);
+  }
+  return out;
+}
+const union = (a, b) => {
+  const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
+};
+/** The target box grown to include the coming boxes, as long as the result can still be zoomed into. */
+function frameFor(target) {
+  let box = target.box;
+  for (const next of target.ahead) {
+    const u = union(box, next);
+    if (u.w / VW > 0.62 || u.h / VH > 0.62) break;   // would need too little zoom to be worth it
+    box = u;
+  }
+  return box;
+}
+/** The camera (zoom z, offset tx/ty) that frames this box, or null for "show the whole page". */
+function cameraFor(box) {
+  if (!box) return null;
+  const bw = box.w / VW, bh = box.h / VH;
+  if (bw > 0.7 || bh > 0.75) return null;              // big targets (a whole dialog) need no zoom
+  const z = Math.max(1.35, Math.min(0.55 / bw, 0.6 / bh, 2));
+  const cx = (box.x + box.w / 2) / VW, cy = (box.y + box.h / 2) / VH;
+  const clamp = (v) => Math.min(Math.max(v, 0), z - 1);   // never show past the edge of the video
+  return { z, tx: clamp(cx * z - 0.5), ty: clamp(cy * z - 0.5) };
+}
+/** True if the box is comfortably inside what this camera shows. */
+function inView(cam, box) {
+  const m = 0.04;   // keep a small margin from the edges
+  const x0 = cam.tx / cam.z + m, x1 = (cam.tx + 1) / cam.z - m, y0 = cam.ty / cam.z + m, y1 = (cam.ty + 1) / cam.z - m;
+  return box.x / VW >= x0 && (box.x + box.w) / VW <= x1 && box.y / VH >= y0 && (box.y + box.h) / VH <= y1;
+}
+const cssOf = (cam) => cam
+  ? 'translate(' + (-cam.tx * 100).toFixed(2) + '%, ' + (-cam.ty * 100).toFixed(2) + '%) scale(' + cam.z.toFixed(3) + ')'
+  : 'none';
+/** Like a camera operator: only move when the next target is out of shot (less motion, easier to watch). */
+function cameraUpdate(p, target) {
+  if (!target) { p.cam = null; return cssOf(null); }
+  if (p.cam && inView(p.cam, target.box)) return cssOf(p.cam);
+  // Moving anyway: frame this step together with the next ones, so the camera can stay put for them.
+  p.cam = cameraFor(frameFor(target));
+  return cssOf(p.cam);
+}
+
 function sync(force) {
   // The current step is the latest one that has started (and isn't long over).
   let current = -1;
@@ -390,6 +464,8 @@ function sync(force) {
         p.cap.append(ln, document.createTextNode((mine.status === 'failed' ? '✗ ' : '') + mine.text.split(' › ').pop()));
       }
     }
+    const zt = cameraUpdate(p, zoomTarget(p.user));
+    if (p.el.dataset.zoom !== zt) { p.el.dataset.zoom = zt; p.el.style.transform = zt === 'none' ? '' : zt; }
     p.card.classList.toggle('active', p.user === activeUser);
     p.card.classList.toggle('idle', activeUser !== null && p.user !== activeUser && players.length > 1);
   }
@@ -435,6 +511,12 @@ function setSteps(on) {
   $('side').setAttribute('aria-pressed', String(on));
   pref.set('steps', on ? '1' : '0');
 }
+function setZoom(on) {
+  document.body.classList.toggle('nozoom', !on);
+  $('zoom').classList.toggle('on', on);
+  $('zoom').setAttribute('aria-pressed', String(on));
+  pref.set('zoom', on ? '1' : '0');
+}
 function toggleFullscreen() {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen().catch(() => {});
@@ -442,6 +524,9 @@ function toggleFullscreen() {
 // Captions only matter for videos that don't have them painted in.
 if (players.every((p) => p.burnedCaptions)) $('cc').hidden = true;
 setCaptions(pref.get('cc') !== '0');
+setZoom(pref.get('zoom') !== '0');
+if (!D.steps.some((s) => s.box)) $('zoom').hidden = true;
+$('zoom').addEventListener('click', () => setZoom(document.body.classList.contains('nozoom')));
 setSteps(pref.get('steps') !== '0');
 $('cc').addEventListener('click', () => setCaptions(document.body.classList.contains('nocap')));
 $('side').addEventListener('click', () => setSteps(document.body.classList.contains('wide')));
@@ -476,6 +561,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'f') toggleFullscreen();
   if (e.key === 'c' && !$('cc').hidden) setCaptions(document.body.classList.contains('nocap'));
   if (e.key === 's') setSteps(document.body.classList.contains('wide'));
+  if (e.key === 'z' && !$('zoom').hidden) setZoom(document.body.classList.contains('nozoom'));
 });
 
 const speeds = $('speeds');

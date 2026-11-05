@@ -87,7 +87,9 @@ For each test it writes `humantest-videos/<test>/`:
   whose step is running is highlighted, and the step shows as a caption under their video. Next to the
   videos is the list of steps, with the backend calls each step made. Click a step to jump there.
   A failed test opens just before the failing step, with the error at the top.
-  Keys: Space play/pause · ↑/↓ previous/next step · ←/→ 5 seconds · `c` captions · `s` steps list · `f` fullscreen.
+  Smart zoom: while a step clicks, types into or checks an element, that user's video glides in on it,
+  and zooms back out for page loads; the camera holds still while the next target is already in shot.
+  Keys: Space play/pause · ↑/↓ previous/next step · ←/→ 5 seconds · `z` zoom · `c` captions · `s` steps list · `f` fullscreen.
   Hover the timeline to see which step was running at that moment. Play at 0.5x to 2x.
 - `<user>.mp4`: one video per user.
 - `side-by-side.mp4`: all users in one video with captions, for sharing in chat (only when a test has several users).

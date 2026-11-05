@@ -251,6 +251,12 @@ export class Scenario {
  * turned into an mp4 at the end. Playwright's showActions draws a moving cursor and highlights
  * the element each action targets.
  */
+/**
+ * Screencast video size. Frames always arrive at the viewport's CSS size (1280×720), even with a
+ * higher deviceScaleFactor or a bigger size option (measured), so recording larger only upscales.
+ */
+const VIDEO_SIZE = { width: 1280, height: 720 };
+
 class FrameRecorder {
   private readonly frames: Frame[] = [];
 
@@ -260,7 +266,7 @@ class FrameRecorder {
     fs.rmSync(this.dir, { recursive: true, force: true });
     fs.mkdirSync(this.dir, { recursive: true });
     await this.page.screencast.start({
-      size: { width: 1280, height: 720 },
+      size: VIDEO_SIZE,
       quality: 90,
       onFrame: (f) => {
         const file = path.join(this.dir, `f${String(this.frames.length).padStart(6, '0')}.jpg`);
@@ -285,7 +291,7 @@ class FrameRecorder {
   async stop(out: string): Promise<{ file: string; started: number } | undefined> {
     await this.page.screencast.stop().catch(() => {});
     const end = Date.now();
-    const ok = encodeFrames(this.frames, end, out);
+    const ok = encodeFrames(this.frames, end, out, VIDEO_SIZE);
     fs.rmSync(this.dir, { recursive: true, force: true });
     return ok && this.frames.length ? { file: out, started: this.frames[0].ts } : undefined;
   }
@@ -372,12 +378,24 @@ export class User {
 
   // ---------------- step wrapper ----------------
 
+  /** The element the current step acted on or checked, in page pixels (only recorded for videos). */
+  private focus?: { x: number; y: number; w: number; h: number };
+
+  private async noteFocus(loc: Locator) {
+    if (!DEMO) return;
+    const b = await loc.boundingBox({ timeout: 500 }).catch(() => null);
+    if (b && b.width > 0 && b.height > 0) {
+      this.focus = { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) };
+    }
+  }
+
   async step(line: number, text: string, fn: (u: User) => Promise<void>) {
     await test.step(`line ${line} · ${this.name} · ${text}`, async () => {
       this.ht.currentLine = line;
       this.caption = `👤 ${this.name}   ·   line ${line}   ·   ${text}`;
       const rec: ReplayStep = { user: this.name, line, text, start: Date.now(), end: 0, status: 'passed' };
       this.ht.records.push(rec);
+      this.focus = undefined;
       await this.showCaption();
       try {
         await fn(this);
@@ -386,8 +404,11 @@ export class User {
         rec.status = 'failed';
         rec.error = err.message.split('\n').slice(2).join('\n').trim();
         rec.end = Date.now();
+        if (this.focus) rec.box = this.focus;
         throw err;
       }
+      // Where on the page this step happened, so the replay can zoom in there.
+      if (this.focus) rec.box = this.focus;
       if (DEMO) {
         await this.showCaption();
         await this.page.waitForTimeout(this.ht.config.demo?.pauseAfterStepMs ?? 700);
@@ -500,6 +521,7 @@ export class User {
 
   async type(value: string, field: string) {
     const loc = await this.field(field);
+    await this.noteFocus(loc);
     this.mark = this.log.length;
     if (DEMO) {
       await loc.fill('');
@@ -511,6 +533,7 @@ export class User {
 
   async typeToday(field: string) {
     const loc = await this.field(field);
+    await this.noteFocus(loc);
     // The browser's own date, in the format date inputs take (YYYY-MM-DD).
     const today = await this.page.evaluate(() => {
       const d = new Date();
@@ -522,6 +545,7 @@ export class User {
 
   async choose(option: string, field: string) {
     const loc = await this.field(field);
+    await this.noteFocus(loc);
     this.mark = this.log.length;
     const tag = await loc.evaluate((e) => e.tagName.toLowerCase());
     if (tag === 'select') {
@@ -544,6 +568,7 @@ export class User {
 
   async click(name: string, role?: string) {
     const loc = await this.clickable(name, role);
+    await this.noteFocus(loc);
     if (DEMO) await this.highlight(loc);
     this.mark = this.log.length;
     await loc.click();
@@ -552,6 +577,7 @@ export class User {
   async see(text: string) {
     try {
       await expect(this.root.getByText(text).first(), `"${text}" should be visible${this.scope ? ` inside "${this.scope.name}"` : ' on the page'}, but it isn't.`).toBeVisible();
+      await this.noteFocus(this.root.getByText(text).first());
     } catch (e) {
       const similar = await this.similarText(text);
       if (!similar.length) throw e;
@@ -593,6 +619,7 @@ export class User {
       return;
     }
     const loc = role === 'field' ? await this.field(name) : await this.clickable(name, role);
+    await this.noteFocus(loc);
     if (state === 'enabled') await expect(loc, msg).toBeEnabled();
     if (state === 'disabled') await expect(loc, msg).toBeDisabled();
     if (state === 'focused') await expect(loc, msg).toBeFocused();
