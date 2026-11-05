@@ -6,6 +6,7 @@ import { TestList } from '@/components/test-list'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { storage } from '@/lib/format'
 import { useHumanTest } from '@/lib/use-humantest'
 import { useMediaQuery } from '@/lib/use-media-query'
@@ -35,9 +36,11 @@ export default function App() {
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={narrow ? '60' : '70'}>
-          <main className="h-full overflow-auto">
+          {/* shadcn ScrollArea instead of the browser's own scrollbar. */}
+          <ScrollArea className="h-full">
+          <main>
             {test ? <TestDetail ht={ht} test={test} /> : (
-              <Empty className="h-full">
+              <Empty className="min-h-[70vh]">
                 <EmptyHeader>
                   <EmptyMedia variant="icon"><ListChecksIcon /></EmptyMedia>
                   <EmptyTitle>{ht.tests.length ? 'Pick a test' : 'No tests yet'}</EmptyTitle>
@@ -48,6 +51,7 @@ export default function App() {
               </Empty>
             )}
           </main>
+          </ScrollArea>
         </ResizablePanel>
       </ResizablePanelGroup>
 
@@ -58,9 +62,11 @@ export default function App() {
           <ChevronUpIcon className={`ml-auto size-4 transition-transform ${outputOpen ? 'rotate-180' : ''}`} />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <pre className="max-h-60 overflow-auto px-4 pb-3 font-mono text-xs whitespace-pre-wrap text-muted-foreground">
-            {ht.logs.length ? ht.logs.join('\n') : 'Nothing yet. Playwright\'s output shows up here while tests run.'}
-          </pre>
+          <ScrollArea className="h-60">
+            <pre className="px-4 pb-3 font-mono text-xs whitespace-pre-wrap text-muted-foreground">
+              {ht.logs.length ? ht.logs.join('\n') : 'Nothing yet. Playwright\'s output shows up here while tests run.'}
+            </pre>
+          </ScrollArea>
         </CollapsibleContent>
       </Collapsible>
     </div>

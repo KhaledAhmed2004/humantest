@@ -148,16 +148,28 @@ const PAGE = /* html */ `<!doctype html>
 <title>Replay · __TITLE__</title>
 <style>
   :root {
+    color-scheme: light;
     --bg: #f6f7f9; --panel: #ffffff; --text: #18202b; --muted: #667085; --line: #e3e6eb;
     --accent: #2563eb; --accent-soft: #e8efff; --ok: #15803d; --bad: #c62828; --bad-soft: #fdecec; --warn: #b45309;
+    --thumb: #d4d8de; --thumb-hover: #b3b9c2;
   }
   @media (prefers-color-scheme: dark) {
     :root {
+      color-scheme: dark;
       --bg: #0f1218; --panel: #171b23; --text: #e6e9ef; --muted: #98a2b3; --line: #2a303b;
       --accent: #6b9bff; --accent-soft: #1d2a44; --ok: #4ade80; --bad: #f87171; --bad-soft: #3a1d1d; --warn: #fbbf24;
+      --thumb: #343b47; --thumb-hover: #4a5361;
     }
   }
   * { box-sizing: border-box; }
+  /* Scrollbars styled like shadcn/ui's ScrollArea: 10px wide, no track, a round thumb in the border colour.
+     (This page is plain HTML, so it copies the look instead of using the React component.) */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--thumb); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background-color: var(--thumb-hover); }
+  ::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
+  @supports (-moz-appearance: none) { * { scrollbar-width: thin; scrollbar-color: var(--thumb) transparent; } }
   body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
   header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
   header h1 { font-size: 16px; margin: 0; font-weight: 650; }
