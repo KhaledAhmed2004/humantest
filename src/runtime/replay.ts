@@ -213,40 +213,78 @@ const PAGE = /* html */ `<!doctype html>
   .aside-head h2 { font-size: 14px; margin: 0; font-weight: 650; }
   .aside-head .count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .tl, .subs { list-style: none; margin: 0; padding: 0; }
-  .tl { padding: 6px 0 14px; }
-  /* One row per step: a dot on a vertical line, the step in plain words, its time in the video. */
-  .row { position: relative; display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: start;
-    padding: 7px 14px 7px 16px; cursor: pointer; }
-  .row::before { content: ''; position: absolute; left: 22px; top: 0; bottom: 0; width: 2px; background: var(--line); }
-  .tl > li:first-child > .row::before { top: 14px; }
-  .tl > li:last-child:not(.open) > .row::before, .tl > li:last-child .subs > li:last-child > .row::before { bottom: calc(100% - 14px); }
-  .row:hover { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
-  .dot { position: relative; z-index: 1; width: 10px; height: 10px; margin: 5px 0 0 2px; border-radius: 50%;
-    border: 2px solid color-mix(in srgb, var(--muted) 55%, var(--panel)); background: var(--panel); }
-  .subs .dot { width: 8px; height: 8px; margin: 6px 0 0 3px; }
-  .row.done .dot { background: color-mix(in srgb, var(--muted) 70%, var(--panel)); border-color: transparent; }
-  .row.current { background: var(--accent-soft); }
-  .row.current .dot { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
-  .row.failed .dot { background: var(--bad); border-color: var(--bad); }
+  .tl { padding: 8px 0 16px; }
+  /* A row: [status mark on the rail] [action icon] [words] [time]. Rows are rounded so the highlight floats. */
+  .row { position: relative; display: grid; grid-template-columns: 16px 18px 1fr auto; gap: 8px; align-items: start;
+    margin: 1px 8px; padding: 7px 10px 7px 6px; border-radius: 10px; cursor: pointer; transition: background .15s; }
+  .row:hover { background: color-mix(in srgb, var(--accent-soft) 60%, transparent); }
+  .row.current { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .row.failed.current, .row.failed:hover { background: var(--bad-soft); }
+
+  /* The rail: a line through every status mark, filled in up to where the video is. */
+  .row::before { content: ''; position: absolute; left: 13px; top: -2px; bottom: -2px; width: 2px; border-radius: 2px;
+    background: var(--line); z-index: 0; }
+  .row.done::before { background: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+  .row.current::before { background: linear-gradient(var(--accent) 50%, var(--line) 50%); }
+  .tl > li:first-child > .row::before { top: 16px; }
+  .tl > li:last-child:not(.open) > .row::before, .tl > li:last-child .subs > li:last-child > .row::before { bottom: calc(100% - 16px); }
+
+  /* Status marks: hollow = still to come, ✓ = done, glowing = now, ✕ = failed. */
+  .mark { position: relative; z-index: 1; width: 14px; height: 14px; margin-top: 3px; border-radius: 50%;
+    background: var(--panel); border: 2px solid color-mix(in srgb, var(--muted) 50%, var(--panel)); display: grid; place-items: center; }
+  .mark::after { content: ''; }
+  .row.done .mark { background: color-mix(in srgb, var(--accent) 80%, var(--panel)); border-color: transparent; }
+  .row.done .mark::after { width: 3px; height: 6px; margin-top: -2px; border: solid #fff; border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); }
+  .row.current .mark { background: var(--accent); border-color: var(--accent); animation: glow 1.6s ease-in-out infinite; }
+  .row.current .mark::after { width: 4px; height: 4px; border-radius: 50%; background: #fff; }
+  .row.failed .mark { background: var(--bad); border-color: var(--bad); animation: none; }
+  .row.failed .mark::after { content: '×'; width: auto; height: auto; border: 0; transform: none; margin: -1px 0 0;
+    color: #fff; font: 700 12px/1 system-ui, sans-serif; background: none; }
+  @keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+                    50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 0%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .row.current .mark { animation: none; } }
+  .subs .mark { width: 10px; height: 10px; margin: 5px 2px 0; }
+  .subs .row.done .mark::after { width: 2px; height: 4px; border-width: 0 1.3px 1.3px 0; }
+  .subs .row.failed .mark::after { font-size: 9px; }
+
+  /* Action icon (eye, pointer, keyboard, server …), so a step can be read at a glance. */
+  .ico { width: 16px; height: 16px; margin-top: 2px; color: var(--muted); }
+  .ico svg { width: 16px; height: 16px; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .row.current .ico { color: var(--accent); }
+  .row.failed .ico { color: var(--bad); }
+
   .label { font-size: 13.5px; line-height: 1.45; word-break: break-word; }
-  .row.done .label { color: color-mix(in srgb, var(--text) 72%, var(--panel)); }
-  .row.current .label { font-weight: 600; }
-  .subs .label { font-size: 13px; padding-left: 12px; }
-  .subs .where, .subs .req, .subs .err { margin-left: 12px; }
-  .g > .row .label { font-weight: 600; }
-  /* An open group lets its running step carry the highlight; the heading keeps just its dot. */
-  .g.open > .row.current { background: none; }
-  .g.open > .row.current .label { font-weight: 600; }
+  .row.done .label { color: color-mix(in srgb, var(--text) 75%, var(--panel)); }
+  .row.current .label { font-weight: 600; color: var(--text); }
   .where { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
-  .time { font: 11.5px/1.9 ui-monospace, monospace; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .time { font: 11px/1 ui-monospace, monospace; color: var(--muted); font-variant-numeric: tabular-nums;
+    padding: 4px 6px; border-radius: 6px; margin-top: 1px; }
+  .row.current .time { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
   .who { display: inline-block; font-size: 11px; font-weight: 650; padding: 0 6px; margin-right: 6px; border-radius: 6px;
     background: var(--accent-soft); color: var(--accent); vertical-align: 1px; }
-  .chev { border: 0; background: none; padding: 0 2px; margin-left: 4px; color: var(--muted); cursor: pointer; font-size: 10px;
-    display: inline-block; transition: transform .15s; vertical-align: 1px; }
+
+  /* Story groups: a heading with a step count; open groups become a soft card holding their steps. */
+  .g { margin: 2px 0; }
+  .g > .row .label, .row.solo .label { font-weight: 600; }
+  /* Group heading: [mark] [icon] [title + "4 steps"] [chevron] [time] */
+  .row.gh { grid-template-columns: 16px 18px 1fr auto auto; }
+  .gh .chev { margin: 0; }
+  .g.open { background: color-mix(in srgb, var(--accent-soft) 35%, transparent); border-radius: 12px; margin: 4px 6px; padding: 2px 0 4px; }
+  .g.open > .row, .g.open .subs .row { margin-left: 2px; margin-right: 2px; }
+  .g.open > .row.current { background: none; box-shadow: none; }
+  .n { display: inline-block; font-size: 11px; font-weight: 500; color: var(--muted); margin-left: 6px; white-space: nowrap; }
+  .chev { border: 0; background: none; padding: 3px; margin: 0; color: var(--muted); cursor: pointer;
+    display: inline-grid; place-items: center; vertical-align: middle; border-radius: 6px; transition: transform .2s, background .15s; }
+  .chev:hover { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--text); }
+  .chev svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
   .g.open .chev { transform: rotate(90deg); }
   .subs { display: none; }
   .g.open .subs { display: block; }
-  .req { font: 11.5px/1.5 ui-monospace, monospace; color: var(--muted); margin-top: 2px; }
+  .subs .label { font-size: 13px; }
+  .subs .ico, .subs .ico svg { width: 14px; height: 14px; }
+  .subs .ico { margin-top: 3px; }
+
+  .req { font: 11.5px/1.5 ui-monospace, monospace; color: var(--muted); margin-top: 3px; }
   .req.bad { color: var(--bad); }
   .err { margin-top: 6px; font-size: 12.5px; line-height: 1.45; color: var(--bad); background: var(--bad-soft); border-radius: 8px;
     padding: 6px 9px; white-space: pre-wrap; }
@@ -339,19 +377,52 @@ const multiUser = new Set(D.steps.map((s) => s.user).filter((u) => u !== 'setup'
 const cleanError = (e) => e.split('\\n').map((l) => l.trim())
   .filter((l) => l && l !== 'What went wrong:' && !/^(Line \\d+ ·|📄)/.test(l)).join('\\n');
 
-function makeRow(s, isSub) {
+// Small line icons (from the lucide set, like the rest of HumanTest's UI), picked from the plain words.
+const ICONS = {
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  pointer: '<path d="M9 9l5 12 1.8-5.2L21 14Z"/><path d="M7.2 2.2 8 5.1"/><path d="m5.1 8-2.9-.8"/><path d="M14 4.1 12 6"/><path d="m6 12-1.9 2"/>',
+  keyboard: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>',
+  reload: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  window: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/>',
+  server: '<rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/><path d="M6 7h.01M6 17h.01"/>',
+  person: '<circle cx="12" cy="4.5" r="2"/><path d="M5 9l7 1 7-1M12 10v5l-3 6M12 15l3 6"/>',
+  database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  wifi: '<path d="M5 12.55a11 11 0 0 1 14 0M1.4 9a16 16 0 0 1 21.2 0M8.5 16.4a6 6 0 0 1 7 0M12 20h.01"/>',
+  check: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+};
+const iconFor = (text) =>
+  /^Opens/.test(text) ? 'globe' :
+  /^Reloads/.test(text) ? 'reload' :
+  /^(Types|Enters|Presses|The cursor)/.test(text) ? 'keyboard' :
+  /^Picks/.test(text) ? 'list' :
+  /^Clicks/.test(text) ? 'pointer' :
+  /^(Sees|Doesn't see|Is still on)/.test(text) ? 'eye' :
+  / dialog /.test(text) ? 'window' :
+  /^(The app sends|Server|Nothing is sent|The answer|Calls|Makes)/.test(text) ? 'server' :
+  /^Checks accessibility/.test(text) ? 'person' :
+  /^Starts with/.test(text) ? 'database' :
+  /^Waits/.test(text) ? 'clock' :
+  /^Turns the internet/.test(text) ? 'wifi' : 'check';
+const svg = (name) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[name] + '</svg>';
+
+// storyTitle: a story line with just this one step. It shows as one row: the story on top, the step under it.
+function makeRow(s, isSub, storyTitle) {
   const li = document.createElement('li');
   const row = document.createElement('div');
-  row.className = 'row' + (s.status === 'failed' ? ' failed' : '');
+  row.className = 'row' + (s.status === 'failed' ? ' failed' : '') + (storyTitle ? ' solo' : '');
   row.title = 'Line ' + s.line + ' of the test: ' + ownText(s);
   const h = say(s);
   const body = document.createElement('div');
   const label = document.createElement('div');
   label.className = 'label';
   if (multiUser && !isSub && s.user !== 'setup') { const w = document.createElement('span'); w.className = 'who'; w.textContent = s.user; label.append(w); }
-  label.append(document.createTextNode(h.text));
+  label.append(document.createTextNode(storyTitle ? cap(storyTitle) : h.text));
   body.append(label);
-  if (h.where) { const w = document.createElement('span'); w.className = 'where'; w.textContent = 'in ' + h.where; body.append(w); }
+  const detail = storyTitle ? h.text + (h.where ? ' · in ' + h.where : '') : (h.where ? 'in ' + h.where : '');
+  if (detail) { const w = document.createElement('span'); w.className = 'where'; w.textContent = detail; body.append(w); }
   for (const r of D.requests.filter((r) => r.user === s.user && r.at >= s.start - 50 && r.at <= s.end + 50)) {
     const d = document.createElement('div');
     d.className = 'req' + ((r.status ?? 0) >= 400 ? ' bad' : '');
@@ -362,9 +433,12 @@ function makeRow(s, isSub) {
   const time = document.createElement('span');
   time.className = 'time';
   time.textContent = fmt(s.start);
-  const dot = document.createElement('span');
-  dot.className = 'dot';
-  row.append(dot, body, time);
+  const mark = document.createElement('span');
+  mark.className = 'mark';
+  const ico = document.createElement('span');
+  ico.className = 'ico';
+  ico.innerHTML = svg(iconFor(h.text));
+  row.append(mark, ico, body, time);
   row.addEventListener('click', (e) => { e.stopPropagation(); seek(s.start + 1); });
   li.append(row);
   return { li, row };
@@ -388,29 +462,42 @@ for (let i = 0; i < D.steps.length; i++) {
   while (i < D.steps.length && storyKey(D.steps[i]) === key) idx.push(i++);
   i--;
   const first = D.steps[idx[0]];
+  if (idx.length === 1) {
+    // Nothing to open: one row with the story on top and its single step under it.
+    const { li, row } = makeRow(first, false, first.text.split(' › ')[0]);
+    stepsBox.append(li);
+    stepEls[idx[0]] = row;
+    continue;
+  }
   const li = document.createElement('li');
   li.className = 'g';
   const head = document.createElement('div');
-  head.className = 'row' + (idx.some((j) => D.steps[j].status === 'failed') ? ' failed' : '');
+  head.className = 'row gh' + (idx.some((j) => D.steps[j].status === 'failed') ? ' failed' : '');
   head.title = 'Line ' + first.line + ' of the test';
   const body = document.createElement('div');
   const label = document.createElement('div');
   label.className = 'label';
   if (multiUser && first.user !== 'setup') { const w = document.createElement('span'); w.className = 'who'; w.textContent = first.user; label.append(w); }
   label.append(document.createTextNode(cap(first.text.split(' › ')[0])));
+  body.append(label);
+  const n = document.createElement('span');
+  n.className = 'where';
+  n.textContent = idx.length + ' steps';
+  body.append(n);
   const chev = document.createElement('button');
   chev.className = 'chev';
   chev.type = 'button';
-  chev.textContent = '▶';
+  chev.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
   chev.setAttribute('aria-label', 'Show or hide the steps of this part');
-  label.append(chev);
-  body.append(label);
   const time = document.createElement('span');
   time.className = 'time';
   time.textContent = fmt(first.start);
-  const dot = document.createElement('span');
-  dot.className = 'dot';
-  head.append(dot, body, time);
+  const mark = document.createElement('span');
+  mark.className = 'mark';
+  const ico = document.createElement('span');
+  ico.className = 'ico';
+  ico.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>';
+  head.append(mark, ico, body, chev, time);
   const subs = document.createElement('ol');
   subs.className = 'subs';
   for (const j of idx) { const r = makeRow(D.steps[j], true); subs.append(r.li); stepEls[j] = r.row; }
