@@ -1,4 +1,4 @@
-import { ExternalLinkIcon, FileTextIcon, PlayIcon, TriangleAlertIcon, UserIcon, VideoIcon, VideoOffIcon } from 'lucide-react'
+import { ExternalLinkIcon, FileTextIcon, ListXIcon, PlayIcon, TriangleAlertIcon, UserIcon, VideoIcon, VideoOffIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -6,7 +6,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { StatusIcon } from '@/components/status-icon'
 import { statusLabel } from '@/lib/status'
 import { StepList } from '@/components/step-list'
-import { formatDuration, formatWhen } from '@/lib/format'
+import { cleanError, errorHeading, formatDuration, formatWhen } from '@/lib/format'
 import type { HumanTest, TestRow } from '@/lib/use-humantest'
 
 export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
@@ -17,9 +17,10 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
   const done = result && !live
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 p-6">
+    <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
       <div className="flex flex-wrap items-start gap-4">
-        <div className="min-w-0 flex-1">
+        {/* Full width on phones, so the name isn't squeezed next to the buttons. */}
+        <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
           <h1 className="text-xl leading-snug font-semibold">{test.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1 font-mono text-xs"><FileTextIcon className="size-3.5" />{test.file}:{test.line}</span>
@@ -63,7 +64,8 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
         <Alert variant="destructive">
           <AlertTitle>What went wrong</AlertTitle>
           <AlertDescription>
-            <pre className="font-mono text-xs whitespace-pre-wrap">{result.errors[0].replace(/^Error:\s*/, '')}</pre>
+            {errorHeading(result.errors[0]) && <p className="font-medium">{errorHeading(result.errors[0])}</p>}
+            <pre className="font-mono text-xs whitespace-pre-wrap">{cleanError(result.errors[0])}</pre>
           </AlertDescription>
         </Alert>
       )}
@@ -96,19 +98,29 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
           {/* key keeps the same iframe (and a playing video) across re-renders */}
           <iframe key={result.replay} src={`${result.replay}?embed`} title={`Replay of ${test.name}`} className="h-[620px] w-full rounded-xl border bg-card" />
         </section>
-      ) : !live && (
-        <Empty className="rounded-xl border border-dashed py-8">
-          <EmptyHeader>
-            <EmptyMedia variant="icon"><VideoOffIcon /></EmptyMedia>
-            <EmptyTitle>No video for the last run</EmptyTitle>
-            <EmptyDescription>Click “Run with video” to record one, with every step captioned.</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+      ) : done && (
+        // A short note, not a big box: on a failed run the steps below matter more.
+        <p className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
+          <VideoOffIcon className="size-4 shrink-0" />
+          No video for this run. Use “Run with video” to record one, with every step captioned.
+        </p>
       )}
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold">Steps</h2>
-        <StepList steps={test.steps} result={live ? undefined : result} live={live} />
+        {test.steps.length ? (
+          <StepList steps={test.steps} result={live ? undefined : result} live={live} />
+        ) : (
+          <Empty className="rounded-xl border border-dashed py-8">
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><ListXIcon /></EmptyMedia>
+              <EmptyTitle>No steps yet</EmptyTitle>
+              <EmptyDescription>
+                {test.fileHasProblems ? 'Fix the problems above, and the steps show up here.' : 'This test has no steps. Add some under its Test: line.'}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
       </section>
     </div>
   )

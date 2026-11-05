@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
 import { StatusIcon } from '@/components/status-icon'
 import type { PlannedStep, TestResult } from '@/lib/api'
-import { formatDuration } from '@/lib/format'
+import { cleanError, formatDuration } from '@/lib/format'
 import type { LiveState } from '@/lib/use-humantest'
 import { cn } from '@/lib/utils'
 
@@ -33,9 +33,6 @@ function stepMarks(steps: PlannedStep[], result?: TestResult, live?: LiveState):
   })
 }
 
-/** The error without the parts this list already shows (line, user, file). */
-const cleanError = (e: string) =>
-  e.split('\n').filter((l) => l.trim() && !/^\s*(Line \d+ ·|📄|What went wrong:)/.test(l)).map((l) => l.trim()).join('\n')
 
 export function StepList({ steps, result, live }: { steps: PlannedStep[]; result?: TestResult; live?: LiveState }) {
   const marks = stepMarks(steps, result, live)

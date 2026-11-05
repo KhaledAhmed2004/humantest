@@ -8,7 +8,7 @@ import './index.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="ht.theme">
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="ht.theme" disableTransitionOnChange>
       <TooltipProvider>
         <App />
         <Toaster richColors position="bottom-right" />

@@ -41,6 +41,27 @@ function discoverProjects(): ProjectRef[] {
 const projects = discoverProjects();
 const findProject = (id: unknown) => projects.find((p) => p.id === id);
 
+/** Tell the page when someone edits a .ht file (tests or phrases) or the config, so the list updates by itself. */
+function watchProjects() {
+  for (const ref of projects) {
+    let timer: NodeJS.Timeout | undefined;
+    const changed = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => broadcast({ type: 'tests-changed', project: ref.id }), 250);
+    };
+    try {
+      const project = loadProject(ref.root);
+      for (const dir of [project.testsDir, project.phrasesDir]) {
+        if (!fs.existsSync(dir)) continue;
+        fs.watch(dir, { recursive: true }, (_event, file) => { if (!file || String(file).endsWith('.ht')) changed(); });
+      }
+      fs.watch(project.configPath, changed);
+    } catch (e) {
+      console.warn(`Not watching ${ref.name} for changes: ${(e as Error).message}`);
+    }
+  }
+}
+
 // ---------------- history (per project, in .humantest/history.json) ----------------
 
 interface TestResult {
@@ -291,6 +312,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 setInterval(() => { for (const c of clients) c.write(': ping\n\n'); }, 20_000).unref();
+watchProjects();
 
 server.listen(PORT, '127.0.0.1', () => {
   const link = `http://localhost:${PORT}`;

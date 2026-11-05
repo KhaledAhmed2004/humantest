@@ -8,12 +8,14 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { storage } from '@/lib/format'
 import { useHumanTest } from '@/lib/use-humantest'
+import { useMediaQuery } from '@/lib/use-media-query'
 
 export default function App() {
   const ht = useHumanTest()
   const [chosen, setChosen] = useState<string | null>(storage.get('ht.selected'))
   const [demo, setDemo] = useState(storage.get('ht.demo') === '1')
   const [outputOpen, setOutputOpen] = useState(false)
+  const narrow = useMediaQuery('(max-width: 767px)')
 
   // The chosen test, or the first one when it isn't in this project.
   const test = ht.tests.find((t) => t.key === chosen) ?? ht.tests[0]
@@ -26,12 +28,13 @@ export default function App() {
     <div className="flex h-dvh flex-col bg-muted/30">
       <AppHeader ht={ht} demo={demo} onDemoChange={changeDemo} />
 
-      <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
-        <ResizablePanel defaultSize="30" minSize="18" maxSize="50">
+      {/* Side by side on wide screens; on phones the list sits on top of the details. */}
+      <ResizablePanelGroup key={narrow ? 'stacked' : 'side'} orientation={narrow ? 'vertical' : 'horizontal'} className="min-h-0 flex-1">
+        <ResizablePanel defaultSize={narrow ? '40' : '30'} minSize={narrow ? '20' : '18'} maxSize={narrow ? '75' : '50'}>
           <TestList ht={ht} selected={selected} onSelect={select} demo={demo} />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize="70">
+        <ResizablePanel defaultSize={narrow ? '60' : '70'}>
           <main className="h-full overflow-auto">
             {test ? <TestDetail ht={ht} test={test} /> : (
               <Empty className="h-full">

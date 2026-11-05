@@ -92,7 +92,8 @@ export function TestList({ ht, selected, onSelect, demo }: {
                     >
                       <StatusIcon status={status} className="mt-0.5" />
                       <span className="break-words">{t.name}</span>
-                      <span className="text-right text-xs text-muted-foreground">
+                      {/* On the tinted selected row, muted grey is too faint (WCAG contrast), so it gets darker there. */}
+                      <span className={cn('text-right text-xs text-muted-foreground', t.key === selected && 'text-foreground/75')}>
                         <span className="block whitespace-nowrap">
                           {status === 'running' ? 'running…' : status === 'queued' ? 'waiting' : last ? formatDuration(last.duration) : ''}
                         </span>

@@ -83,6 +83,10 @@ export function useHumanTest() {
         setRunning(false); setLive({}); setProgress(null)
         if (projectRef.current) loadTests(projectRef.current)
         break
+      case 'tests-changed':
+        // A .ht file was edited: re-read the list (and its "did you mean" problems) right away.
+        if (e.project === projectRef.current) loadTests(e.project)
+        break
     }
   }), [loadTests])
 

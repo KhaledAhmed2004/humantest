@@ -47,6 +47,7 @@ export type ServerEvent =
   | { type: 'test-end'; key: string; result: TestResult; done: number; total: number }
   | { type: 'log'; line: string }
   | { type: 'run-end'; code: number | null }
+  | { type: 'tests-changed'; project: string }
 
 export async function getProjects(): Promise<{ projects: Project[]; running: { project: string; done: number; total: number } | null }> {
   return (await fetch('/api/projects')).json()

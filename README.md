@@ -58,6 +58,7 @@ Everything without the terminal:
 - for the selected test: the error in plain words, watchdog warnings, every step with ✓ / ✗ / not run,
   and the replay (videos and steps) right on the page
 - mistakes in `.ht` files shown with "did you mean", before anything runs
+- edit a `.ht` file in your editor and the list updates by itself (new tests, fixed mistakes)
 - a project picker: this folder plus every `pilots/<name>/`
 - **Output** at the bottom shows the raw Playwright output
 
@@ -71,6 +72,11 @@ inside each project, so they're still there after a restart. Options: `npm run u
 in another for hot reload at the address Vite prints; it forwards `/api` and `/files` to the server.
 Add components with `npx shadcn add <name>` inside `ui/`. The shadcn MCP server in `.mcp.json`
 lets Claude Code search and add them too.
+
+**Checking the UI after a change.** With `npm run ui` running, `npm run ui:qa` clicks through the UI in a
+real browser (Edge by default, `QA_BROWSER=chrome` for Chrome) and prints PASS/FAIL for 25 checks:
+running, failing and stopped tests, mistakes in `.ht` files, live file updates, the replay, dark mode,
+phone width, and accessibility (axe, WCAG 2.1 AA) in light and dark mode.
 
 ## Videos and the replay page
 

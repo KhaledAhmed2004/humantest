@@ -13,7 +13,8 @@
     "demo-app": "node demo-app/server.mjs",
     "typecheck": "tsc -p .",
     "ui": "npm run build -w ui && node src/ui/server.mts",
-    "ui:dev": "npm run dev -w ui"
+    "ui:dev": "npm run dev -w ui",
+    "ui:qa": "node scripts/ui-qa.cjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
