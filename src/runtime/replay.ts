@@ -213,78 +213,75 @@ const PAGE = /* html */ `<!doctype html>
   .aside-head h2 { font-size: 14px; margin: 0; font-weight: 650; }
   .aside-head .count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .tl, .subs { list-style: none; margin: 0; padding: 0; }
-  .tl { padding: 8px 0 16px; }
-  /* A row: [status mark on the rail] [action icon] [words] [time]. Rows are rounded so the highlight floats. */
-  .row { position: relative; display: grid; grid-template-columns: 16px 18px 1fr auto; gap: 8px; align-items: start;
-    margin: 1px 8px; padding: 7px 10px 7px 6px; border-radius: 10px; cursor: pointer; transition: background .15s; }
-  .row:hover { background: color-mix(in srgb, var(--accent-soft) 60%, transparent); }
-  .row.current { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent); }
-  .row.failed.current, .row.failed:hover { background: var(--bad-soft); }
+  .tl { padding: 10px 0 16px; }
+  /* A row: [status] [title + status line] [time]. Rounded, so the highlight floats. */
+  .row { position: relative; display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; align-items: start;
+    margin: 0 8px; padding: 8px 10px 8px 6px; border-radius: 12px; cursor: pointer; transition: background .15s; }
+  .row:hover { background: color-mix(in srgb, var(--muted) 9%, transparent); }
+  .row.current { background: color-mix(in srgb, var(--accent) 9%, transparent); }
 
-  /* The rail: a line through every status mark, filled in up to where the video is. */
-  .row::before { content: ''; position: absolute; left: 13px; top: -2px; bottom: -2px; width: 2px; border-radius: 2px;
-    background: var(--line); z-index: 0; }
-  .row.done::before { background: color-mix(in srgb, var(--accent) 55%, var(--line)); }
-  .row.current::before { background: linear-gradient(var(--accent) 50%, var(--line) 50%); }
-  .tl > li:first-child > .row::before { top: 16px; }
-  .tl > li:last-child:not(.open) > .row::before, .tl > li:last-child .subs > li:last-child > .row::before { bottom: calc(100% - 16px); }
+  /* The rail joins the status icons. It turns green up to the last finished part. */
+  .row::before { content: ''; position: absolute; left: 17px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+  .row.done::before { background: color-mix(in srgb, var(--ok) 70%, var(--line)); }
+  .row.current::before { background: linear-gradient(color-mix(in srgb, var(--ok) 70%, var(--line)) 18px, var(--line) 18px); }
+  .tl > li:first-child > .row::before { top: 18px; }
+  .tl > li:last-child:not(.open) > .row::before,
+  .tl > li:last-child .subs > li:last-child > .row::before { bottom: calc(100% - 18px); }
 
-  /* Status marks: hollow = still to come, ✓ = done, glowing = now, ✕ = failed. */
-  .mark { position: relative; z-index: 1; width: 14px; height: 14px; margin-top: 3px; border-radius: 50%;
-    background: var(--panel); border: 2px solid color-mix(in srgb, var(--muted) 50%, var(--panel)); display: grid; place-items: center; }
-  .mark::after { content: ''; }
-  .row.done .mark { background: color-mix(in srgb, var(--accent) 80%, var(--panel)); border-color: transparent; }
-  .row.done .mark::after { width: 3px; height: 6px; margin-top: -2px; border: solid #fff; border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); }
-  .row.current .mark { background: var(--accent); border-color: var(--accent); animation: glow 1.6s ease-in-out infinite; }
-  .row.current .mark::after { width: 4px; height: 4px; border-radius: 50%; background: #fff; }
-  .row.failed .mark { background: var(--bad); border-color: var(--bad); animation: none; }
-  .row.failed .mark::after { content: '×'; width: auto; height: auto; border: 0; transform: none; margin: -1px 0 0;
-    color: #fff; font: 700 12px/1 system-ui, sans-serif; background: none; }
-  @keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
-                    50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 0%, transparent); } }
-  @media (prefers-reduced-motion: reduce) { .row.current .mark { animation: none; } }
-  .subs .mark { width: 10px; height: 10px; margin: 5px 2px 0; }
-  .subs .row.done .mark::after { width: 2px; height: 4px; border-width: 0 1.3px 1.3px 0; }
-  .subs .row.failed .mark::after { font-size: 9px; }
+  /* Status icon: grey ring = later · green ✓ = completed · blue ring filling up = in progress · red ✕ = failed */
+  .st { position: relative; z-index: 1; width: 24px; height: 24px; border-radius: 50%; background: var(--panel); }
+  .st svg { width: 24px; height: 24px; display: block; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .st .trk { stroke: color-mix(in srgb, var(--muted) 45%, var(--panel)); }
+  .st .arc { stroke: var(--accent); stroke-width: 2.6; display: none; transition: stroke-dasharray .4s ease; }
+  .st .ok, .st .no { display: none; }
+  .row.done .st .trk { stroke: var(--ok); }
+  .row.done .st .ok { display: block; stroke: var(--ok); }
+  .row.current .st .trk { stroke: color-mix(in srgb, var(--accent) 22%, var(--panel)); }
+  .row.current .st .arc { display: block; }
+  .row.failed .st .trk { stroke: var(--bad); }
+  .row.failed .st .arc, .row.failed .st .ok { display: none; }
+  .row.failed .st .no { display: block; stroke: var(--bad); }
 
-  /* Action icon (eye, pointer, keyboard, server …), so a step can be read at a glance. */
-  .ico { width: 16px; height: 16px; margin-top: 2px; color: var(--muted); }
-  .ico svg { width: 16px; height: 16px; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .row.current .ico { color: var(--accent); }
-  .row.failed .ico { color: var(--bad); }
-
-  .label { font-size: 13.5px; line-height: 1.45; word-break: break-word; }
-  .row.done .label { color: color-mix(in srgb, var(--text) 75%, var(--panel)); }
-  .row.current .label { font-weight: 600; color: var(--text); }
-  .where { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
-  .time { font: 11px/1 ui-monospace, monospace; color: var(--muted); font-variant-numeric: tabular-nums;
-    padding: 4px 6px; border-radius: 6px; margin-top: 1px; }
-  .row.current .time { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+  .title { font-size: 14px; font-weight: 600; line-height: 1.4; word-break: break-word; }
+  .row:not(.done):not(.current):not(.failed) .title { color: color-mix(in srgb, var(--text) 78%, var(--panel)); }
+  .meta { display: block; font-size: 12.5px; line-height: 1.45; color: var(--muted); margin-top: 1px; }
+  .stx { font-weight: 600; }
+  .row.done .stx { color: var(--ok); }
+  .row.current .stx { color: var(--accent); }
+  .row.failed .stx { color: var(--bad); }
+  .time { font: 11.5px/1 ui-monospace, monospace; color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 5px; }
   .who { display: inline-block; font-size: 11px; font-weight: 650; padding: 0 6px; margin-right: 6px; border-radius: 6px;
     background: var(--accent-soft); color: var(--accent); vertical-align: 1px; }
 
-  /* Story groups: a heading with a step count; open groups become a soft card holding their steps. */
-  .g { margin: 2px 0; }
-  .g > .row .label, .row.solo .label { font-weight: 600; }
-  /* Group heading: [mark] [icon] [title + "4 steps"] [chevron] [time] */
-  .row.gh { grid-template-columns: 16px 18px 1fr auto auto; }
-  .gh .chev { margin: 0; }
-  .g.open { background: color-mix(in srgb, var(--accent-soft) 35%, transparent); border-radius: 12px; margin: 4px 6px; padding: 2px 0 4px; }
-  .g.open > .row, .g.open .subs .row { margin-left: 2px; margin-right: 2px; }
-  .g.open > .row.current { background: none; box-shadow: none; }
-  .n { display: inline-block; font-size: 11px; font-weight: 500; color: var(--muted); margin-left: 6px; white-space: nowrap; }
-  .chev { border: 0; background: none; padding: 3px; margin: 0; color: var(--muted); cursor: pointer;
-    display: inline-grid; place-items: center; vertical-align: middle; border-radius: 6px; transition: transform .2s, background .15s; }
-  .chev:hover { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--text); }
+  /* Steps inside a part: small marks on the same rail — ✓ done, blue dot now, hollow later. */
+  .subs { display: none; padding-bottom: 4px; }
+  .g.open .subs { display: block; }
+  .subs .row { padding-top: 5px; padding-bottom: 5px; }
+  .subs .row.current { background: none; }
+  .sm { position: relative; z-index: 1; width: 24px; height: 20px; display: grid; place-items: center; }
+  .sm::after { content: ''; width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box;
+    border: 1.5px solid color-mix(in srgb, var(--muted) 55%, var(--panel)); background: var(--panel); }
+  .row.done .sm::after { content: '✓'; width: auto; height: auto; border: 0; border-radius: 0; background: var(--panel);
+    color: var(--ok); font: 700 12px/1 system-ui, sans-serif; padding: 1px 0; }
+  .row.current .sm::after { width: 10px; height: 10px; border: 0; background: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .row.failed .sm::after { content: '×'; width: auto; height: auto; border: 0; border-radius: 0; background: var(--panel);
+    color: var(--bad); font: 700 14px/1 system-ui, sans-serif; }
+  .step-text { font-size: 13px; line-height: 1.45; word-break: break-word; color: color-mix(in srgb, var(--text) 82%, var(--panel)); }
+  .row.done .step-text { color: var(--muted); }
+  .row.current .step-text { color: var(--accent); font-weight: 600; }
+  .row.failed .step-text { color: var(--bad); font-weight: 600; }
+  .subs .meta { font-size: 12px; }
+  .subs .time { padding-top: 3px; }
+
+  .chev { border: 0; background: none; padding: 3px; margin: 1px 0 0; color: var(--muted); cursor: pointer; border-radius: 6px;
+    display: inline-grid; place-items: center; transition: transform .2s, background .15s; }
+  .chev:hover { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--text); }
   .chev svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
   .g.open .chev { transform: rotate(90deg); }
-  .subs { display: none; }
-  .g.open .subs { display: block; }
-  .subs .label { font-size: 13px; }
-  .subs .ico, .subs .ico svg { width: 14px; height: 14px; }
-  .subs .ico { margin-top: 3px; }
+  .row.gh { grid-template-columns: 24px 1fr auto auto; }
 
-  .req { font: 11.5px/1.5 ui-monospace, monospace; color: var(--muted); margin-top: 3px; }
+  .req { font: 11.5px/1.5 ui-monospace, monospace; color: var(--muted); margin-top: 2px; }
   .req.bad { color: var(--bad); }
   .err { margin-top: 6px; font-size: 12.5px; line-height: 1.45; color: var(--bad); background: var(--bad-soft); border-radius: 8px;
     padding: 6px 9px; white-space: pre-wrap; }
@@ -377,142 +374,114 @@ const multiUser = new Set(D.steps.map((s) => s.user).filter((u) => u !== 'setup'
 const cleanError = (e) => e.split('\\n').map((l) => l.trim())
   .filter((l) => l && l !== 'What went wrong:' && !/^(Line \\d+ ·|📄)/.test(l)).join('\\n');
 
-// Small line icons (from the lucide set, like the rest of HumanTest's UI), picked from the plain words.
-const ICONS = {
-  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-  pointer: '<path d="M9 9l5 12 1.8-5.2L21 14Z"/><path d="M7.2 2.2 8 5.1"/><path d="m5.1 8-2.9-.8"/><path d="M14 4.1 12 6"/><path d="m6 12-1.9 2"/>',
-  keyboard: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
-  globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>',
-  reload: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
-  list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
-  window: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/>',
-  server: '<rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/><path d="M6 7h.01M6 17h.01"/>',
-  person: '<circle cx="12" cy="4.5" r="2"/><path d="M5 9l7 1 7-1M12 10v5l-3 6M12 15l3 6"/>',
-  database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',
-  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
-  wifi: '<path d="M5 12.55a11 11 0 0 1 14 0M1.4 9a16 16 0 0 1 21.2 0M8.5 16.4a6 6 0 0 1 7 0M12 20h.01"/>',
-  check: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
-};
-const iconFor = (text) =>
-  /^Opens/.test(text) ? 'globe' :
-  /^Reloads/.test(text) ? 'reload' :
-  /^(Types|Enters|Presses|The cursor)/.test(text) ? 'keyboard' :
-  /^Picks/.test(text) ? 'list' :
-  /^Clicks/.test(text) ? 'pointer' :
-  /^(Sees|Doesn't see|Is still on)/.test(text) ? 'eye' :
-  / dialog /.test(text) ? 'window' :
-  /^(The app sends|Server|Nothing is sent|The answer|Calls|Makes)/.test(text) ? 'server' :
-  /^Checks accessibility/.test(text) ? 'person' :
-  /^Starts with/.test(text) ? 'database' :
-  /^Waits/.test(text) ? 'clock' :
-  /^Turns the internet/.test(text) ? 'wifi' : 'check';
-const svg = (name) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[name] + '</svg>';
+// The status icon of a part: a track ring, a progress arc, a check and a cross; CSS shows the right ones.
+const STATUS_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+  '<circle class="trk" cx="12" cy="12" r="10"/>' +
+  '<circle class="arc" cx="12" cy="12" r="10" pathLength="100" stroke-dasharray="0 100" transform="rotate(-90 12 12)"/>' +
+  '<path class="ok" d="m8 12.4 2.8 2.8 5.4-5.6"/><path class="no" d="M9 9l6 6M15 9l-6 6"/></svg>';
 
-// storyTitle: a story line with just this one step. It shows as one row: the story on top, the step under it.
-function makeRow(s, isSub, storyTitle) {
-  const li = document.createElement('li');
-  const row = document.createElement('div');
-  row.className = 'row' + (s.status === 'failed' ? ' failed' : '') + (storyTitle ? ' solo' : '');
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function details(body, s) {
+  for (const r of D.requests.filter((r) => r.user === s.user && r.at >= s.start - 50 && r.at <= s.end + 50)) {
+    body.append(el('div', 'req' + ((r.status ?? 0) >= 400 ? ' bad' : ''), r.method + ' ' + r.path + ' → ' + (r.status ?? '…') + (r.simulated ? ' (simulated)' : '')));
+  }
+  if (s.error) body.append(el('div', 'err', cleanError(s.error)));
+}
+function titleWithUser(text, user) {
+  const t = el('div', 'title');
+  if (multiUser && user !== 'setup') t.append(el('span', 'who', user));
+  t.append(document.createTextNode(text));
+  return t;
+}
+
+// A top-level row: one step, or a story line that has a single step (story on top, the step in the status line).
+function makeTopRow(s, storyTitle) {
+  const li = el('li');
+  const row = el('div', 'row' + (s.status === 'failed' ? ' failed' : ''));
   row.title = 'Line ' + s.line + ' of the test: ' + ownText(s);
   const h = say(s);
-  const body = document.createElement('div');
-  const label = document.createElement('div');
-  label.className = 'label';
-  if (multiUser && !isSub && s.user !== 'setup') { const w = document.createElement('span'); w.className = 'who'; w.textContent = s.user; label.append(w); }
-  label.append(document.createTextNode(storyTitle ? cap(storyTitle) : h.text));
-  body.append(label);
-  const detail = storyTitle ? h.text + (h.where ? ' · in ' + h.where : '') : (h.where ? 'in ' + h.where : '');
-  if (detail) { const w = document.createElement('span'); w.className = 'where'; w.textContent = detail; body.append(w); }
-  for (const r of D.requests.filter((r) => r.user === s.user && r.at >= s.start - 50 && r.at <= s.end + 50)) {
-    const d = document.createElement('div');
-    d.className = 'req' + ((r.status ?? 0) >= 400 ? ' bad' : '');
-    d.textContent = r.method + ' ' + r.path + ' → ' + (r.status ?? '…') + (r.simulated ? ' (simulated)' : '');
-    body.append(d);
-  }
-  if (s.error) { const d = document.createElement('div'); d.className = 'err'; d.textContent = cleanError(s.error); body.append(d); }
-  const time = document.createElement('span');
-  time.className = 'time';
-  time.textContent = fmt(s.start);
-  const mark = document.createElement('span');
-  mark.className = 'mark';
-  const ico = document.createElement('span');
-  ico.className = 'ico';
-  ico.innerHTML = svg(iconFor(h.text));
-  row.append(mark, ico, body, time);
+  const st = el('span', 'st');
+  st.innerHTML = STATUS_SVG;
+  const body = el('div');
+  body.append(titleWithUser(storyTitle ? cap(storyTitle) : h.text, s.user));
+  const meta = el('span', 'meta');
+  const stx = el('span', 'stx');
+  const rest = storyTitle ? h.text + (h.where ? ' · in ' + h.where : '') : (h.where ? 'in ' + h.where : '');
+  meta.append(stx, el('span', 'rest', rest));
+  body.append(meta);
+  details(body, s);
+  row.append(st, body, el('span', 'time', fmt(s.start)));
+  row.addEventListener('click', (e) => { e.stopPropagation(); seek(s.start + 1); });
+  li.append(row);
+  return { li, row, stx, arc: st.querySelector('.arc'), rest: meta.querySelector('.rest'), restText: rest };
+}
+
+// A step inside an open part: a small mark, the step in plain words, its time.
+function makeSubRow(s) {
+  const li = el('li');
+  const row = el('div', 'row' + (s.status === 'failed' ? ' failed' : ''));
+  row.title = 'Line ' + s.line + ' of the test: ' + ownText(s);
+  const h = say(s);
+  const body = el('div');
+  body.append(el('div', 'step-text', h.text));
+  if (h.where) body.append(el('span', 'meta', 'in ' + h.where));
+  details(body, s);
+  row.append(el('span', 'sm'), body, el('span', 'time', fmt(s.start)));
   row.addEventListener('click', (e) => { e.stopPropagation(); seek(s.start + 1); });
   li.append(row);
   return { li, row };
 }
 
-// A story line ("the dentist adds a … issue") becomes a group that opens to show its steps.
 const stepsBox = $('steps');
 const stepEls = new Array(D.steps.length);
-const groups = [];
+const tops = [];     // top-level single rows: { i, row, stx, arc, rest }
+const groups = [];   // story parts with several steps
 const storyKey = (x) => (x.text.includes(' › ') ? x.text.split(' › ')[0] + '|' + x.line : null);
 for (let i = 0; i < D.steps.length; i++) {
   const s = D.steps[i];
   const key = storyKey(s);
-  if (!key) {
-    const { li, row } = makeRow(s, false);
-    stepsBox.append(li);
-    stepEls[i] = row;
-    continue;
-  }
-  const idx = [];
-  while (i < D.steps.length && storyKey(D.steps[i]) === key) idx.push(i++);
-  i--;
-  const first = D.steps[idx[0]];
+  const idx = [i];
+  if (key) { while (i + 1 < D.steps.length && storyKey(D.steps[i + 1]) === key) idx.push(++i); }
   if (idx.length === 1) {
-    // Nothing to open: one row with the story on top and its single step under it.
-    const { li, row } = makeRow(first, false, first.text.split(' › ')[0]);
-    stepsBox.append(li);
-    stepEls[idx[0]] = row;
+    const r = makeTopRow(s, key ? s.text.split(' › ')[0] : null);
+    stepsBox.append(r.li);
+    stepEls[idx[0]] = r.row;
+    tops.push({ i: idx[0], ...r });
     continue;
   }
-  const li = document.createElement('li');
-  li.className = 'g';
-  const head = document.createElement('div');
-  head.className = 'row gh' + (idx.some((j) => D.steps[j].status === 'failed') ? ' failed' : '');
+  const first = D.steps[idx[0]];
+  const li = el('li', 'g');
+  const head = el('div', 'row gh' + (idx.some((j) => D.steps[j].status === 'failed') ? ' failed' : ''));
   head.title = 'Line ' + first.line + ' of the test';
-  const body = document.createElement('div');
-  const label = document.createElement('div');
-  label.className = 'label';
-  if (multiUser && first.user !== 'setup') { const w = document.createElement('span'); w.className = 'who'; w.textContent = first.user; label.append(w); }
-  label.append(document.createTextNode(cap(first.text.split(' › ')[0])));
-  body.append(label);
-  const n = document.createElement('span');
-  n.className = 'where';
-  n.textContent = idx.length + ' steps';
-  body.append(n);
-  const chev = document.createElement('button');
-  chev.className = 'chev';
+  const st = el('span', 'st');
+  st.innerHTML = STATUS_SVG;
+  const body = el('div');
+  body.append(titleWithUser(cap(first.text.split(' › ')[0]), first.user));
+  const meta = el('span', 'meta');
+  const stx = el('span', 'stx');
+  meta.append(stx);
+  body.append(meta);
+  const chev = el('button', 'chev');
   chev.type = 'button';
   chev.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
   chev.setAttribute('aria-label', 'Show or hide the steps of this part');
-  const time = document.createElement('span');
-  time.className = 'time';
-  time.textContent = fmt(first.start);
-  const mark = document.createElement('span');
-  mark.className = 'mark';
-  const ico = document.createElement('span');
-  ico.className = 'ico';
-  ico.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>';
-  head.append(mark, ico, body, chev, time);
-  const subs = document.createElement('ol');
-  subs.className = 'subs';
-  for (const j of idx) { const r = makeRow(D.steps[j], true); subs.append(r.li); stepEls[j] = r.row; }
+  head.append(st, body, chev, el('span', 'time', fmt(first.start)));
+  const subs = el('ol', 'subs');
+  for (const j of idx) { const r = makeSubRow(D.steps[j]); subs.append(r.li); stepEls[j] = r.row; }
   li.append(head, subs);
   stepsBox.append(li);
-  const g = { li, head, idx, manual: null, failed: idx.some((j) => D.steps[j].status === 'failed') };
+  const g = { li, head, idx, stx, arc: st.querySelector('.arc'), manual: null, failed: idx.some((j) => D.steps[j].status === 'failed') };
   groups.push(g);
   head.addEventListener('click', () => { g.manual = null; seek(first.start + 1); });
   chev.addEventListener('click', (e) => { e.stopPropagation(); g.manual = !li.classList.contains('open'); sync(false); });
 }
 for (const w of D.warnings) {
-  const d = document.createElement('div');
-  d.className = 'warn';
-  d.textContent = '⚠ Hidden problem: ' + w.message + (multiUser ? ' (' + w.user + ')' : '');
-  $('warnings').appendChild(d);
+  $('warnings').appendChild(el('div', 'warn', '⚠ Hidden problem: ' + w.message + (multiUser ? ' (' + w.user + ')' : '')));
 }
 
 // ---------- one clock for every video ----------
@@ -655,14 +624,32 @@ function sync(force) {
     p.card.classList.toggle('active', p.user === activeUser);
     p.card.classList.toggle('idle', activeUser !== null && p.user !== activeUser && players.length > 1);
   }
-  stepEls.forEach((el, i) => {
-    el.classList.toggle('current', i === current);
-    el.classList.toggle('done', i !== current && D.steps[i].start <= t);
+  const isDone = (i) => i !== current && D.steps[i].start <= t;
+  stepEls.forEach((row, i) => {
+    row.classList.toggle('current', i === current);
+    row.classList.toggle('done', isDone(i));
   });
+  // Status line under each title, and how full the progress ring is.
+  const word = (failed, done, now, n, total) =>
+    failed && (done || now) ? 'Failed' : done ? 'Completed' : now ? (total > 1 ? 'In progress · ' + n + ' of ' + total : 'In progress') : '';
+  for (const r of tops) {
+    const s = D.steps[r.i];
+    const txt = word(s.status === 'failed', isDone(r.i), r.i === current, 0, 1);
+    if (r.stx.textContent !== txt) {
+      r.stx.textContent = txt;
+      r.rest.textContent = (txt && r.restText ? ' · ' : '') + r.restText;
+    }
+    r.arc.setAttribute('stroke-dasharray', '35 100');
+  }
   for (const g of groups) {
     const has = g.idx.includes(current);
+    const finished = g.idx.filter(isDone).length;
+    const allDone = finished === g.idx.length;
     g.head.classList.toggle('current', has);
-    g.head.classList.toggle('done', !has && D.steps[g.idx[0]].start <= t);
+    g.head.classList.toggle('done', !has && allDone);
+    const txt = word(g.failed, allDone, has, finished + (has ? 1 : 0), g.idx.length) || g.idx.length + ' steps';
+    if (g.stx.textContent !== txt) g.stx.textContent = txt;
+    g.arc.setAttribute('stroke-dasharray', Math.max(8, Math.round(((finished + (has ? 0.5 : 0)) / g.idx.length) * 100)) + ' 100');
     g.li.classList.toggle('open', g.manual ?? (has || g.failed));
   }
   $('count').textContent = D.steps.filter((x) => x.start <= t).length + ' of ' + D.steps.length;
