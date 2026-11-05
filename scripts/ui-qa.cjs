@@ -237,8 +237,10 @@ require('fs').mkdirSync(require('path').dirname(OUT), { recursive: true });
     await idle(page);
     await page.waitForTimeout(1500);
     const frame = page.frameLocator('iframe[title^="Replay"]');
-    await frame.locator('.step').first().waitFor({ timeout: 10000 });
-    const step = frame.locator('.step', { hasText: 'should see "Total users: 1"' });
+    await frame.locator('.row').first().waitFor({ timeout: 10000 });
+    // Steps are grouped under their story line: open "the admin should see 1 user", then pick the step.
+    await frame.locator('.g > .row', { hasText: 'The admin should see 1 user' }).click();
+    const step = frame.locator('.subs .row', { hasText: 'Sees "Total users: 1"' });
     await step.click();
     await page.waitForTimeout(1200);
     const times = await frame.locator('video').evaluateAll((vs) => vs.map((v) => v.currentTime));

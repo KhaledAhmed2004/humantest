@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { humanize } from '../humanize';
 
 export interface ReplayStep {
   user: string;
@@ -129,7 +130,11 @@ export function writeReplay(dir: string, data: ReplayData): string {
   const file = path.join(dir, 'replay.html');
   // Inline JSON is safe in a <script> once "<" is escaped.
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
-  fs.writeFileSync(file, PAGE.replace('__TITLE__', escapeHtml(data.title)).replace('__DATA__', json));
+  // Function replacers: a plain string would treat "$&" or "$'" inside the data or code as patterns.
+  fs.writeFileSync(file, PAGE
+    .replace('__TITLE__', () => escapeHtml(data.title))
+    .replace('__HUMANIZE__', () => humanize.toString())
+    .replace('__DATA__', () => json));
   return file;
 }
 
@@ -191,21 +196,50 @@ const PAGE = /* html */ `<!doctype html>
     padding: 4px 8px; border-radius: 6px; white-space: nowrap; pointer-events: none; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
   .tip[hidden] { display: none; }
   aside { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: auto; }
-  aside h2 { font-size: 13px; margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
-  .step { display: grid; grid-template-columns: 34px 1fr; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
-  .step:hover { background: var(--accent-soft); }
-  .step.current { background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent); }
-  .step.failed { background: var(--bad-soft); box-shadow: inset 3px 0 var(--bad); }
-  .group { padding: 10px 14px 4px; font-weight: 650; font-size: 13px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--accent-soft) 45%, var(--panel)); }
-  .step.sub { padding-left: 26px; }
-  .step .ln { color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px; padding-top: 1px; }
-  .step .who { font-size: 11px; color: var(--muted); }
-  .step .txt { word-break: break-word; }
-  .step .story { color: var(--muted); font-size: 12px; }
-  .step .req { font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--muted); margin-top: 3px; }
-  .step .req.bad { color: var(--bad); }
-  .step .err { color: var(--bad); font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; margin-top: 4px; }
-  .warn { padding: 8px 14px; color: var(--warn); font-size: 12.5px; border-bottom: 1px solid var(--line); }
+  .aside-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 12px 16px;
+    border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; background: var(--panel); }
+  .aside-head h2 { font-size: 14px; margin: 0; font-weight: 650; }
+  .aside-head .count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tl, .subs { list-style: none; margin: 0; padding: 0; }
+  .tl { padding: 6px 0 14px; }
+  /* One row per step: a dot on a vertical line, the step in plain words, its time in the video. */
+  .row { position: relative; display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: start;
+    padding: 7px 14px 7px 16px; cursor: pointer; }
+  .row::before { content: ''; position: absolute; left: 22px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+  .tl > li:first-child > .row::before { top: 14px; }
+  .tl > li:last-child:not(.open) > .row::before, .tl > li:last-child .subs > li:last-child > .row::before { bottom: calc(100% - 14px); }
+  .row:hover { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+  .dot { position: relative; z-index: 1; width: 10px; height: 10px; margin: 5px 0 0 2px; border-radius: 50%;
+    border: 2px solid color-mix(in srgb, var(--muted) 55%, var(--panel)); background: var(--panel); }
+  .subs .dot { width: 8px; height: 8px; margin: 6px 0 0 3px; }
+  .row.done .dot { background: color-mix(in srgb, var(--muted) 70%, var(--panel)); border-color: transparent; }
+  .row.current { background: var(--accent-soft); }
+  .row.current .dot { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .row.failed .dot { background: var(--bad); border-color: var(--bad); }
+  .label { font-size: 13.5px; line-height: 1.45; word-break: break-word; }
+  .row.done .label { color: color-mix(in srgb, var(--text) 72%, var(--panel)); }
+  .row.current .label { font-weight: 600; }
+  .subs .label { font-size: 13px; padding-left: 12px; }
+  .subs .where, .subs .req, .subs .err { margin-left: 12px; }
+  .g > .row .label { font-weight: 600; }
+  /* An open group lets its running step carry the highlight; the heading keeps just its dot. */
+  .g.open > .row.current { background: none; }
+  .g.open > .row.current .label { font-weight: 600; }
+  .where { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .time { font: 11.5px/1.9 ui-monospace, monospace; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .who { display: inline-block; font-size: 11px; font-weight: 650; padding: 0 6px; margin-right: 6px; border-radius: 6px;
+    background: var(--accent-soft); color: var(--accent); vertical-align: 1px; }
+  .chev { border: 0; background: none; padding: 0 2px; margin-left: 4px; color: var(--muted); cursor: pointer; font-size: 10px;
+    display: inline-block; transition: transform .15s; vertical-align: 1px; }
+  .g.open .chev { transform: rotate(90deg); }
+  .subs { display: none; }
+  .g.open .subs { display: block; }
+  .req { font: 11.5px/1.5 ui-monospace, monospace; color: var(--muted); margin-top: 2px; }
+  .req.bad { color: var(--bad); }
+  .err { margin-top: 6px; font-size: 12.5px; line-height: 1.45; color: var(--bad); background: var(--bad-soft); border-radius: 8px;
+    padding: 6px 9px; white-space: pre-wrap; }
+  .warn { margin: 10px 12px 0; padding: 8px 10px; border-radius: 8px; font-size: 12.5px; line-height: 1.45;
+    background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--warn); }
   .banner { margin: 0 20px; margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: var(--bad-soft); color: var(--bad); font-family: ui-monospace, monospace; font-size: 12.5px; white-space: pre-wrap; }
   footer { position: fixed; left: 0; right: 0; bottom: 0; height: 74px; display: flex; align-items: center; gap: 12px; padding: 0 20px; background: var(--panel); border-top: 1px solid var(--line); }
   button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
@@ -234,7 +268,7 @@ const PAGE = /* html */ `<!doctype html>
 <div id="banner" class="banner" hidden></div>
 <main>
   <section class="videos" id="videos"></section>
-  <aside><h2>Steps <span style="color:var(--muted);font-weight:400">· click one to jump there</span></h2><div id="warnings"></div><div id="steps"></div></aside>
+  <aside aria-label="Steps"><div class="aside-head"><h2>Steps</h2><span class="count" id="count"></span></div><div id="warnings"></div><ol class="tl" id="steps"></ol></aside>
 </main>
 <footer>
   <button id="play" title="Play / pause (space)">▶</button>
@@ -283,50 +317,102 @@ const players = D.videos.map((v) => {
 });
 if (!players.length) vbox.innerHTML = '<p class="note">No video was recorded. Run the tests with --demo to record one.</p>';
 
-// ---------- steps ----------
-const stepsBox = $('steps');
-let prevStory = null;
-const stepEls = D.steps.map((s, i) => {
-  const parts = s.text.split(' › ');
-  // A story line ("Rahim signs up with …") is shown once, as a heading over the steps it stands for.
-  const story = parts.length > 1 ? parts[0] + '|' + s.line : null;
-  if (story && story !== prevStory) {
-    const h = document.createElement('div');
-    h.className = 'group';
-    h.textContent = s.line + ' · ' + parts[0];
-    stepsBox.appendChild(h);
-  }
-  prevStory = story;
-  if (story) parts.shift();
-  const el = document.createElement('div');
-  el.className = 'step' + (story ? ' sub' : '') + (s.status === 'failed' ? ' failed' : '');
-  const reqs = D.requests.filter((r) => r.user === s.user && r.at >= s.start - 50 && r.at <= s.end + 50);
-  el.innerHTML = '<div class="ln"></div><div><div class="who"></div>' + (parts.length > 1 ? '<div class="story"></div>' : '') + '<div class="txt"></div></div>';
-  el.querySelector('.ln').textContent = s.line;
-  el.querySelector('.who').textContent = s.user;
-  if (parts.length > 1) el.querySelector('.story').textContent = parts[0];
-  el.querySelector('.txt').textContent = (s.status === 'failed' ? '✗ ' : '') + parts[parts.length - 1];
-  const body = el.children[1];
-  for (const r of reqs) {
+// ---------- steps, in plain words ----------
+const humanize = __HUMANIZE__;
+const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+const ownText = (s) => s.text.split(' › ').pop();
+const say = (s) => humanize(ownText(s));
+// Only name the user when there is more than one.
+const multiUser = new Set(D.steps.map((s) => s.user).filter((u) => u !== 'setup')).size > 1;
+const cleanError = (e) => e.split('\\n').map((l) => l.trim())
+  .filter((l) => l && l !== 'What went wrong:' && !/^(Line \\d+ ·|📄)/.test(l)).join('\\n');
+
+function makeRow(s, isSub) {
+  const li = document.createElement('li');
+  const row = document.createElement('div');
+  row.className = 'row' + (s.status === 'failed' ? ' failed' : '');
+  row.title = 'Line ' + s.line + ' of the test: ' + ownText(s);
+  const h = say(s);
+  const body = document.createElement('div');
+  const label = document.createElement('div');
+  label.className = 'label';
+  if (multiUser && !isSub && s.user !== 'setup') { const w = document.createElement('span'); w.className = 'who'; w.textContent = s.user; label.append(w); }
+  label.append(document.createTextNode(h.text));
+  body.append(label);
+  if (h.where) { const w = document.createElement('span'); w.className = 'where'; w.textContent = 'in ' + h.where; body.append(w); }
+  for (const r of D.requests.filter((r) => r.user === s.user && r.at >= s.start - 50 && r.at <= s.end + 50)) {
     const d = document.createElement('div');
     d.className = 'req' + ((r.status ?? 0) >= 400 ? ' bad' : '');
-    d.textContent = '→ ' + r.method + ' ' + r.path + '  ' + (r.status ?? '…') + (r.simulated ? ' (simulated)' : '');
-    body.appendChild(d);
+    d.textContent = r.method + ' ' + r.path + ' → ' + (r.status ?? '…') + (r.simulated ? ' (simulated)' : '');
+    body.append(d);
   }
-  if (s.error) {
-    const d = document.createElement('div');
-    d.className = 'err';
-    d.textContent = s.error;
-    body.appendChild(d);
+  if (s.error) { const d = document.createElement('div'); d.className = 'err'; d.textContent = cleanError(s.error); body.append(d); }
+  const time = document.createElement('span');
+  time.className = 'time';
+  time.textContent = fmt(s.start);
+  const dot = document.createElement('span');
+  dot.className = 'dot';
+  row.append(dot, body, time);
+  row.addEventListener('click', (e) => { e.stopPropagation(); seek(s.start + 1); });
+  li.append(row);
+  return { li, row };
+}
+
+// A story line ("the dentist adds a … issue") becomes a group that opens to show its steps.
+const stepsBox = $('steps');
+const stepEls = new Array(D.steps.length);
+const groups = [];
+const storyKey = (x) => (x.text.includes(' › ') ? x.text.split(' › ')[0] + '|' + x.line : null);
+for (let i = 0; i < D.steps.length; i++) {
+  const s = D.steps[i];
+  const key = storyKey(s);
+  if (!key) {
+    const { li, row } = makeRow(s, false);
+    stepsBox.append(li);
+    stepEls[i] = row;
+    continue;
   }
-  el.addEventListener('click', () => { seek(s.start + 1); });
-  stepsBox.appendChild(el);
-  return el;
-});
+  const idx = [];
+  while (i < D.steps.length && storyKey(D.steps[i]) === key) idx.push(i++);
+  i--;
+  const first = D.steps[idx[0]];
+  const li = document.createElement('li');
+  li.className = 'g';
+  const head = document.createElement('div');
+  head.className = 'row' + (idx.some((j) => D.steps[j].status === 'failed') ? ' failed' : '');
+  head.title = 'Line ' + first.line + ' of the test';
+  const body = document.createElement('div');
+  const label = document.createElement('div');
+  label.className = 'label';
+  if (multiUser && first.user !== 'setup') { const w = document.createElement('span'); w.className = 'who'; w.textContent = first.user; label.append(w); }
+  label.append(document.createTextNode(cap(first.text.split(' › ')[0])));
+  const chev = document.createElement('button');
+  chev.className = 'chev';
+  chev.type = 'button';
+  chev.textContent = '▶';
+  chev.setAttribute('aria-label', 'Show or hide the steps of this part');
+  label.append(chev);
+  body.append(label);
+  const time = document.createElement('span');
+  time.className = 'time';
+  time.textContent = fmt(first.start);
+  const dot = document.createElement('span');
+  dot.className = 'dot';
+  head.append(dot, body, time);
+  const subs = document.createElement('ol');
+  subs.className = 'subs';
+  for (const j of idx) { const r = makeRow(D.steps[j], true); subs.append(r.li); stepEls[j] = r.row; }
+  li.append(head, subs);
+  stepsBox.append(li);
+  const g = { li, head, idx, manual: null, failed: idx.some((j) => D.steps[j].status === 'failed') };
+  groups.push(g);
+  head.addEventListener('click', () => { g.manual = null; seek(first.start + 1); });
+  chev.addEventListener('click', (e) => { e.stopPropagation(); g.manual = !li.classList.contains('open'); sync(false); });
+}
 for (const w of D.warnings) {
   const d = document.createElement('div');
   d.className = 'warn';
-  d.textContent = '⚠ line ' + w.line + ' · ' + w.user + ' · ' + w.message;
+  d.textContent = '⚠ Hidden problem: ' + w.message + (multiUser ? ' (' + w.user + ')' : '');
   $('warnings').appendChild(d);
 }
 
@@ -460,8 +546,9 @@ function sync(force) {
       if (mine) {
         const ln = document.createElement('span');
         ln.className = 'ln';
-        ln.textContent = 'line ' + mine.line;
-        p.cap.append(ln, document.createTextNode((mine.status === 'failed' ? '✗ ' : '') + mine.text.split(' › ').pop()));
+        const h = say(mine);
+        ln.textContent = h.where ? 'in ' + h.where : '';
+        p.cap.append(document.createTextNode((mine.status === 'failed' ? '✗ ' : '') + h.text), ln);
       }
     }
     const zt = cameraUpdate(p, zoomTarget(p.user));
@@ -469,7 +556,17 @@ function sync(force) {
     p.card.classList.toggle('active', p.user === activeUser);
     p.card.classList.toggle('idle', activeUser !== null && p.user !== activeUser && players.length > 1);
   }
-  stepEls.forEach((el, i) => el.classList.toggle('current', i === current));
+  stepEls.forEach((el, i) => {
+    el.classList.toggle('current', i === current);
+    el.classList.toggle('done', i !== current && D.steps[i].start <= t);
+  });
+  for (const g of groups) {
+    const has = g.idx.includes(current);
+    g.head.classList.toggle('current', has);
+    g.head.classList.toggle('done', !has && D.steps[g.idx[0]].start <= t);
+    g.li.classList.toggle('open', g.manual ?? (has || g.failed));
+  }
+  $('count').textContent = D.steps.filter((x) => x.start <= t).length + ' of ' + D.steps.length;
   if (current >= 0 && playing) stepEls[current].scrollIntoView({ block: 'nearest' });
   seekEl.value = String(Math.round(t));
   $('time').textContent = fmt(t) + ' / ' + fmt(total);
@@ -540,7 +637,7 @@ track.addEventListener('mousemove', (e) => {
   const s = [...D.steps].reverse().find((x) => x.start <= at);
   if (!s) { tip.hidden = true; return; }
   tip.hidden = false;
-  tip.textContent = fmt(at) + ' · line ' + s.line + ' · ' + s.user + ' · ' + s.text.split(' › ').pop();
+  tip.textContent = fmt(at) + ' · ' + (multiUser ? s.user + ': ' : '') + say(s).text;
   tip.style.left = Math.min(Math.max(e.clientX - box.left, 120), box.width - 120) + 'px';
 });
 track.addEventListener('mouseleave', () => { tip.hidden = true; });
@@ -582,7 +679,7 @@ const failed = D.steps.find((s) => s.status === 'failed');
 if (failed) {
   $('banner').hidden = false;
   const why = (failed.error || '').split('\\n').map((l) => l.trim()).filter((l) => l && l !== 'What went wrong:')[0];
-  $('banner').textContent = '✗ Failed at line ' + failed.line + ' (' + failed.user + '): ' + failed.text.split(' › ').pop() + (why ? '\\n   ' + why : '');
+  $('banner').textContent = '✗ Failed: ' + say(failed).text + (multiUser ? ' (' + failed.user + ')' : '') + (why ? '\\n   ' + why : '');
   setTimeout(() => { seek(Math.max(0, failed.start - 1500)); stepEls[D.steps.indexOf(failed)].scrollIntoView({ block: 'center' }); }, 300);
 }
 durations();
