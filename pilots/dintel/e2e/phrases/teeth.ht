@@ -53,7 +53,24 @@ Phrase: <user> confirms the removal
   As <user>:
     in "Remove" dialog, click "Remove"
 
+# ---------- treating an issue ----------
+
+Phrase: <user> marks the "<condition>" issue as treated today
+  As <user>:
+    in "Selected tooth", click "Actions for <condition>"
+    click "Edit"
+    in "Edit issue" dialog, click "Treated"
+    in "Edit issue" dialog, fill in today's date in "Last treated on"
+    in "Edit issue" dialog, click "Save changes"
+    "Edit issue" dialog should be closed
+
 # ---------- what the tooth shows ----------
+
+Phrase: the chart should show tooth <n> with "<label>"
+  "Tooth <n>, <label>" button should be visible
+
+Phrase: <count> teeth should be listed with issues
+  "Teeth with issues (<count>)" panel should be visible
 
 Phrase: tooth <n> should show "<condition>"
   in "Selected tooth", should see "<condition>"

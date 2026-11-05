@@ -1,0 +1,46 @@
+# A full dental visit, from finding the patient to treating the tooth.
+# Ayesha (P-00001) starts with 3 teeth with issues; tooth 11 is healthy.
+
+TEST "A full dental visit: find the patient, record a caries, then treat it"
+
+GIVEN the demo data is fresh
+
+# Find the patient
+WHEN the dentist opens the patient list
+THEN the dentist should see "12 patients"
+WHEN the dentist searches for "Ayesha"
+THEN the dentist should see "1 of 12 patients matches"
+AND the dentist should see "Ayesha Rahman"
+WHEN the dentist opens the record of "Ayesha Rahman"
+THEN the dentist should see "ID P-00001"
+AND the dentist should see "Penicillin allergy"
+
+# Look at her teeth
+WHEN the dentist opens the "Dental" tab
+THEN 3 teeth should be listed with issues
+AND the chart should show tooth 11 with "no active issues"
+
+# Record a new problem on tooth 11
+WHEN the dentist selects tooth 11
+AND the dentist adds a "Caries" issue with "Moderate" severity
+AND the dentist marks the "Occlusal (incisal)" surface
+AND the dentist saves the issue
+THEN the dentist should see "Issue added to tooth 11"
+AND tooth 11 should show "Caries"
+AND the chart should show tooth 11 with "Caries"
+AND 4 teeth should be listed with issues
+AND the page should have no accessibility problems
+
+# Treat it
+WHEN the dentist marks the "caries" issue as treated today
+THEN tooth 11 should have no active issues
+AND the chart should show tooth 11 with "no active issues"
+AND 3 teeth should be listed with issues
+
+# Everything is still there after a reload
+WHEN the dentist reloads the page
+THEN tooth 11 should have no active issues
+AND 3 teeth should be listed with issues
+AND the page should have no accessibility problems
+
+END

@@ -47,6 +47,14 @@ export const STEP_DEFS: StepDef[] = [
     emit: (a) => `u.type(${s(a.value)}, ${s(a.field)})`,
   },
   {
+    kind: 'typeToday',
+    template: 'fill in today\'s date in "Last treated on"',
+    re: rx(`(?:types?|enters?|fills? in)\\s+today(?:'s)?(?:\\s+date)?\\s+(?:in|into)\\s+(?:the\\s+)?(?:"([^"]+)"|(.+?))(?:\\s+(?:field|box|input))?`),
+    parse: (m) => ({ field: m[1] ?? m[2] }),
+    explain: (a) => `type today's date (on the test machine) into "${a.field}"`,
+    emit: (a) => `u.typeToday(${s(a.field)})`,
+  },
+  {
     kind: 'choose',
     template: 'choose "Caries" for Condition',
     re: rx(`(?:chooses?|selects?|picks?)\\s+"([^"]+)"\\s+(?:for|in|from)\\s+(?:the\\s+)?(?:"([^"]+)"|(.+?))(?:\\s+(?:field|dropdown|list|menu))?`),
@@ -107,7 +115,7 @@ export const STEP_DEFS: StepDef[] = [
   {
     kind: 'elementState',
     template: '"Sign up" button should be enabled',
-    re: rx(`(?:the\\s+)?"([^"]+)"(?:\\s+(button|link|field|dialog))?\\s+(?:should\\s+be|is)\\s+(enabled|disabled|visible|hidden|focused|closed|open)(?:\\s+again)?`),
+    re: rx(`(?:the\\s+)?"([^"]+)"(?:\\s+(button|link|field|dialog|panel|section))?\\s+(?:should\\s+be|is)\\s+(enabled|disabled|visible|hidden|focused|closed|open)(?:\\s+again)?`),
     parse: (m) => {
       const state = m[3].toLowerCase();
       return { name: m[1], role: m[2]?.toLowerCase(), state: state === 'closed' ? 'hidden' : state === 'open' ? 'visible' : state };

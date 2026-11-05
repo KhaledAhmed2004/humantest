@@ -367,6 +367,9 @@ export class User {
     const mapped = this.mapped(name);
     if (mapped) return [mapped];
     if (role === 'dialog') return [this.page.getByRole('dialog', { name }), this.page.getByRole('alertdialog', { name })];
+    if (role === 'panel' || role === 'section') {
+      return [r.getByRole('region', { name, exact: true }), r.getByRole('group', { name, exact: true }), r.getByRole('region', { name }), r.getByRole('group', { name })];
+    }
     const roles = role === 'button' ? ['button'] : role === 'link' ? ['link']
       : ['button', 'link', 'menuitem', 'menuitemradio', 'menuitemcheckbox', 'tab', 'radio', 'checkbox', 'option', 'switch'];
     return [
@@ -433,6 +436,17 @@ export class User {
     } else {
       await loc.fill(value);
     }
+  }
+
+  async typeToday(field: string) {
+    const loc = await this.field(field);
+    // The browser's own date, in the format date inputs take (YYYY-MM-DD).
+    const today = await this.page.evaluate(() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
+    this.mark = this.log.length;
+    await loc.fill(today);
   }
 
   async choose(option: string, field: string) {

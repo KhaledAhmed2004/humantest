@@ -263,7 +263,11 @@ function drawTicks() {
 }
 
 function sync(force) {
-  const current = D.steps.findIndex((s) => t >= s.start && t <= s.end + 400);
+  // The current step is the latest one that has started (and isn't long over).
+  let current = -1;
+  for (let i = D.steps.length - 1; i >= 0; i--) {
+    if (D.steps[i].start <= t) { if (t <= D.steps[i].end + 400) current = i; break; }
+  }
   const activeUser = current >= 0 ? D.steps[current].user : null;
   for (const p of players) {
     const local = (t - p.offset) / 1000;
