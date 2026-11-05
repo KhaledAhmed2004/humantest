@@ -6,6 +6,7 @@
 
 import fs from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
+import { sideBySide, toMp4, videoDuration, writeReplay, type ReplayStep } from './replay';
 import path from 'node:path';
 import {
   test, expect, request as apiRequest,
@@ -66,6 +67,10 @@ interface Warning { line: number; user: string; message: string }
 export class Scenario {
   readonly users: User[] = [];
   readonly warnings: Warning[] = [];
+  /** Every step with its timing, for the replay. */
+  readonly records: ReplayStep[] = [];
+  /** When each user's video started recording (ms since epoch). */
+  readonly videoStarts = new Map<string, number>();
   currentLine = 0;
 
   constructor(readonly opts: Options, readonly config: Config) {}
@@ -77,13 +82,19 @@ export class Scenario {
 
   async startWith(line: number, name: string, args: string[], fn: StateFn) {
     this.currentLine = line;
+    const rec: ReplayStep = { user: 'setup', line, text: `start with: ${name}`, start: Date.now(), end: 0, status: 'passed' };
+    this.records.push(rec);
     await test.step(`line ${line} · start with: ${name}`, async () => {
       const api = await apiRequest.newContext({ baseURL: this.config.baseURL });
       try {
         await fn({ api, args });
       } catch (e) {
-        throw this.humanError(line, 'setup', `Start with: ${name}`, e);
+        rec.status = 'failed';
+        const err = this.humanError(line, 'setup', `Start with: ${name}`, e);
+        rec.error = err.message;
+        throw err;
       } finally {
+        rec.end = Date.now();
         await api.dispose();
       }
     }, { box: true });
@@ -97,6 +108,14 @@ export class Scenario {
       recordVideo: DEMO ? { dir: info.outputPath(`videos-${fileSlug(name)}`), size: { width: 1280, height: 720 } } : undefined,
     });
     const page = await context.newPage();
+    if (DEMO) {
+      // Playwright only starts a video once the page paints something, so paint right away.
+      // It also tells whoever watches the replay that this user is waiting for their turn.
+      const label = name.replace(/[&<>"]/g, '');
+      await page.setContent(`<body style="margin:0;display:grid;place-items:center;height:100vh;background:#f3f4f6;` +
+        `font:600 30px system-ui,sans-serif;color:#6b7280">👤 ${label} · waiting</body>`);
+    }
+    this.videoStarts.set(name, Date.now());
     const u = new User(this, name, context, page);
     await u.init();
     this.users.push(u);
@@ -120,7 +139,11 @@ export class Scenario {
   humanError(line: number, user: string, text: string, err: unknown, u?: User): Error {
     if ((err as any)?.humantest) return err as Error;
     const raw = stripAnsi(String((err as any)?.message ?? err)).split(/\n\s*Call log:/)[0];
-    const why = raw.split('\n').map((l) => l.trimEnd()).filter(Boolean).slice(0, 10).map((l) => `      ${l}`).join('\n');
+    // Our own sentence explains the problem; Playwright's locator details belong in the trace, not here.
+    const NOISE = /^\s*(Locator:|Expected:|Received:|Timeout:|Error: element\(s\) not found|expect\(.*\)\.\w+\(.*\) failed)/;
+    const lines = raw.split('\n').map((l) => l.trimEnd()).filter(Boolean);
+    const clean = lines.filter((l) => !NOISE.test(l));
+    const why = (clean.length ? clean : lines).slice(0, 10).map((l) => `      ${l}`).join('\n');
     const parts = [
       `Line ${line} · ${user} · ${text}`,
       ``,
@@ -144,19 +167,50 @@ export class Scenario {
   async finish(passed: boolean) {
     const info = this.opts.testInfo;
     const videoDir = path.join(process.cwd(), 'humantest-videos', fileSlug(info.title));
+    const saved: { user: string; file: string; started: number }[] = [];
     for (const u of this.users) {
       const video = u.page.video();
+      const stopped = Date.now();
       await u.context.close().catch(() => {});
-      if (video) {
-        fs.mkdirSync(videoDir, { recursive: true });
-        const dest = path.join(videoDir, `${fileSlug(u.name)}.webm`);
-        await video.saveAs(dest).catch(() => {});
-        if (fs.existsSync(dest)) {
-          await info.attach(`🎬 ${u.name}`, { path: dest, contentType: 'video/webm' });
-          info.annotations.push({ type: 'video', description: `${u.name}: ${path.relative(process.cwd(), dest)}` });
+      if (!video) continue;
+      fs.mkdirSync(videoDir, { recursive: true });
+      const webm = path.join(videoDir, `${fileSlug(u.name)}.webm`);
+      await video.saveAs(webm).catch(() => {});
+      if (!fs.existsSync(webm)) continue;
+      // Browsers can't seek in Playwright's webm, so make an mp4 when ffmpeg is available.
+      const mp4 = webm.replace(/\.webm$/, '.mp4');
+      const file = toMp4(webm, mp4) ? (fs.rmSync(webm), mp4) : webm;
+      // The video ends when the context closes, so its real start is "stopped − length".
+      const length = videoDuration(file);
+      const started = length ? stopped - length : this.videoStarts.get(u.name) ?? stopped;
+      saved.push({ user: u.name, file, started });
+      await info.attach(`🎬 ${u.name}`, { path: file, contentType: file.endsWith('.mp4') ? 'video/mp4' : 'video/webm' });
+    }
+
+    if (saved.length) {
+      const zero = Math.min(...saved.map((s) => s.started));
+      const at = (ms: number) => ms - zero;
+      const videos = saved.map((s) => ({ user: s.user, file: path.basename(s.file), offset: at(s.started) }));
+      const replay = writeReplay(videoDir, {
+        title: info.title,
+        source: `${this.opts.source}:${this.opts.line}`,
+        status: passed ? 'passed' : 'failed',
+        videos,
+        steps: this.records.map((r) => ({ ...r, start: at(r.start), end: at(r.end || Date.now()) })),
+        requests: this.users.flatMap((u) => u.log.map((e) => ({
+          user: u.name, method: e.method, path: e.path, status: e.status, at: at(e.at), simulated: e.mocked,
+        }))),
+        warnings: this.warnings,
+      });
+      info.annotations.push({ type: 'replay', description: path.relative(process.cwd(), replay) });
+      if (saved.length > 1) {
+        const out = path.join(videoDir, 'side-by-side.mp4');
+        if (sideBySide(saved.map((s) => ({ file: s.file, offset: at(s.started) })), out)) {
+          info.annotations.push({ type: 'video', description: `everyone side by side: ${path.relative(process.cwd(), out)}` });
         }
       }
     }
+
     for (const w of this.warnings) {
       info.annotations.push({ type: 'watchdog', description: `line ${w.line} · ${w.user} · ${w.message}` });
     }
@@ -171,6 +225,8 @@ interface LogEntry {
   method: string;
   path: string;
   line: number;
+  /** When the request was sent (ms since epoch). */
+  at: number;
   status?: number;
   mocked?: boolean;
   req?: Request;
@@ -212,7 +268,7 @@ export class User {
 
     context.on('request', (req) => {
       if (!isApi(req)) return;
-      this.log.push({ method: req.method(), path: new URL(req.url()).pathname, line: ht.currentLine, req });
+      this.log.push({ method: req.method(), path: new URL(req.url()).pathname, line: ht.currentLine, at: Date.now(), req });
     });
     context.on('response', (res: Response) => {
       const req = res.request();
@@ -249,16 +305,23 @@ export class User {
     await test.step(`line ${line} · ${this.name} · ${text}`, async () => {
       this.ht.currentLine = line;
       this.caption = `👤 ${this.name}   ·   line ${line}   ·   ${text}`;
+      const rec: ReplayStep = { user: this.name, line, text, start: Date.now(), end: 0, status: 'passed' };
+      this.ht.records.push(rec);
       await this.showCaption();
       try {
         await fn(this);
       } catch (e) {
-        throw this.ht.humanError(line, this.name, text, e, this);
+        const err = this.ht.humanError(line, this.name, text, e, this);
+        rec.status = 'failed';
+        rec.error = err.message.split('\n').slice(2).join('\n').trim();
+        rec.end = Date.now();
+        throw err;
       }
       if (DEMO) {
         await this.showCaption();
         await this.page.waitForTimeout(this.ht.config.demo?.pauseAfterStepMs ?? 700);
       }
+      rec.end = Date.now();
     }, { box: true });
   }
 
@@ -508,7 +571,7 @@ export class User {
     this.mark = this.log.length;
     const res = await this.context.request.fetch(new URL(pathname, this.ht.config.baseURL).toString(), { method });
     const body = res.text().catch(() => null);
-    this.log.push({ method, path: pathname, line: this.ht.currentLine, status: res.status(), body });
+    this.log.push({ method, path: pathname, line: this.ht.currentLine, at: Date.now(), status: res.status(), body });
     this.lastReply = { label: `${method} ${pathname}`, status: res.status(), text: () => body };
   }
 

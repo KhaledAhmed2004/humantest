@@ -43,7 +43,22 @@ npm run demo       # slow mode: captions, click highlights, one video per user
 ```
 
 Extra Playwright options go after `--`, for example `npm test -- --grep "signup" --headed`.
-Videos from demo mode are saved in `humantest-videos/<test>/<user>.webm`.
+
+## Videos and the replay page
+
+`npm run demo` runs the tests slowly, with a caption for every step and a highlight on every click.
+For each test it writes `humantest-videos/<test>/`:
+
+- `replay.html`: open it in any browser. Every user's video plays side by side and in sync. The user
+  whose step is running is highlighted. Next to the videos is the list of steps, with the backend calls
+  each step made. Click a step to jump there. Space plays or pauses, ↑/↓ move between steps, and you can
+  play at 0.5x to 2x. A failed test opens just before the failing step, with the error at the top.
+- `<user>.mp4`: one video per user.
+- `side-by-side.mp4`: all users in one video, for sharing in chat (only when a test has several users).
+
+The folder can be zipped and sent as is. Videos need ffmpeg, which comes with the `ffmpeg-static` package.
+If npm blocked its install script, run `npm install-scripts approve ffmpeg-static` and `npm rebuild ffmpeg-static`.
+Without ffmpeg you still get `.webm` videos and the replay page, but jumping around in them is unreliable.
 The full Playwright report with traces is available through `npx playwright show-report`.
 
 ## What's where
@@ -91,7 +106,7 @@ Run `pnpm build` in Dintel first if its build is out of date.
 
 ## Known limits (v0.1)
 
-- Each user has a separate video; they aren't merged side by side yet (planned with ffmpeg).
+- Videos are only recorded in demo mode, not for failures in normal runs (the Playwright trace covers those).
 - Tests run one at a time, because states reset a shared database.
 - No VS Code extension yet (syntax highlighting, autocomplete).
 - No data tables (same test with several inputs) yet.

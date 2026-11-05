@@ -43,6 +43,7 @@ export default class HumanReporter implements Reporter {
       for (const w of watchdog) console.log(c.yellow(`      • ${w}`));
     }
     for (const v of new Set(annotations.filter((a) => a.type === 'video').map((a) => a.description))) console.log(c.dim(`   🎬 ${v}`));
+    for (const r of new Set(annotations.filter((a) => a.type === 'replay').map((a) => a.description))) console.log(`   ▶ Replay: ${r}`);
   }
 
   onEnd(result: FullResult) {
