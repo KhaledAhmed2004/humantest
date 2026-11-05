@@ -3,6 +3,9 @@
 End-to-end tests written as plain sentences. HumanTest compiles them into ordinary Playwright tests.
 It covers the frontend, the backend replies and the error cases in one test, with several users if needed.
 
+**What has been built so far, why, and what we measured:** [docs/PROJECT.md](docs/PROJECT.md).
+**Every sentence the language understands:** [docs/LANGUAGE.md](docs/LANGUAGE.md).
+
 ```
 Test: Signup when the server is down
 
