@@ -1,0 +1,21 @@
+{
+  "name": "humantest",
+  "version": "0.1.0",
+  "description": "Human-readable end-to-end tests that compile to Playwright.",
+  "private": true,
+  "scripts": {
+    "ht": "node src/cli.mts",
+    "check": "node src/cli.mts check",
+    "explain": "node src/cli.mts explain",
+    "build": "node src/cli.mts build",
+    "test": "node src/cli.mts run",
+    "demo": "node src/cli.mts run --demo",
+    "demo-app": "node demo-app/server.mjs",
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

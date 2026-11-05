@@ -1,0 +1,13 @@
+TEST "New user signup (story style)"
+
+GIVEN the website has no users
+
+WHEN Rahim signs up with "rahim@test.com"
+
+THEN Rahim should see "Welcome, Rahim"
+AND Rahim should have no orders
+
+AND the admin should see 1 user
+AND the admin should see "rahim@test.com"
+
+END

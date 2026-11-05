@@ -1,0 +1,30 @@
+{
+  "baseURL": "http://localhost:4321",
+  "testsDir": "e2e/tests",
+  "statesDir": "e2e/states",
+  "phrasesDir": "e2e/phrases",
+  "outDir": "e2e/.generated",
+  "apiPrefix": "/api",
+
+  "login": { "endpoint": "/api/login" },
+
+  "pages": {
+    "home page": "/",
+    "signup page": "/signup",
+    "welcome page": "/welcome",
+    "users page": "/admin/users"
+  },
+
+  "users": {
+    "new visitor": {},
+    "Rahim": {},
+    "admin": { "email": "admin@site.com", "password": "admin123" },
+    "customer": { "email": "rahim@test.com", "password": "Secret123" }
+  },
+
+  "elements": {},
+
+  "watchdog": { "failTestOnWarning": false, "slowApiMs": 2000 },
+
+  "demo": { "slowMo": 200, "pauseAfterStepMs": 700, "typingDelayMs": 60 }
+}

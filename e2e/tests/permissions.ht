@@ -1,0 +1,19 @@
+# Who is allowed to see what. Checked both in the API and in the UI.
+
+Test: Regular users cannot see admin data
+
+  Start with: one user "rahim@test.com"
+  Users: customer, admin
+
+  As customer:
+    call GET /api/admin/users
+    backend should reply 403
+    go to users page
+    should see "Access denied"
+
+  As admin:
+    call GET /api/admin/users
+    backend should reply 200
+    reply total should be 1
+    reply users[0].email should be "rahim@test.com"
+    reply should not contain password
