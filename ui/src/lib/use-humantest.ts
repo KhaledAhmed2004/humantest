@@ -4,7 +4,7 @@ import {
   getProjects, getTests, startRun, stopRun, subscribe,
   type Diagnostic, type History, type Project, type RunScope, type ServerEvent, type TestFile, type TestInfo,
 } from './api'
-import { storage } from './format'
+import { friendlyProblem, storage } from './format'
 
 export interface LiveState { state: 'queued' | 'running'; steps: string[] }
 export interface TestRow extends TestInfo { file: string; fileHasProblems: boolean }
@@ -40,7 +40,7 @@ export function useHumanTest() {
       const saved = storage.get('ht.project')
       setProject(r.projects.some((p) => p.id === saved) ? saved : r.projects[0]?.id ?? null)
       setRunning(!!r.running)
-    }).catch(() => toast.error('Can\'t reach the HumanTest server. Is `npm run ui` still running?'))
+    }).catch(() => toast.error('HumanTest isn’t running. Start it again, then refresh this page.'))
   }, [])
 
   useEffect(() => {
@@ -106,7 +106,7 @@ export function useHumanTest() {
     const r = await startRun(project, scope, demo)
     if (r.error) {
       toast.error(r.error, {
-        description: r.diagnostics?.slice(0, 5).map((d) => `${d.file}:${d.line} ${d.message}`).join('\n'),
+        description: r.diagnostics?.slice(0, 5).map((d) => friendlyProblem(d, true)).join('\n'),
       })
       return
     }

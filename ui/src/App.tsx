@@ -45,7 +45,7 @@ export default function App() {
                   <EmptyMedia variant="icon"><ListChecksIcon /></EmptyMedia>
                   <EmptyTitle>{ht.tests.length ? 'Pick a test' : 'No tests yet'}</EmptyTitle>
                   <EmptyDescription>
-                    {ht.tests.length ? 'Choose a test on the left to see its steps, results and replay.' : 'Add a .ht file to the tests folder of this project.'}
+                    {ht.tests.length ? 'Choose a test on the left to see its steps, results and video.' : 'Write a test in this project’s tests folder and it shows up here.'}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -57,14 +57,14 @@ export default function App() {
 
       <Collapsible open={outputOpen} onOpenChange={setOutputOpen} className="border-t bg-background">
         <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground">
-          <TerminalIcon className="size-4" /> Output
+          <TerminalIcon className="size-4" /> Developer log
           {ht.logs.length > 0 && <span className="text-xs">({ht.logs.length} lines)</span>}
           <ChevronUpIcon className={`ml-auto size-4 transition-transform ${outputOpen ? 'rotate-180' : ''}`} />
         </CollapsibleTrigger>
         <CollapsibleContent>
           <ScrollArea className="h-60">
             <pre className="px-4 pb-3 font-mono text-xs whitespace-pre-wrap text-muted-foreground">
-              {ht.logs.length ? ht.logs.join('\n') : 'Nothing yet. Playwright\'s output shows up here while tests run.'}
+              {ht.logs.length ? ht.logs.join('\n') : 'Nothing yet. Messages from the test run show up here.'}
             </pre>
           </ScrollArea>
         </CollapsibleContent>

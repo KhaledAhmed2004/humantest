@@ -4,6 +4,8 @@ import path from 'node:path';
 export interface UserConfig { email?: string; password?: string }
 
 export interface HumanTestConfig {
+  /** The project's name in the UI, e.g. "Dintel". */
+  name?: string;
   baseURL: string;
   testsDir: string;
   statesDir: string;

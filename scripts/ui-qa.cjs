@@ -22,7 +22,9 @@ async function check(name, fn) {
 }
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 const TESTS = path.join(ROOT, 'e2e', 'tests');
-const idle = (p) => p.getByText('Idle', { exact: true }).waitFor({ timeout: 180000 });
+// Nothing running: the "Run all tests" button is back (there is no "idle" label any more).
+const idle = (p) => p.getByRole('button', { name: 'Run all tests' }).waitFor({ timeout: 180000 });
+const URL = process.env.QA_URL ?? URL;
 
 async function axe(page, label) {
   const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).exclude('iframe').analyze();
@@ -41,14 +43,14 @@ require('fs').mkdirSync(require('path').dirname(OUT), { recursive: true });
 
   // ---------- 1. load ----------
   await check('1.1 page loads with title "HumanTest"', async () => {
-    await page.goto('http://localhost:4800');
+    await page.goto(URL);
     await page.getByRole('button', { name: 'Run all' }).waitFor();
     assert((await page.title()) === 'HumanTest', 'title is ' + (await page.title()));
   });
   await check('1.2 test list shows all 7 demo-app tests in 3 files', async () => {
     const n = await page.getByText(/^\d+ tests$/).first().textContent();
     assert(n === '7 tests', n);
-    for (const f of ['permissions.ht', 'signup.ht', 'story.ht']) assert(await page.getByText(new RegExp(f)).count() > 0, 'missing ' + f);
+    for (const f of ['Permissions', 'Signup', 'Story']) assert(await page.getByText(f, { exact: true }).count() > 0, 'missing file group ' + f);
   });
   await check('1.3 no accessibility problems (axe, light mode)', async () => {
     const v = await axe(page, 'light');
@@ -99,12 +101,12 @@ require('fs').mkdirSync(require('path').dirname(OUT), { recursive: true });
     assert(dots >= 1, 'no dots');
     return `${dots} dots`;
   });
-  await check('3.3 Output drawer shows Playwright output', async () => {
-    await page.getByRole('button', { name: /Output/ }).click();
+  await check('3.3 Developer log shows the run output', async () => {
+    await page.getByRole('button', { name: /Developer log/ }).click();
     await page.waitForTimeout(300);
     const text = await page.locator('pre').last().textContent();
     assert(/passed/.test(text), 'output: ' + text.slice(0, 120));
-    await page.getByRole('button', { name: /Output/ }).click();
+    await page.getByRole('button', { name: /Developer log/ }).click();
   });
 
   // ---------- 4. a failing test ----------
@@ -148,12 +150,12 @@ require('fs').mkdirSync(require('path').dirname(OUT), { recursive: true });
   await check('5.1 mistakes are listed with "did you mean", Run is disabled', async () => {
     await page.getByRole('button', { name: /QA typo/ }).waitFor({ timeout: 5000 });
     await page.getByRole('button', { name: /QA typo/ }).click();
-    const box = page.getByText("This file has problems, so it can't run yet");
+    const box = page.getByText('Some lines need fixing before this test can run');
     assert(await box.count() === 1, 'no problems box');
     const text = await page.locator('main').textContent();
     assert(/Did you mean "new visitor"/.test(text) && /click "Sign up"/.test(text), 'hints missing');
     assert(await page.getByRole('button', { name: 'Run', exact: true }).isDisabled(), 'Run is enabled');
-    assert(await page.getByRole('button', { name: /QA typo/ }).locator('svg[aria-label="Has problems"]').count() === 1, 'row not marked');
+    assert(await page.getByRole('button', { name: /QA typo/ }).locator('svg[aria-label="Needs fixing"]').count() === 1, 'row not marked');
     await page.screenshot({ path: `${OUT}-5-typo.png` });
   });
   await check('5.2 Run all with a broken file shows an error toast and runs nothing', async () => {
@@ -161,13 +163,13 @@ require('fs').mkdirSync(require('path').dirname(OUT), { recursive: true });
     const toast = page.locator('[data-sonner-toast]');
     await toast.first().waitFor({ timeout: 5000 });
     const t = await toast.first().textContent();
-    assert(/problems/i.test(t), 'toast: ' + t);
+    assert(/need fixing/i.test(t), 'toast: ' + t);
     await page.waitForTimeout(800);
-    assert(await page.getByText('Idle', { exact: true }).count() === 1, 'a run started anyway');
+    assert(await page.getByRole('button', { name: 'Run all tests' }).isVisible(), 'a run started anyway');
   });
   await check('5.3 fixing the file in an editor clears the problems live', async () => {
     fs.writeFileSync(path.join(TESTS, 'zz-qa-typo.ht'), 'Test: QA typo\n  As new visitor:\n    click "Sign up"\n');
-    await page.getByText("This file has problems, so it can't run yet").waitFor({ state: 'detached', timeout: 5000 });
+    await page.getByText('Some lines need fixing before this test can run').waitFor({ state: 'detached', timeout: 5000 });
     assert(await page.getByRole('button', { name: 'Run', exact: true }).isEnabled(), 'Run still disabled');
   });
   fs.rmSync(path.join(TESTS, 'zz-qa-typo.ht'));
@@ -182,10 +184,10 @@ require('fs').mkdirSync(require('path').dirname(OUT), { recursive: true });
     assert(await page.getByRole('combobox', { name: 'Project' }).isDisabled(), 'project select enabled');
     assert(await page.getByRole('button', { name: 'Stop', exact: true }).isVisible(), 'no Stop button');
   });
-  await check('6.2 Stop ends the run and the UI goes back to Idle', async () => {
+  await check('6.2 Stop ends the run and the UI is ready again', async () => {
     await page.waitForTimeout(2000);
     await page.getByRole('button', { name: 'Stop', exact: true }).click();
-    await page.getByText('Idle', { exact: true }).waitFor({ timeout: 30000 });
+    await page.getByRole('button', { name: 'Run all tests' }).waitFor({ timeout: 30000 });
     assert(await page.getByRole('button', { name: 'Run all' }).isEnabled(), 'Run all still disabled');
     const running = await page.locator('svg[aria-label="Running…"], svg[aria-label="Waiting to run"]').count();
     assert(running === 0, `${running} tests still shown as running/waiting`);
@@ -261,13 +263,13 @@ require('fs').mkdirSync(require('path').dirname(OUT), { recursive: true });
     await page.getByRole('button', { name: /A full dental visit/ }).click();
     assert(await page.getByText('the dentist opens the patient list').count() >= 1, 'no story heading');
     await page.getByRole('combobox', { name: 'Project' }).click();
-    await page.getByRole('option', { name: /testing-compiler/ }).click();
+    await page.getByRole('option', { name: 'Demo shop' }).click();
   });
 
   // ---------- 10. small screen ----------
   await check('10.1 phone width (390px): no sideways scrolling, test list readable', async () => {
     const phone = await browser.newPage({ viewport: { width: 390, height: 844 } });
-    await phone.goto('http://localhost:4800');
+    await phone.goto(URL);
     await phone.getByRole('button', { name: 'Run all' }).waitFor();
     await phone.waitForTimeout(600);
     await phone.screenshot({ path: `${OUT}-10-phone.png` });
@@ -276,6 +278,12 @@ require('fs').mkdirSync(require('path').dirname(OUT), { recursive: true });
     await phone.close();
     assert(overflow <= 0, `page scrolls sideways by ${overflow}px`);
     assert(listWidth >= 280, `test list is only ${Math.round(listWidth)}px wide`);
+  });
+
+  await check('10.2 no technical labels on screen (Idle, file paths, Output, watchdog)', async () => {
+    const text = await page.locator('body').innerText();
+    const found = ['Idle', '.ht', 'e2e/', 'Output', 'watchdog', 'Playwright'].filter((w) => text.includes(w));
+    assert(!found.length, 'still shows: ' + found.join(', '));
   });
 
   await check('11.1 no console errors during the whole session', async () => {

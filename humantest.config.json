@@ -1,4 +1,5 @@
 {
+  "name": "Demo shop",
   "baseURL": "http://localhost:4321",
   "testsDir": "e2e/tests",
   "statesDir": "e2e/states",

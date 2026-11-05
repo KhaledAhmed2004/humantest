@@ -23,16 +23,25 @@ const PLAYWRIGHT_CLI = createRequire(path.join(TOOL_ROOT, 'package.json')).resol
 
 interface ProjectRef { id: string; name: string; root: string }
 
+/** The name people see: "name" in humantest.config.json, or else the folder's name. */
+function displayName(root: string): string {
+  try {
+    const name = JSON.parse(fs.readFileSync(path.join(root, 'humantest.config.json'), 'utf8')).name;
+    if (typeof name === 'string' && name.trim()) return name.trim();
+  } catch { /* fall back to the folder */ }
+  return path.basename(root);
+}
+
 /** This folder (if it has a config) plus every pilots/<name>/ with one. */
 function discoverProjects(): ProjectRef[] {
   const out: ProjectRef[] = [];
   const cwd = process.cwd();
-  if (fs.existsSync(path.join(cwd, 'humantest.config.json'))) out.push({ id: 'main', name: `${path.basename(cwd)} (this folder)`, root: cwd });
+  if (fs.existsSync(path.join(cwd, 'humantest.config.json'))) out.push({ id: 'main', name: displayName(cwd), root: cwd });
   const pilots = path.join(cwd, 'pilots');
   if (fs.existsSync(pilots)) {
     for (const d of fs.readdirSync(pilots, { withFileTypes: true })) {
       const root = path.join(pilots, d.name);
-      if (d.isDirectory() && fs.existsSync(path.join(root, 'humantest.config.json'))) out.push({ id: d.name, name: d.name, root });
+      if (d.isDirectory() && fs.existsSync(path.join(root, 'humantest.config.json'))) out.push({ id: d.name, name: displayName(root), root });
     }
   }
   return out;
@@ -129,14 +138,14 @@ const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function startRun(ref: ProjectRef, opts: { key?: string; file?: string; demo: boolean }) {
   const project: Project = loadProject(ref.root);
   const built = build(project);
-  if (built.diagnostics.length) return { error: 'Some .ht files have problems. Fix them first.', diagnostics: built.diagnostics };
+  if (built.diagnostics.length) return { error: 'Some tests need fixing before anything can run.', diagnostics: built.diagnostics };
 
   const specToFile = new Map(built.parsed.map((p) => [specFileName(project, p.file), p.relFile]));
   const pwArgs = ['test'];
   const file = opts.key ? opts.key.split('::')[0] : opts.file;
   if (file) {
     const parsed = built.parsed.find((p) => p.relFile === file);
-    if (!parsed) return { error: `No test file ${file}` };
+    if (!parsed) return { error: 'That test file no longer exists. Refresh the page.' };
     // Playwright reads file arguments as regexes, so a Windows path (backslashes) would match nothing.
     pwArgs.push(`${escapeRegex(specFileName(project, parsed.file))}$`);
   }

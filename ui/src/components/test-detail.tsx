@@ -6,7 +6,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { StatusIcon } from '@/components/status-icon'
 import { statusLabel } from '@/lib/status'
 import { StepList } from '@/components/step-list'
-import { cleanError, errorHeading, formatDuration, formatWhen } from '@/lib/format'
+import { cleanError, errorHeading, formatDuration, formatWhen, friendlyFile, friendlyProblem } from '@/lib/format'
 import type { HumanTest, TestRow } from '@/lib/use-humantest'
 
 export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
@@ -23,9 +23,9 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
         <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
           <h1 className="text-xl leading-snug font-semibold">{test.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1 font-mono text-xs"><FileTextIcon className="size-3.5" />{test.file}:{test.line}</span>
+            <span className="inline-flex items-center gap-1 text-xs" title={`${test.file}, line ${test.line}`}><FileTextIcon className="size-3.5" />{friendlyFile(test.file)}</span>
             {test.users.map((u) => <Badge key={u} variant="outline" className="gap-1"><UserIcon className="size-3" />{u}</Badge>)}
-            {test.state && <Badge variant="secondary">starts with: {test.state}</Badge>}
+            {test.state && <Badge variant="secondary">Starts with {test.state}</Badge>}
           </div>
         </div>
         <div className="flex gap-2">
@@ -41,10 +41,10 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
       {file && file.diagnostics.length > 0 && (
         <Alert className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           <TriangleAlertIcon />
-          <AlertTitle>This file has problems, so it can't run yet</AlertTitle>
+          <AlertTitle>Some lines need fixing before this test can run</AlertTitle>
           <AlertDescription className="text-amber-900 dark:text-amber-200">
             {file.diagnostics.map((d, i) => (
-              <div key={i}><code className="font-mono text-xs">{d.file}:{d.line}</code> {d.message}{d.hint && <> 💡 {d.hint}</>}</div>
+              <div key={i}>{friendlyProblem(d)}</div>
             ))}
           </AlertDescription>
         </Alert>
@@ -73,7 +73,7 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
       {done && result.watchdog.length > 0 && (
         <Alert className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           <TriangleAlertIcon />
-          <AlertTitle>The watchdog noticed hidden problems</AlertTitle>
+          <AlertTitle>Other problems noticed during this test</AlertTitle>
           <AlertDescription className="text-amber-900 dark:text-amber-200">
             <ul className="list-disc pl-4">{result.watchdog.map((w, i) => <li key={i}>{w}</li>)}</ul>
           </AlertDescription>
@@ -83,7 +83,7 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
       {done && result.replay ? (
         <section className="space-y-2">
           <div className="flex items-baseline justify-between">
-            <h2 className="flex items-center gap-1.5 text-sm font-semibold"><VideoIcon className="size-4" /> Replay</h2>
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold"><VideoIcon className="size-4" /> Video</h2>
             <div className="flex gap-3 text-sm">
               <a className="inline-flex items-center gap-1 text-violet-700 hover:underline dark:text-violet-400" href={result.replay} target="_blank" rel="noreferrer">
                 Open in a new tab <ExternalLinkIcon className="size-3.5" />
@@ -102,7 +102,7 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
         // A short note, not a big box: on a failed run the steps below matter more.
         <p className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
           <VideoOffIcon className="size-4 shrink-0" />
-          No video for this run. Use “Run with video” to record one, with every step captioned.
+          No video for this run. Use “Run with video” to record one.
         </p>
       )}
 
@@ -116,7 +116,7 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
               <EmptyMedia variant="icon"><ListXIcon /></EmptyMedia>
               <EmptyTitle>No steps yet</EmptyTitle>
               <EmptyDescription>
-                {test.fileHasProblems ? 'Fix the problems above, and the steps show up here.' : 'This test has no steps. Add some under its Test: line.'}
+                {test.fileHasProblems ? 'Fix the lines above, and the steps show up here.' : 'This test has no steps yet.'}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

@@ -28,9 +28,16 @@ export function AppHeader({ ht, demo, onDemoChange }: { ht: HumanTest; demo: boo
 
       <div className="flex-1" />
 
-      <Badge variant={ht.running ? 'default' : 'secondary'} className={ht.running ? 'bg-violet-600 text-white dark:bg-violet-500' : ''} aria-live="polite">
-        {ht.running ? (ht.progress ? `Running ${ht.progress.done}/${ht.progress.total}` : 'Starting…') : 'Idle'}
-      </Badge>
+      {/* Only shown while tests run; nothing to say otherwise. */}
+      <span aria-live="polite">
+        {ht.running && (
+          <Badge className="bg-violet-600 text-white dark:bg-violet-500">
+            {ht.progress
+              ? `Running test ${Math.min(ht.progress.done + 1, ht.progress.total)} of ${ht.progress.total}`
+              : 'Getting ready…'}
+          </Badge>
+        )}
+      </span>
 
       <Tooltip>
         <TooltipTrigger asChild>
@@ -41,13 +48,13 @@ export function AppHeader({ ht, demo, onDemoChange }: { ht: HumanTest; demo: boo
             </Label>
           </div>
         </TooltipTrigger>
-        <TooltipContent>Runs slowly with captions, and makes a replay for each test</TooltipContent>
+        <TooltipContent>Runs a little slower and records a video of each test</TooltipContent>
       </Tooltip>
 
       {ht.running ? (
         <Button variant="destructive" onClick={ht.stop}><SquareIcon /> Stop</Button>
       ) : (
-        <Button onClick={() => ht.run({}, demo)} disabled={!ht.project}><PlayIcon /> Run all</Button>
+        <Button onClick={() => ht.run({}, demo)} disabled={!ht.project}><PlayIcon /> Run all tests</Button>
       )}
 
       <Button

@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { StatusIcon } from '@/components/status-icon'
-import { isFailure } from '@/lib/status'
-import { formatDuration } from '@/lib/format'
+import { isFailure, statusLabel } from '@/lib/status'
+import { formatDuration, friendlyFile, friendlyProblem } from '@/lib/format'
 import type { HumanTest } from '@/lib/use-humantest'
 import { cn } from '@/lib/utils'
 
@@ -42,8 +42,8 @@ export function TestList({ ht, selected, onSelect, demo }: {
 
       {ht.problems.length > 0 && (
         <div className="m-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-          <div className="mb-1 flex items-center gap-1.5 font-semibold"><TriangleAlertIcon className="size-3.5" /> Problems outside the test files</div>
-          {ht.problems.map((d, i) => <div key={i}><code>{d.file}:{d.line}</code> {d.message}{d.hint && ` 💡 ${d.hint}`}</div>)}
+          <div className="mb-1 flex items-center gap-1.5 font-semibold"><TriangleAlertIcon className="size-3.5" /> Some shared steps need fixing</div>
+          {ht.problems.map((d, i) => <div key={i}>{friendlyProblem(d, true)}</div>)}
         </div>
       )}
 
@@ -53,25 +53,25 @@ export function TestList({ ht, selected, onSelect, demo }: {
             const tests = f.tests.filter((t) => !q || t.name.toLowerCase().includes(q))
             if (!tests.length && q) return null
             return (
-              <section key={f.file} aria-label={f.file}>
+              <section key={f.file} aria-label={friendlyFile(f.file)}>
                 <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
-                  <div className={cn('flex min-w-0 items-center gap-1.5 font-mono text-xs text-muted-foreground', f.diagnostics.length && 'text-red-700 dark:text-red-400')}>
+                  <div className={cn('flex min-w-0 items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase', f.diagnostics.length && 'text-red-700 dark:text-red-400')}>
                     <FileTextIcon className="size-3.5 shrink-0" />
-                    <span className="truncate">{f.file}</span>
-                    {f.diagnostics.length > 0 && <span className="shrink-0">· {f.diagnostics.length} problem(s)</span>}
+                    <span className="truncate" title={f.file}>{friendlyFile(f.file)}</span>
+                    {f.diagnostics.length > 0 && <span className="shrink-0">· needs fixing</span>}
                   </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost" size="icon" className="size-7"
-                        aria-label={`Run every test in ${f.file}`}
+                        aria-label={`Run every test in ${friendlyFile(f.file)}`}
                         disabled={ht.running || f.diagnostics.length > 0}
                         onClick={() => ht.run({ file: f.file }, demo)}
                       >
                         <PlayIcon className="size-3.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Run this file</TooltipContent>
+                    <TooltipContent>Run these tests</TooltipContent>
                   </Tooltip>
                 </div>
 
@@ -101,7 +101,7 @@ export function TestList({ ht, selected, onSelect, demo }: {
                           {ht.history.runs.slice(-8).map((r, i) => r.results[t.key] && (
                             <span
                               key={i}
-                              title={r.results[t.key]}
+                              title={statusLabel(r.results[t.key])}
                               className={cn('size-1.5 rounded-full', r.results[t.key] === 'passed' ? 'bg-emerald-500' : isFailure(r.results[t.key]) ? 'bg-red-500' : 'bg-muted-foreground/40')}
                             />
                           ))}
