@@ -68,6 +68,21 @@ docs/LANGUAGE.md        every sentence HumanTest understands
 3. At runtime, each user gets a separate browser context, so their logins and videos stay separate. All `/api` traffic goes through a recorder, so tests can check status codes and bodies even after the page navigates away.
 4. The watchdog listens for 5xx replies, JS errors and slow calls the whole time. Failures are rewritten into: line → what went wrong → backend activity.
 
+## Pilot: Dintel
+
+`pilots/dintel/` tests the Dintel dental app (a sibling folder, `../dintel`) without changing it.
+It serves Dintel's existing production build on port 3200.
+
+```bash
+npm run ht -- run --project pilots/dintel          # run the pilot tests
+npm run ht -- run --project pilots/dintel --demo   # with captioned videos
+npm run ht -- explain --project pilots/dintel
+```
+
+`pilots/dintel/e2e/tests/tooth-issues.ht` covers three flows from Dintel's own `tests/e2e/tooth-issues.spec.ts`
+in 39 lines, plus 40 lines of reusable phrases. The Playwright version takes 118 lines.
+Run `pnpm build` in Dintel first if its build is out of date.
+
 ## Using it on your own app
 
 1. Set `baseURL`, `pages` and `users` in `humantest.config.json`. Remove the `webServer` block in `playwright.config.ts`, or point it at your app.

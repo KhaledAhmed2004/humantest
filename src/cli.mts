@@ -6,6 +6,7 @@
 
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { explainStep } from './compiler/steps.mts';
 import { build, check, loadPhrases, loadProject, listTestFiles, parseFile, rel, type Diagnostic } from './compiler/index.mts';
 
 const c = {
@@ -29,8 +30,13 @@ function printDiagnostics(diags: Diagnostic[]) {
 }
 
 function main() {
-  const [cmd = 'help', ...rest] = process.argv.slice(2);
-  const project = loadProject();
+  const args = process.argv.slice(2);
+  // --project <folder> runs against a test project in another folder (it has its own humantest.config.json).
+  const pi = args.indexOf('--project');
+  const projectDir = pi >= 0 ? path.resolve(args[pi + 1] ?? '.') : process.cwd();
+  if (pi >= 0) args.splice(pi, 2);
+  const [cmd = 'help', ...rest] = args;
+  const project = loadProject(projectDir);
 
   switch (cmd) {
     case 'check': {
@@ -67,12 +73,12 @@ function main() {
                 console.log(`  ${c.dim(String(st.story.line).padStart(4) + ' │')} ${c.bold(st.story.text)}`);
                 lastStory = key;
               }
-              console.log(`${' '.repeat(9)}${c.dim(`[${st.user}]`)} ${st.text}  ${c.cyan('→ ' + st.def.explain(st.args))}`);
+              console.log(`${' '.repeat(9)}${c.dim(`[${st.user}]`)} ${st.text}  ${c.cyan('→ ' + explainStep(st.def, st.args))}`);
               continue;
             }
             lastStory = undefined;
             console.log(`  ${c.dim(String(st.line).padStart(4) + ' │')} ${c.dim(`[${st.user}]`)} ${st.text}`);
-            console.log(`${' '.repeat(9)}${c.cyan('→ ' + st.def.explain(st.args))}`);
+            console.log(`${' '.repeat(9)}${c.cyan('→ ' + explainStep(st.def, st.args))}`);
           }
         }
         if (p.diagnostics.length) { console.log(''); printDiagnostics(p.diagnostics); }
@@ -91,11 +97,12 @@ function main() {
     case 'run': {
       const demo = rest.includes('--demo');
       // The shell would split "two words" again, so quote arguments that contain spaces.
-      const pwArgs = rest.filter((a) => a !== '--demo').map((a) => (/\s/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a));
+      const pwArgs = rest.filter((a) => a !== '--demo' && a !== '--').map((a) => (/\s/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a));
       const r = build(project);
       if (r.diagnostics.length) { printDiagnostics(r.diagnostics); process.exit(1); }
       if (demo) console.log(c.cyan('🎬 Demo mode: slow, captioned, with a video per user (saved in humantest-videos/).'));
       const res = spawnSync('npx', ['playwright', 'test', ...pwArgs], {
+        cwd: project.root,
         stdio: 'inherit',
         shell: true,
         env: { ...process.env, ...(demo ? { HUMANTEST_DEMO: '1' } : {}) },
@@ -112,7 +119,8 @@ function main() {
   npm test                 build and run all tests
   npm run demo             run slowly with captions and record a video per user
 
-  Extra Playwright options go after --, e.g.  npm test -- --grep "signup" --headed`);
+  Extra Playwright options go after --, e.g.  npm test -- --grep "signup" --headed
+  Another project folder:  npm run ht -- run --project pilots/dintel`);
   }
 }
 

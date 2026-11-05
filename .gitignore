@@ -1,5 +1,5 @@
 node_modules/
-e2e/.generated/
+**/e2e/.generated/
 test-results/
 playwright-report/
 humantest-videos/

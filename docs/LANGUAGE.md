@@ -38,7 +38,24 @@ Test: New user signup shows up on the admin dashboard
 | `reload the page` | `refresh` |
 | `type "text" in email` | `enter`/`write` … `into` … `field` |
 | `click "Sign up"` | `press`, `tap`, `click "Sign up" button`, `click Sign up button` |
+| `choose "Caries" for Condition` | `select`/`pick` … `from`/`in`. Works for native `<select>` and custom dropdowns (Radix, shadcn) |
+| `press Escape` | `Enter`, `Tab`, `Space`, arrow keys |
 | `wait 2 seconds` | |
+
+Verbs also work in third person, so a sentence can start with a user: `the dentist clicks "Add issue"`, `the dentist reloads the page`.
+
+### Working inside one part of the page
+
+Start a step with `in "<name>",` to look only inside a dialog, panel, form or table with that name:
+
+```
+in "Selected tooth", click "Add issue"
+in the "Add issue" dialog, choose "Caries" for Condition
+in "Add issue" dialog, should see "Choose a condition"
+```
+
+The name can be part of the full name (`"Add issue"` finds the dialog "Add issue · Maxilla 11").
+Names in `click` work the same way: an exact match wins, otherwise a partial one is used (`click "Actions for gingivitis"`).
 
 Page names come from `pages` in the config. Fields are found by label, placeholder or name. Buttons and links are found by their visible name. If something can't be found that way, add it under `elements` in the config (`"Sign up": "#submit"`).
 
@@ -49,7 +66,9 @@ Page names come from `pages` in the config. Fields are found by label, placehold
 | `should see "Welcome, Rahim"` |
 | `should not see "Access denied"` |
 | `should still be on signup page` |
-| `"Sign up" button should be enabled` (or `disabled`, `visible`, `hidden`; `again` is optional) |
+| `"Sign up" button should be enabled` (or `disabled`, `visible`, `hidden`, `focused`; `again` is optional) |
+| `"Add issue" dialog should be open` (or `closed`) |
+| `the page should have no accessibility problems` (axe, WCAG 2.1 AA by default; see `accessibility` in the config) |
 
 ## Checking the backend
 

@@ -5,6 +5,7 @@
 // - demo mode (HUMANTEST_DEMO=1) slows things down and shows captions for readable videos
 
 import fs from 'node:fs';
+import AxeBuilder from '@axe-core/playwright';
 import path from 'node:path';
 import {
   test, expect, request as apiRequest,
@@ -22,6 +23,7 @@ interface Config {
   elements?: Record<string, string>;
   watchdog?: { failTestOnWarning?: boolean; slowApiMs?: number };
   demo?: { pauseAfterStepMs?: number; typingDelayMs?: number };
+  accessibility?: { tags?: string[]; ignoreRules?: string[]; ignoreWhenModalOpen?: string[] };
 }
 
 export interface StateContext {
@@ -260,30 +262,91 @@ export class User {
     }, { box: true });
   }
 
+  // ---------------- page sections ("in "Selected tooth", ...") ----------------
+
+  private scope?: { name: string; kind?: string | null };
+
+  /** Where to look for things: the whole page, or the section named in "in "...", ...". */
+  private get root(): Page | Locator {
+    if (!this.scope) return this.page;
+    const { name, kind } = this.scope;
+    const ROLES: Record<string, string[]> = {
+      dialog: ['dialog', 'alertdialog'],
+      panel: ['region', 'group'], section: ['region', 'group'], region: ['region'],
+      form: ['form'], table: ['table'], row: ['row'], menu: ['menu'], list: ['list'],
+    };
+    const roles = (kind && ROLES[kind]) || ['dialog', 'alertdialog', 'region', 'group', 'form', 'navigation', 'table', 'row', 'menu'];
+    let loc = this.page.getByRole(roles[0] as any, { name });
+    for (const r of roles.slice(1)) loc = loc.or(this.page.getByRole(r as any, { name }));
+    return loc.first();
+  }
+
+  async within(name: string, kind: string | null, fn: () => Promise<void>) {
+    this.scope = { name, kind };
+    try {
+      await expect(this.root as Locator, `I can't find a ${kind ?? 'section'} called "${name}" on the page.`).toBeVisible();
+      await fn();
+    } finally {
+      this.scope = undefined;
+    }
+  }
+
   // ---------------- finding elements ----------------
+  // Candidates are tried in order: an exact name beats a partial one, a button beats plain text.
 
   private mapped(name: string): Locator | undefined {
     const css = this.ht.config.elements?.[name];
-    return css ? this.page.locator(css) : undefined;
+    return css ? this.root.locator(css) : undefined;
   }
 
-  private clickable(name: string, role?: string): Locator {
-    const p = this.page;
+  private clickableCandidates(name: string, role?: string): Locator[] {
+    const r = this.root;
     const mapped = this.mapped(name);
-    if (mapped) return mapped.first();
-    if (role === 'button') return p.getByRole('button', { name, exact: true }).first();
-    if (role === 'link') return p.getByRole('link', { name, exact: true }).first();
-    return p.getByRole('button', { name, exact: true })
-      .or(p.getByRole('link', { name, exact: true }))
-      .or(p.getByText(name, { exact: true }))
-      .first();
+    if (mapped) return [mapped];
+    if (role === 'dialog') return [this.page.getByRole('dialog', { name }), this.page.getByRole('alertdialog', { name })];
+    const roles = role === 'button' ? ['button'] : role === 'link' ? ['link']
+      : ['button', 'link', 'menuitem', 'menuitemradio', 'menuitemcheckbox', 'tab', 'radio', 'checkbox', 'option', 'switch'];
+    return [
+      ...roles.map((x) => r.getByRole(x as any, { name, exact: true })),
+      ...(role ? [] : [r.getByText(name, { exact: true })]),
+      ...roles.map((x) => r.getByRole(x as any, { name })),
+    ];
   }
 
-  private field(name: string): Locator {
-    const p = this.page;
+  private fieldCandidates(name: string): Locator[] {
+    const r = this.root;
     const mapped = this.mapped(name);
-    if (mapped) return mapped.first();
-    return p.getByLabel(name).or(p.getByPlaceholder(name)).or(p.getByRole('textbox', { name })).first();
+    if (mapped) return [mapped];
+    return [
+      r.getByLabel(name, { exact: true }),
+      r.getByPlaceholder(name, { exact: true }),
+      r.getByRole('textbox', { name, exact: true }),
+      r.getByRole('combobox', { name, exact: true }),
+      r.getByLabel(name),
+      r.getByPlaceholder(name),
+      r.getByRole('combobox', { name }),
+    ];
+  }
+
+  /** Wait until one of the candidates is visible, then use the best one. */
+  private async pick(candidates: Locator[], what: string): Promise<Locator> {
+    let any = candidates[0];
+    for (const c of candidates.slice(1)) any = any.or(c);
+    await expect(any.first(), `I can't find ${what}.`).toBeVisible();
+    for (const c of candidates) {
+      if (await c.first().isVisible().catch(() => false)) return c.first();
+    }
+    return any.first();
+  }
+
+  private clickable(name: string, role?: string) {
+    const where = this.scope ? ` inside "${this.scope.name}"` : '';
+    return this.pick(this.clickableCandidates(name, role), `a ${role ?? 'button, link or menu item'} called "${name}"${where}`);
+  }
+
+  private field(name: string) {
+    const where = this.scope ? ` inside "${this.scope.name}"` : '';
+    return this.pick(this.fieldCandidates(name), `an input or dropdown called "${name}"${where} (looked for a label, placeholder or name)`);
   }
 
   // ---------------- browser actions ----------------
@@ -299,8 +362,7 @@ export class User {
   }
 
   async type(value: string, field: string) {
-    const loc = this.field(field);
-    await expect(loc, `I can't find an input called "${field}" (looked for a label, placeholder or textbox name).`).toBeVisible();
+    const loc = await this.field(field);
     this.mark = this.log.length;
     if (DEMO) {
       await loc.fill('');
@@ -310,9 +372,30 @@ export class User {
     }
   }
 
+  async choose(option: string, field: string) {
+    const loc = await this.field(field);
+    this.mark = this.log.length;
+    const tag = await loc.evaluate((e) => e.tagName.toLowerCase());
+    if (tag === 'select') {
+      await loc.selectOption({ label: option });
+      return;
+    }
+    // A custom dropdown (Radix, shadcn, Headless UI ...): open it, then pick the option, which may render outside the section.
+    if (DEMO) await this.highlight(loc);
+    await loc.click();
+    const opt = this.page.getByRole('option', { name: option, exact: true });
+    await expect(opt, `The "${field}" dropdown opened, but it has no option called "${option}".`).toBeVisible();
+    if (DEMO) await this.highlight(opt);
+    await opt.click();
+  }
+
+  async press(key: string) {
+    this.mark = this.log.length;
+    await this.page.keyboard.press(key);
+  }
+
   async click(name: string, role?: string) {
-    const loc = this.clickable(name, role);
-    await expect(loc, `I can't find a ${role ?? 'button or link'} called "${name}".`).toBeVisible();
+    const loc = await this.clickable(name, role);
     if (DEMO) await this.highlight(loc);
     this.mark = this.log.length;
     await loc.click();
@@ -320,19 +403,20 @@ export class User {
 
   async see(text: string) {
     try {
-      await expect(this.page.getByText(text).first(), `"${text}" should be visible on the page, but it isn't.`).toBeVisible();
+      await expect(this.root.getByText(text).first(), `"${text}" should be visible${this.scope ? ` inside "${this.scope.name}"` : ' on the page'}, but it isn't.`).toBeVisible();
     } catch (e) {
       const similar = await this.similarText(text);
       if (!similar.length) throw e;
-      throw new Error(`"${text}" should be visible on the page, but it isn't.\n` +
-        `Instead, the page shows: ${similar.map((t) => `"${t}"`).join(', ')}`);
+      throw new Error(`"${text}" should be visible${this.scope ? ` inside "${this.scope.name}"` : ' on the page'}, but it isn't.\n` +
+        `Instead, ${this.scope ? 'that part of the page' : 'the page'} shows: ${similar.map((t) => `"${t}"`).join(', ')}`);
     }
   }
 
-  /** Visible lines on the page that look like what the test expected. Helps explain failures. */
+  /** Visible lines that look like what the test expected. Helps explain failures. */
   private async similarText(expected: string): Promise<string[]> {
-    const lines: string[] = await this.page.evaluate(() =>
-      document.body.innerText.split('\n').map((l) => l.trim()).filter(Boolean)).catch(() => []);
+    const root = this.scope ? (this.root as Locator) : this.page.locator('body');
+    const lines: string[] = await root.innerText({ timeout: 1000 })
+      .then((t) => t.split('\n').map((l) => l.trim()).filter(Boolean)).catch(() => []);
     const words = expected.toLowerCase().split(/\W+/).filter((w) => w.length > 2);
     return lines
       .map((l) => ({ l, score: words.filter((w) => l.toLowerCase().includes(w)).length }))
@@ -343,24 +427,52 @@ export class User {
   }
 
   async notSee(text: string) {
-    await expect(this.page.getByText(text).first(), `"${text}" should NOT be visible, but it is.`).toBeHidden();
+    await expect(this.root.getByText(text).first(), `"${text}" should NOT be visible, but it is.`).toBeHidden();
   }
 
   async onPage(pathname: string) {
     await expect.poll(() => new URL(this.page.url()).pathname, { message: `The browser should be on ${pathname}.` }).toBe(pathname);
   }
 
-  async shouldBe(name: string, state: 'enabled' | 'disabled' | 'visible' | 'hidden', role?: string) {
-    const loc = role === 'field' ? this.field(name) : this.clickable(name, role);
-    const msg = `"${name}" should be ${state}.`;
+  async shouldBe(name: string, state: 'enabled' | 'disabled' | 'visible' | 'hidden' | 'focused', role?: string) {
+    const candidates = role === 'field' ? this.fieldCandidates(name) : this.clickableCandidates(name, role);
+    const msg = `"${name}"${role ? ` ${role}` : ''} should be ${state}.`;
+    if (state === 'hidden') {
+      await expect.poll(async () => {
+        for (const c of candidates) if (await c.first().isVisible().catch(() => false)) return 'visible';
+        return 'hidden';
+      }, { message: msg }).toBe('hidden');
+      return;
+    }
+    const loc = role === 'field' ? await this.field(name) : await this.clickable(name, role);
     if (state === 'enabled') await expect(loc, msg).toBeEnabled();
     if (state === 'disabled') await expect(loc, msg).toBeDisabled();
-    if (state === 'visible') await expect(loc, msg).toBeVisible();
-    if (state === 'hidden') await expect(loc, msg).toBeHidden();
+    if (state === 'focused') await expect(loc, msg).toBeFocused();
   }
 
   async wait(seconds: number) {
     await this.page.waitForTimeout(seconds * 1000);
+  }
+
+  // ---------------- accessibility ----------------
+
+  async noAccessibilityProblems() {
+    const cfg = this.ht.config.accessibility ?? {};
+    // Let animations finish, so axe never measures half-faded text.
+    await this.page.emulateMedia({ reducedMotion: 'reduce' });
+    await this.page.evaluate(() => Promise.all(document.getAnimations()
+      .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+      .map((a) => a.finished.catch(() => null))));
+    let axe = new AxeBuilder({ page: this.page }).withTags(cfg.tags ?? ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
+    const modalOpen = await this.page.locator('[role="dialog"][aria-modal="true"], [role="alertdialog"], [role="menu"], [role="listbox"]').count() > 0;
+    const off = [...(cfg.ignoreRules ?? []), ...(modalOpen ? cfg.ignoreWhenModalOpen ?? [] : [])];
+    if (off.length) axe = axe.disableRules(off);
+    const { violations } = await axe.analyze();
+    if (violations.length) {
+      throw new Error(`Found ${violations.length} accessibility problem(s):\n` + violations.map((v) =>
+        `• [${v.impact ?? 'unknown'}] ${v.help} (${v.id}), ${v.nodes.length} element(s): ` +
+        `${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(', ')}\n  ${v.helpUrl}`).join('\n'));
+    }
   }
 
   // ---------------- backend checks ----------------

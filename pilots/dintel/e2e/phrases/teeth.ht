@@ -1,0 +1,62 @@
+# Story sentences for the tooth chart.
+# Each phrase is written with normal HumanTest steps. When the UI changes, fix it here, not in every test.
+
+Phrase: the demo data is fresh
+  Start with: fresh demo data
+
+# ---------- opening a tooth ----------
+
+Phrase: <user> opens tooth <n> of Ayesha
+  As <user>:
+    go to "/patients/a0000000-0000-4000-8000-000000000001/dental?tooth=<n>"
+    "account menu" button should be visible       # the app has finished loading
+    "Selected tooth" should be visible
+
+Phrase: <user> opens tooth <n> of Karim
+  As <user>:
+    go to "/patients/a0000000-0000-4000-8000-000000000002/dental?tooth=<n>"
+    "account menu" button should be visible
+    "Selected tooth" should be visible
+
+# ---------- adding an issue ----------
+
+Phrase: <user> starts adding an issue
+  As <user>:
+    in "Selected tooth", click "Add issue"
+    "Add issue" dialog should be open
+
+Phrase: <user> adds a "<condition>" issue with "<severity>" severity
+  <user> starts adding an issue
+  As <user>:
+    in "Add issue" dialog, choose "<condition>" for Condition
+    in "Add issue" dialog, choose "<severity>" for Severity
+
+Phrase: <user> marks the "<surface>" surface
+  As <user>:
+    in "Add issue" dialog, click "<surface>"
+
+Phrase: <user> saves the issue
+  As <user>:
+    in "Add issue" dialog, click "Add issue"
+
+Phrase: the issue form should say "<message>"
+  in "Add issue" dialog, should see "<message>"
+
+# ---------- removing an issue ----------
+
+Phrase: <user> removes the "<condition>" issue
+  As <user>:
+    in "Selected tooth", click "Actions for <condition>"
+    click "Remove"
+
+Phrase: <user> confirms the removal
+  As <user>:
+    in "Remove" dialog, click "Remove"
+
+# ---------- what the tooth shows ----------
+
+Phrase: tooth <n> should show "<condition>"
+  in "Selected tooth", should see "<condition>"
+
+Phrase: tooth <n> should have no active issues
+  in "Selected tooth", should see "No active issues"

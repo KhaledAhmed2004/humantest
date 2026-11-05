@@ -1,0 +1,23 @@
+{
+  "baseURL": "http://localhost:3200",
+  "testsDir": "e2e/tests",
+  "statesDir": "e2e/states",
+  "phrasesDir": "e2e/phrases",
+  "outDir": "e2e/.generated",
+
+  "pages": {
+    "patients page": "/patients"
+  },
+
+  "users": {
+    "dentist": {}
+  },
+
+  "accessibility": {
+    "tags": ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"],
+    "ignoreWhenModalOpen": ["aria-hidden-focus"]
+  },
+
+  "watchdog": { "failTestOnWarning": false, "slowApiMs": 2000 },
+  "demo": { "slowMo": 150, "pauseAfterStepMs": 900, "typingDelayMs": 60 }
+}

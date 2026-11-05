@@ -1,0 +1,46 @@
+# Adding and removing tooth issues. The same flows as Dintel's tests/e2e/tooth-issues.spec.ts,
+# written in HumanTest so the two can be compared side by side.
+
+TEST "A dentist adds an issue to a healthy tooth, and it is still there after a reload"
+GIVEN the demo data is fresh
+WHEN the dentist opens tooth 11 of Ayesha
+AND the dentist adds a "Caries" issue with "Moderate" severity
+AND the dentist marks the "Occlusal (incisal)" surface
+AND the dentist saves the issue
+THEN the dentist should see "Issue added to tooth 11"
+AND tooth 11 should show "Caries"
+WHEN the dentist reloads the page
+THEN tooth 11 should show "Caries"
+AND the page should have no accessibility problems
+END
+
+
+TEST "The issue form explains the clinic rules before saving"
+GIVEN the demo data is fresh
+WHEN the dentist opens tooth 11 of Ayesha
+AND the dentist starts adding an issue
+AND the dentist saves the issue
+THEN the issue form should say "Choose a condition"
+AND the issue form should say "Choose a severity"
+AND "Condition" field should be focused
+WHEN the dentist chooses "Caries" for Condition
+AND the dentist chooses "Mild" for Severity
+AND the dentist saves the issue
+THEN the issue form should say "Caries needs at least one surface"
+AND the page should have no accessibility problems
+END
+
+
+TEST "Removing an issue asks first, then the issue is gone for good"
+GIVEN the demo data is fresh
+WHEN the dentist opens tooth 31 of Ayesha
+AND the dentist removes the "gingivitis" issue
+THEN the dentist should see "Remove gingivitis on tooth 31?"
+AND the dentist should see "This can't be undone."
+AND the page should have no accessibility problems
+WHEN the dentist confirms the removal
+THEN the dentist should see "Issue removed from tooth 31"
+AND "Add issue" button should be focused
+WHEN the dentist reloads the page
+THEN tooth 31 should have no active issues
+END

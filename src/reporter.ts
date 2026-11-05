@@ -42,7 +42,7 @@ export default class HumanReporter implements Reporter {
       console.log(c.yellow(`   ⚠ The watchdog noticed ${watchdog.length} hidden problem(s):`));
       for (const w of watchdog) console.log(c.yellow(`      • ${w}`));
     }
-    for (const v of annotations.filter((a) => a.type === 'video')) console.log(c.dim(`   🎬 ${v.description}`));
+    for (const v of new Set(annotations.filter((a) => a.type === 'video').map((a) => a.description))) console.log(c.dim(`   🎬 ${v}`));
   }
 
   onEnd(result: FullResult) {

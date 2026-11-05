@@ -25,7 +25,7 @@ export const STEP_DEFS: StepDef[] = [
   {
     kind: 'goTo',
     template: 'go to signup page',
-    re: rx(`(?:go to|open|visit|navigate to)\\s+(?:the\\s+)?(?:"([^"]+)"|(.+?))`),
+    re: rx(`(?:go(?:es)? to|opens?|visits?|navigates? to)\\s+(?:the\\s+)?(?:"([^"]+)"|(.+?))`),
     parse: (m) => ({ page: m[1] ?? m[2] }),
     explain: (a) => `open ${a.path}`,
     emit: (a) => `u.goTo(${s(a.path)})`,
@@ -33,7 +33,7 @@ export const STEP_DEFS: StepDef[] = [
   {
     kind: 'reload',
     template: 'reload the page',
-    re: rx(`(?:reload|refresh)(?:\\s+the)?(?:\\s+page)?`),
+    re: rx(`(?:reloads?|refresh(?:es)?)(?:\\s+the)?(?:\\s+page)?`),
     parse: () => ({}),
     explain: () => 'reload the current page',
     emit: () => 'u.reload()',
@@ -41,15 +41,31 @@ export const STEP_DEFS: StepDef[] = [
   {
     kind: 'type',
     template: 'type "rahim@test.com" in email',
-    re: rx(`(?:type|enter|write|fill in)\\s+"([^"]*)"\\s+(?:in|into)\\s+(?:the\\s+)?(?:"([^"]+)"|(.+?))(?:\\s+(?:field|box|input))?`),
+    re: rx(`(?:types?|enters?|writes?|fills? in)\\s+"([^"]*)"\\s+(?:in|into)\\s+(?:the\\s+)?(?:"([^"]+)"|(.+?))(?:\\s+(?:field|box|input))?`),
     parse: (m) => ({ value: m[1], field: m[2] ?? m[3] }),
     explain: (a) => `find the input labelled "${a.field}" and type "${a.value}"`,
     emit: (a) => `u.type(${s(a.value)}, ${s(a.field)})`,
   },
   {
+    kind: 'choose',
+    template: 'choose "Caries" for Condition',
+    re: rx(`(?:chooses?|selects?|picks?)\\s+"([^"]+)"\\s+(?:for|in|from)\\s+(?:the\\s+)?(?:"([^"]+)"|(.+?))(?:\\s+(?:field|dropdown|list|menu))?`),
+    parse: (m) => ({ option: m[1], field: m[2] ?? m[3] }),
+    explain: (a) => `open the "${a.field}" dropdown and pick "${a.option}"`,
+    emit: (a) => `u.choose(${s(a.option)}, ${s(a.field)})`,
+  },
+  {
+    kind: 'key',
+    template: 'press Escape',
+    re: rx(`(?:press(?:es)?|hits?)\\s+(?:the\\s+)?(Escape|Esc|Enter|Tab|Space|Backspace|Delete|ArrowUp|ArrowDown|ArrowLeft|ArrowRight)(?:\\s+key)?`),
+    parse: (m) => ({ key: ({ esc: 'Escape' } as Record<string, string>)[m[1].toLowerCase()] ?? m[1][0].toUpperCase() + m[1].slice(1) }),
+    explain: (a) => `press the ${a.key} key on the keyboard`,
+    emit: (a) => `u.press(${s(a.key)})`,
+  },
+  {
     kind: 'click',
     template: 'click "Sign up"',
-    re: rx(`(?:click|press|tap)\\s+(?:on\\s+)?(?:the\\s+)?"([^"]+)"(?:\\s+(button|link))?`),
+    re: rx(`(?:clicks?|press(?:es)?|taps?)\\s+(?:on\\s+)?(?:the\\s+)?"([^"]+)"(?:\\s+(button|link))?`),
     parse: (m) => ({ name: m[1], role: m[2]?.toLowerCase() }),
     explain: (a) => `click the ${a.role ?? 'button or link'} named "${a.name}"`,
     emit: (a) => `u.click(${s(a.name)}${a.role ? `, ${s(a.role)}` : ''})`,
@@ -57,7 +73,7 @@ export const STEP_DEFS: StepDef[] = [
   {
     kind: 'click',
     template: 'click Sign up button',
-    re: rx(`(?:click|press|tap)\\s+(?:on\\s+)?(?:the\\s+)?(.+?)\\s+(button|link)`),
+    re: rx(`(?:clicks?|press(?:es)?|taps?)\\s+(?:on\\s+)?(?:the\\s+)?(.+?)\\s+(button|link)`),
     parse: (m) => ({ name: m[1], role: m[2].toLowerCase() }),
     explain: (a) => `click the ${a.role} named "${a.name}"`,
     emit: (a) => `u.click(${s(a.name)}, ${s(a.role)})`,
@@ -75,7 +91,7 @@ export const STEP_DEFS: StepDef[] = [
   {
     kind: 'see',
     template: 'should see "Welcome, Rahim"',
-    re: rx(`(?:i\\s+)?(?:should\\s+)?(?:see|expect\\s+to\\s+see)\\s+"([^"]+)"`),
+    re: rx(`(?:i\\s+)?(?:should\\s+)?(?:sees?|expects?\\s+to\\s+see)\\s+"([^"]+)"`),
     parse: (m) => ({ text: m[1] }),
     explain: (a) => `check that "${a.text}" is visible on screen`,
     emit: (a) => `u.see(${s(a.text)})`,
@@ -91,10 +107,21 @@ export const STEP_DEFS: StepDef[] = [
   {
     kind: 'elementState',
     template: '"Sign up" button should be enabled',
-    re: rx(`(?:the\\s+)?"([^"]+)"(?:\\s+(button|link|field))?\\s+(?:should\\s+be|is)\\s+(enabled|disabled|visible|hidden)(?:\\s+again)?`),
-    parse: (m) => ({ name: m[1], role: m[2]?.toLowerCase(), state: m[3].toLowerCase() }),
+    re: rx(`(?:the\\s+)?"([^"]+)"(?:\\s+(button|link|field|dialog))?\\s+(?:should\\s+be|is)\\s+(enabled|disabled|visible|hidden|focused|closed|open)(?:\\s+again)?`),
+    parse: (m) => {
+      const state = m[3].toLowerCase();
+      return { name: m[1], role: m[2]?.toLowerCase(), state: state === 'closed' ? 'hidden' : state === 'open' ? 'visible' : state };
+    },
     explain: (a) => `check that the ${a.role ?? 'element'} "${a.name}" is ${a.state}`,
     emit: (a) => `u.shouldBe(${s(a.name)}, ${s(a.state)}${a.role ? `, ${s(a.role)}` : ''})`,
+  },
+  {
+    kind: 'a11y',
+    template: 'the page should have no accessibility problems',
+    re: rx(`(?:the\\s+)?page\\s+should\\s+(?:have\\s+no\\s+accessibility\\s+(?:problems|issues|violations)|be\\s+accessible)`),
+    parse: () => ({}),
+    explain: () => 'scan the page with axe for WCAG accessibility problems',
+    emit: () => 'u.noAccessibilityProblems()',
   },
 
   // ---------------- what happens in the backend ----------------
@@ -200,11 +227,32 @@ export const STEP_DEFS: StepDef[] = [
   },
 ];
 
+// "in "Selected tooth", click "Add issue""  /  "in the "Add issue" dialog: choose ..."
+const SCOPE = /^(?:in|inside|within)\s+(?:the\s+)?"([^"]+)"(?:\s+(dialog|panel|section|region|form|table|row|menu|list))?\s*[,:]\s*(.+)$/i;
+
 export function matchStep(text: string): { def: StepDef; args: StepArgs } | undefined {
-  const clean = text.replace(/\s+/g, ' ').replace(/\.$/, '').trim();
+  let clean = text.replace(/\s+/g, ' ').replace(/\.$/, '').trim();
+  let scope: { name: string; kind?: string } | undefined;
+  const sm = clean.match(SCOPE);
+  if (sm) {
+    scope = { name: sm[1], kind: sm[2]?.toLowerCase() };
+    clean = sm[3];
+  }
   for (const def of STEP_DEFS) {
     const m = clean.match(def.re);
-    if (m) return { def, args: def.parse(m) };
+    if (m) return { def, args: { ...def.parse(m), ...(scope ? { scope } : {}) } };
   }
   return undefined;
+}
+
+/** Explain a step, including its "in ..." part. */
+export function explainStep(def: StepDef, a: StepArgs): string {
+  const inner = def.explain(a);
+  return a.scope ? `inside the ${a.scope.kind ?? 'section'} "${a.scope.name}": ${inner}` : inner;
+}
+
+/** Code for a step, including its "in ..." part. */
+export function emitStep(def: StepDef, a: StepArgs): string {
+  const inner = def.emit(a);
+  return a.scope ? `u.within(${s(a.scope.name)}, ${s(a.scope.kind ?? null)}, () => ${inner})` : inner;
 }
