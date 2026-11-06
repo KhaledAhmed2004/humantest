@@ -197,7 +197,7 @@ function OpenLine({ ht, line, root }: { ht: HumanTest; line: GapLine; root: stri
         <p className="break-words">{line.text}</p>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
           <span>{line.group}</span>
-          <span className="font-mono">{root}/{line.source.file}:{line.source.line}</span>
+          <span className="font-mono break-all">{root}/{line.source.file}:{line.source.line}</span>
           {!line.translated && <span className="inline-flex items-center gap-1"><CodeIcon className="size-3" />condition shown as code</span>}
         </p>
         {line.draft && (

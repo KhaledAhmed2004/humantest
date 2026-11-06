@@ -151,6 +151,7 @@ The first time a test runs, what it relies on is saved in `e2e/logic/` (commit i
 | `npm run ht -- discover --check` | The same, exiting with 1 on changes: for CI. |
 | `npm run ht -- discover --accept` | Accept the current logic (`--key "<file>::<test>"` for one test). |
 | `npm run ht -- discover --gaps` | What the tests don't cover: per part of the app, how many requests a test reaches and how many of their rules a test checks; then each unchecked rule. `--all` lists the requests no test reaches. |
+| `npm run ht -- discover --feature routes` | One part of the app as a whole, for people who don't read the code: every request (tested or not), named after what it does ("Create route"), with who can do it, what it needs, when it says no, what it changes and its answer; ✔ where a test checks it. |
 | `npm run ht -- discover --gaps --drafts` | Also a draft test for each unchecked refusal or page stop: the steps of a test that gets there (one that got through, not one turned away by who may), what to make true, and the message to see. It starts with `Draft:`, so it does not run until it is finished. |
 
 The UI shows the same: a **Business logic** panel under the steps, a **Logic changed** mark in the test list a few seconds after someone saves a backend file, and an **Accept the change** button.
@@ -211,7 +212,11 @@ Phrase: the website has no users
 There is no hidden "magic": HumanTest never reloads a page or logs someone in unless a phrase or step says so.
 When a page needs fresh data, write it in the phrase (`go to users page` or `reload the page`).
 
-## Coverage in the UI
+## Business logic and coverage in the UI
+
+The **Business logic** tab shows the same as `discover --feature`, one part of the app at a time.
+
+### Coverage
 
 The **Coverage** tab shows the same as `discover --gaps`: per part of the app, how many requests a test reaches and how many of their rules a test checks (click a part to see only it), then each rule no test checks, and the requests no test reaches. It is worked out again after each run and within seconds of a change to the app's code, so a new rule shows up there by itself. **Make a draft test** saves a draft as a new file in `<tests>/drafts/` (never over an existing one), listed with the tests as "Draft, not run".
 

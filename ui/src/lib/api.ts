@@ -79,12 +79,14 @@ export interface GapLine extends RuleLine { group: string; draft?: string }
 export interface GapRequest {
   request: string
   area: string
+  /** What it does, from its handler's name: "Create route". */
+  title?: string
   root: string
   reachedBy: { test: string; file: string; testLine: number; stepLine: number }[]
   lines: GapLine[]
 }
 export interface GapArea { name: string; requests: number; reached: number; rules: number; reachedRules: number; checked: number }
-export interface GapReport { areas: GapArea[]; reached: GapRequest[]; unreached: { request: string; area: string; rules: number }[] }
+export interface GapReport { areas: GapArea[]; reached: GapRequest[]; unreached: { request: string; area: string; title?: string; root: string; rules: number; lines: GapLine[] }[] }
 export interface CoverageResponse { computing: boolean; at?: string; report?: GapReport; error?: string }
 
 export async function getCoverage(project: string): Promise<CoverageResponse> {

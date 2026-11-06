@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronUpIcon, ListChecksIcon, TerminalIcon } from 'lucide-react'
 import { AppHeader, type View } from '@/components/app-header'
 import { Coverage } from '@/components/coverage'
+import { Features } from '@/components/features'
 import { TestDetail } from '@/components/test-detail'
 import { TestList } from '@/components/test-list'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -17,7 +18,7 @@ export default function App() {
   const [chosen, setChosen] = useState<string | null>(storage.get('ht.selected'))
   const [demo, setDemo] = useState(storage.get('ht.demo') === '1')
   const [outputOpen, setOutputOpen] = useState(false)
-  const [view, setView] = useState<View>(storage.get('ht.view') === 'coverage' ? 'coverage' : 'tests')
+  const [view, setView] = useState<View>(() => { const v = storage.get('ht.view'); return v === 'coverage' || v === 'logic' ? v : 'tests' })
   const changeView = (v: View) => { setView(v); storage.set('ht.view', v) }
   const narrow = useMediaQuery('(max-width: 767px)')
 
@@ -33,7 +34,9 @@ export default function App() {
       <AppHeader ht={ht} demo={demo} onDemoChange={changeDemo} view={view} onViewChange={changeView} />
 
       {/* Coverage, or the tests: side by side on wide screens; on phones the list sits on top of the details. */}
-      {view === 'coverage' ? (
+      {view === 'logic' ? (
+        <main className="min-h-0 flex-1 overflow-y-auto"><Features ht={ht} /></main>
+      ) : view === 'coverage' ? (
         // A plain scroller: ScrollArea's content grows to the table's width, which clips text on phones.
         <main className="min-h-0 flex-1 overflow-y-auto"><Coverage ht={ht} /></main>
       ) : (

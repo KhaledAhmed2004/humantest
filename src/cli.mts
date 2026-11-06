@@ -17,7 +17,7 @@ import {
 } from './discovery/index.mts';
 import type { Group } from './discovery/rules/present.mts';
 import { accept, afterRun, changes, logicDir, type TestChange } from './discovery/baseline.mts';
-import { draftable, draftFor, gaps, withDrafts, type GapReport } from './discovery/gaps.mts';
+import { draftable, draftFor, featureOf, gaps, withDrafts, type Feature, type GapReport } from './discovery/gaps.mts';
 
 const c = {
   red: (s: string) => `\x1b[31m${s}\x1b[0m`,
@@ -197,13 +197,35 @@ function printGaps(project: Project, r: GapReport, drafts: boolean, all: boolean
   }
 }
 
+/** One part of the app, request by request, for people who don't read the code. */
+function printFeature(f: Feature) {
+  const tested = f.requests.filter((r) => r.reached).length;
+  console.log(c.bold(`\n${f.name}`), c.dim(`${f.requests.length} request(s), ${tested} reached by a test. ✔ = a test checks it.`));
+  for (const r of f.requests) {
+    console.log(`\n  ${c.bold(r.title ?? r.request)}  ${c.dim(r.request)}`);
+    console.log(c.dim(r.reached ? `    Tested by: ${r.reachedBy.map((b) => `"${b.test}"`).join(', ')}` : '    No test reaches this.'));
+    let group = '';
+    for (const l of r.lines) {
+      if (l.group !== group) { group = l.group; console.log(`    ${c.dim(group)}`); }
+      console.log(`      ${l.checked ? c.green('✔') : c.dim('•')} ${l.text}`);
+    }
+  }
+  if (f.page.length) {
+    console.log(c.bold('\n  On its pages'));
+    for (const p of f.page) {
+      console.log(`    ${c.dim(p.request)}`);
+      for (const l of p.lines) console.log(`      ${l.checked ? c.green('✔') : c.dim('•')} ${l.text}`);
+    }
+  }
+}
+
 function runDiscover(project: Project, rest: string[]) {
   const json = rest.includes('--json');
   const flags = new Set(rest.filter((a) => a.startsWith('--')));
   const ki = rest.indexOf('--key');
   const key = ki >= 0 ? rest[ki + 1] : undefined;
   const value = (name: string) => { const i = rest.indexOf(name); return i >= 0 ? rest[i + 1] : undefined; };
-  const valued = new Set(['--key', '--page', '--click', '--upload']);
+  const valued = new Set(['--key', '--page', '--click', '--upload', '--feature']);
   const words = rest.filter((a, i) => !a.startsWith('--') && !valued.has(rest[i - 1]));
   const backend = openOrExit(project);
 
@@ -217,6 +239,20 @@ function runDiscover(project: Project, rest: string[]) {
     if (json) { console.log(jsonOut(d ?? null)); return; }
     if (!d) console.log(c.yellow(`Couldn't find ${kind === 'upload' ? 'a file input for ' : ''}"${pageLabel}" on the page ${value('--page') ?? '/'} in the frontend code.`));
     else printPage(project, d);
+    return;
+  }
+
+  // discover --feature routes: one part of the app as a whole, every request with its rules.
+  const featureName = value('--feature');
+  if (featureName) {
+    const report = gaps(project, backend, frontendOf(project));
+    const f = featureOf(report, featureName);
+    if (json) { console.log(jsonOut(f)); return; }
+    if (!f.requests.length) {
+      console.log(c.yellow(`No part of the app is called "${featureName}". There are: ${report.areas.map((a) => a.name).filter((n) => n !== 'page').join(', ')}.`));
+      process.exit(1);
+    }
+    printFeature(f);
     return;
   }
 

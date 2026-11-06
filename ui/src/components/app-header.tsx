@@ -9,7 +9,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import type { HumanTest } from '@/lib/use-humantest'
 import { cn } from '@/lib/utils'
 
-export type View = 'tests' | 'coverage'
+export type View = 'tests' | 'logic' | 'coverage'
+const VIEW_LABEL: Record<View, string> = { tests: 'Tests', logic: 'Business logic', coverage: 'Coverage' }
 
 export function AppHeader({ ht, demo, onDemoChange, view, onViewChange }: {
   ht: HumanTest; demo: boolean; onDemoChange: (on: boolean) => void; view: View; onViewChange: (v: View) => void
@@ -33,11 +34,11 @@ export function AppHeader({ ht, demo, onDemoChange, view, onViewChange }: {
 
       {/* Tests, or what they cover. */}
       <nav aria-label="View" className="flex rounded-lg bg-muted p-0.5">
-        {(['tests', 'coverage'] as const).map((v) => (
+        {(['tests', 'logic', 'coverage'] as const).map((v) => (
           <button key={v} type="button" onClick={() => onViewChange(v)} aria-current={view === v ? 'page' : undefined}
             className={cn('rounded-md px-3 py-1 text-sm font-medium text-foreground/70 transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
               view === v && 'bg-background text-foreground shadow-sm')}>
-            {v === 'tests' ? 'Tests' : 'Coverage'}
+            {VIEW_LABEL[v]}
           </button>
         ))}
       </nav>

@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Project } from '../compiler/project.mts';
 import { discover, readTraces, writeDiscovery, type Backend, type Frontend } from './index.mts';
+import type { RouteEntry } from './backend/express.mts';
 import type { Line } from './rules/present.mts';
 
 /** A test that reaches a request; `status`: what the request answered in that test's last run. */
@@ -32,6 +33,8 @@ export interface GapRequest {
   request: string;
   /** The part of the app it belongs to, as in GapArea. */
   area: string;
+  /** What it does, in words, from its handler's name: "Create route". */
+  title?: string;
   /** The code folder its rules are in, for the file paths. */
   root: string;
   reachedBy: ReachedBy[];
@@ -53,8 +56,8 @@ export interface GapReport {
   areas: GapArea[];
   /** Requests the tests reach, each with all its rules (checked or not). */
   reached: GapRequest[];
-  /** Requests no test reaches. */
-  unreached: { request: string; area: string; rules: number }[];
+  /** Requests no test reaches, with their rules (none checked), for the feature pages. */
+  unreached: { request: string; area: string; title?: string; root: string; rules: number; lines: GapLine[] }[];
 }
 
 /** Most telling first: what stops the user, what the request changes, then who may, then fields. */
@@ -109,8 +112,10 @@ export function gaps(project: Project, backend: Backend, fe?: Frontend): GapRepo
     seen.add(key);
     const a = area(areaOf(route.path));
     a.requests++;
+    const title = titleOf(route);
     const hit = reached.get(key);
     if (hit) {
+      if (title) hit.title = title;
       a.reached++;
       a.rules += hit.lines.length;
       a.reachedRules += hit.lines.length;
@@ -119,9 +124,9 @@ export function gaps(project: Project, backend: Backend, fe?: Frontend): GapRepo
     }
     // A sample path for the pattern, to read its rules.
     const d = discover(project, backend, route.method, route.path.replace(/:(\w+)\??/g, 'x1').replace(/\*/g, 'x1'));
-    const n = 'groups' in d ? d.groups.reduce((k, g) => k + g.lines.length, 0) : 0;
-    a.rules += n;
-    unreached.push({ request: key, area: a.name, rules: n });
+    const lines: GapLine[] = 'groups' in d ? d.groups.flatMap((g) => g.lines.map((l) => ({ ...l, group: g.title, checked: false }))) : [];
+    a.rules += lines.length;
+    unreached.push({ request: key, area: a.name, ...(title ? { title } : {}), root: codeRoot, rules: lines.length, lines });
   }
   for (const r of reached.values()) {
     if (r.area !== 'page') continue;
@@ -138,6 +143,35 @@ export function gaps(project: Project, backend: Backend, fe?: Frontend): GapRepo
     reached: [...reached.values()],
     unreached,
   };
+}
+
+/**
+ * What a request does, from its handler's name: `RouteController.createRoute` → "Create route",
+ * `getAllRoutes` → "Get all routes". None for a handler written in the route itself.
+ */
+export function titleOf(route: RouteEntry): string | undefined {
+  const name = route.handler?.ref?.name ?? route.handler?.text;
+  if (!name || /\s|=>|function/.test(name)) return titleFromPath(route.method, route.path);
+  const last = name.split('.').pop()!;
+  const words = last.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').toLowerCase().trim();
+  return words ? words[0].toUpperCase() + words.slice(1) : undefined;
+}
+
+/** For a handler without a name: `GET /trips/:id` → "Get one trip", `GET /supports/my-tickets` → "List my tickets". */
+function titleFromPath(method: string, p: string): string | undefined {
+  const parts = p.split('/').filter(Boolean);
+  const fixed = parts.filter((x) => !x.startsWith(':'));
+  const last = fixed.at(-1)?.replace(/-/g, ' ');
+  if (!last) return undefined;
+  const one = last.replace(/ies$/, 'y').replace(/([^s])s$/, '$1');
+  const byId = parts.at(-1)?.startsWith(':');
+  switch (method) {
+    case 'GET': return byId ? `Get one ${one}` : `List ${last}`;
+    case 'POST': return byId ? `Add to ${one}` : `Create ${one}`;
+    case 'PUT': case 'PATCH': return `Update ${one}`;
+    case 'DELETE': return `Delete ${one}`;
+    default: return undefined;
+  }
 }
 
 /**
@@ -173,4 +207,31 @@ export function draftFor(project: Project, req: GapRequest, line: GapLine): stri
     ...body,
     `${indent}should see "${seen}"`,
   ].join('\n');
+}
+
+/** The order people read a request's rules in (as present.mts groups them). */
+export const READING_ORDER = ['On the page, before anything is sent', 'Who can do it', 'What the request must contain', 'When the server says no', 'What it changes', 'The answer when all is well'];
+const readingRank = (g: string) => { const i = READING_ORDER.indexOf(g); return i < 0 ? READING_ORDER.length : i; };
+
+export interface Feature {
+  name: string;
+  /** Every request of this part of the app, tested or not, with all its rules in reading order. */
+  requests: (Omit<GapRequest, 'area'> & { reached: boolean })[];
+  /** Clicks and uploads a test made on this part's own pages (`…/routes/…`), with their rules. */
+  page: GapRequest[];
+}
+
+/** One part of the app ("routes") as a whole: what the code does, request by request. */
+export function featureOf(report: GapReport, name: string): Feature {
+  const sorted = (lines: GapLine[]) => [...lines].sort((a, b) => readingRank(a.group) - readingRank(b.group));
+  const requests = [
+    ...report.reached.filter((q) => q.area === name).map(({ area: _a, ...q }) => ({ ...q, lines: sorted(q.lines), reached: true })),
+    ...report.unreached.filter((u) => u.area === name).map((u) => ({ request: u.request, ...(u.title ? { title: u.title } : {}), root: u.root, reachedBy: [], lines: sorted(u.lines), reached: false })),
+  ];
+  // The app's own order: by path, then reading verb order.
+  const VERB = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+  const parts = (r: string) => { const [m, p] = r.split(' '); return { m: VERB.indexOf(m), p }; };
+  requests.sort((a, b) => { const x = parts(a.request), y = parts(b.request); return x.p.localeCompare(y.p) || x.m - y.m; });
+  const page = report.reached.filter((q) => q.area === 'page' && q.request.includes(`/${name}/`));
+  return { name, requests, page };
 }
