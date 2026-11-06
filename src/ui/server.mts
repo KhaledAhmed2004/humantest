@@ -157,22 +157,26 @@ function computeChanges(ref: ProjectRef) {
 /** Re-compare whenever someone edits the backend's code: the badge shows up within seconds of saving. */
 function watchBackends() {
   for (const ref of projects) {
-    let backend: string | undefined;
+    let dirs: string[] = [];
     try {
-      const p = loadProject(ref.root);
-      backend = p.config.source?.backend ? path.resolve(ref.root, p.config.source.backend) : undefined;
-    } catch { /* no config */ }
-    if (!backend || !fs.existsSync(backend)) continue;
+      const source = loadProject(ref.root).config.source;
+      if (!source?.backend) continue;
+      dirs = [source.backend, source.frontend].filter((d): d is string => !!d).map((d) => path.resolve(ref.root, d)).filter((d) => fs.existsSync(d));
+    } catch {
+      continue;
+    }
     let timer: NodeJS.Timeout | undefined;
-    try {
-      fs.watch(backend, { recursive: true }, (_e, file) => {
-        const f = String(file ?? '');
-        if (!/\.[cm]?tsx?$/.test(f) || /(^|[\\/])(node_modules|dist|build|coverage)[\\/]/.test(f)) return;
-        clearTimeout(timer);
-        timer = setTimeout(() => computeChanges(ref), 2000);
-      });
-    } catch (e) {
-      console.warn(`Not watching ${ref.name}'s backend code: ${(e as Error).message}`);
+    for (const dir of dirs) {
+      try {
+        fs.watch(dir, { recursive: true }, (_e, file) => {
+          const f = String(file ?? '');
+          if (!/\.[cm]?[jt]sx?$/.test(f) || /(^|[\\/])(node_modules|dist|build|coverage|\.next)[\\/]/.test(f)) return;
+          clearTimeout(timer);
+          timer = setTimeout(() => computeChanges(ref), 2000);
+        });
+      } catch (e) {
+        console.warn(`Not watching ${dir} for changes: ${(e as Error).message}`);
+      }
     }
     computeChanges(ref);
   }

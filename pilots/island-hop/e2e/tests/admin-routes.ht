@@ -15,3 +15,20 @@ Test: Admin opens the form for a new route
     in "Add New Ferry Route" dialog, should see "Route Cover Photo"
     press Escape
     "Add New Ferry Route" dialog should be closed
+
+
+Test: The route form stops before sending when the cover photo is missing
+
+  As admin:
+    go to routes page
+    click "Add Route"
+    in "Add New Ferry Route" dialog, should not see "Loading ports..."
+    press Escape
+    # Opened again now that the ports have loaded, the form starts with two different ports.
+    # (An empty description is stopped by the browser itself, with no message on the page.)
+    click "Add Route"
+    type "A quick test crossing" in "Route Description"
+    click "Create Route"
+    should see "Route cover photo is required. Please upload an image."
+    backend should not receive any request
+    "Add New Ferry Route" dialog should be open

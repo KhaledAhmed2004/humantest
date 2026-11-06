@@ -20,14 +20,16 @@ export interface Line {
 export interface Group { title: string; lines: Line[] }
 
 export function present(rules: Rule[]): Group[] {
+  const page: Line[] = [];
   const access: Line[] = [];
   const contain: Line[] = [];
   const refuse: Line[] = [];
 
+  const fieldKey = (r: FieldRule & Rule) => `${r.side ?? 'backend'}:${r.section}.${r.field}`;
   const fields = new Map<string, FieldRule[]>();
   for (const r of rules) {
     if (r.kind === 'field') {
-      const key = `${r.section}.${r.field}`;
+      const key = fieldKey(r as FieldRule & Rule);
       fields.set(key, [...(fields.get(key) ?? []), r as FieldRule & Rule]);
     }
   }
@@ -36,19 +38,22 @@ export function present(rules: Rule[]): Group[] {
   for (const r of rules) {
     const line = (text: string): Line => ({
       text, source: r.source, translated: isTranslated(r), ids: [r.id],
-      messages: [...('message' in r && r.message ? [r.message] : []), ...(r.kind === 'reject' ? r.otherMessages ?? [] : [])],
+      messages: [...('message' in r && r.message ? [r.message] : []), ...((r.kind === 'reject' || r.kind === 'ui-guard') ? r.otherMessages ?? [] : [])],
       ...(r.kind === 'reject' && r.status !== undefined ? { status: r.status } : {}),
     });
+    // Rules in the page's own code: what happens before anything reaches the server.
+    const front = r.side === 'frontend';
     if (r.kind === 'access') access.push(line(renderRule(r)));
     else if (r.kind === 'reject') refuse.push(line(renderRule(r)));
-    else if (r.kind === 'check') contain.push(line(renderRule(r)));
+    else if (r.kind === 'ui-block' || r.kind === 'ui-guard') page.push(line(renderRule(r)));
+    else if (r.kind === 'check') (front ? page : contain).push(line(renderRule(r)));
     else if (r.kind === 'field') {
-      const key = `${r.section}.${r.field}`;
+      const key = fieldKey(r as FieldRule & Rule);
       if (fieldsDone.has(key)) continue;
       fieldsDone.add(key);
       const facts = fields.get(key)!;
-      const where = r.section === 'body' ? '' : ` (in the ${r.section === 'query' ? 'address query' : r.section})`;
-      contain.push({
+      const where = front || r.section === 'body' ? '' : ` (in the ${r.section === 'query' ? 'address query' : r.section})`;
+      (front ? page : contain).push({
         text: renderField(facts).replace(/\.$/, `${where}.`), source: r.source, translated: true,
         ids: facts.map((f) => (f as FieldRule & Rule).id),
         messages: [...new Set(facts.flatMap((f) => (f.message ? [f.message] : [])))],
@@ -58,6 +63,7 @@ export function present(rules: Rule[]): Group[] {
   // Field by field first, then the checks that span fields.
   const isCheck = (l: Line) => l.ids.some((id) => id.startsWith('check:'));
   return [
+    { title: 'On the page, before anything is sent', lines: [...page.filter((l) => !isCheck(l)), ...page.filter(isCheck)] },
     { title: 'Who can do it', lines: access },
     { title: 'What the request must contain', lines: [...contain.filter((l) => !isCheck(l)), ...contain.filter(isCheck)] },
     { title: 'When the server says no', lines: refuse },

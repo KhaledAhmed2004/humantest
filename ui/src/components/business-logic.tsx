@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2Icon, CheckIcon, ChevronRightIcon, CircleIcon, CodeIcon, GitCompareArrowsIcon, LoaderCircleIcon } from 'lucide-react'
+import { CheckCircle2Icon, CheckIcon, ChevronRightIcon, CircleIcon, CodeIcon, GitCompareArrowsIcon, LoaderCircleIcon, MousePointerClickIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { getDiscovery, type DiscoveredCall, type DiscoveryResponse, type RuleLine, type TestChange } from '@/lib/api'
+import { getDiscovery, type DiscoveredCall, type DiscoveryResponse, type PageRules, type RuleLine, type TestChange } from '@/lib/api'
 import { humanize } from '../../../src/humanize'
 import { cn } from '@/lib/utils'
 
@@ -24,8 +24,13 @@ export function BusinessLogic({ project, testKey, version, running, change, onAc
 
   if (!data || !data.configured) return null
 
-  const steps = data.result?.steps.filter((s) => s.calls.length) ?? []
-  const lines = steps.flatMap((s) => s.calls.flatMap((c) => ('groups' in c ? c.groups.flatMap((g) => g.lines) : [])))
+  // A click with no rules of its own (it only opens something) isn't worth a row.
+  const hasPageRules = (s: { page?: { groups: { lines: unknown[] }[] } }) => !!s.page?.groups.some((g) => g.lines.length)
+  const steps = data.result?.steps.filter((s) => s.calls.length || hasPageRules(s)) ?? []
+  const lines = steps.flatMap((s) => [
+    ...(s.page ? s.page.groups.flatMap((g) => g.lines) : []),
+    ...s.calls.flatMap((c) => ('groups' in c ? c.groups.flatMap((g) => g.lines) : [])),
+  ])
   const checked = lines.filter((l) => l.checked).length
 
   return (
@@ -41,7 +46,7 @@ export function BusinessLogic({ project, testKey, version, running, change, onAc
       </div>
       <p className="text-xs text-muted-foreground">What the app's code does behind these steps, read from the code itself. Each rule shows where it is.</p>
 
-      {change?.status === 'changed' && <ChangeBox change={change} onAccept={onAccept} codeRoot={data.result?.codeRoot} />}
+      {change?.status === 'changed' && <ChangeBox change={change} onAccept={onAccept} codeRoot={data.result?.codeRoot} frontRoot={data.result?.frontRoot} />}
 
       {running || data.running ? (
         <p className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
@@ -50,13 +55,14 @@ export function BusinessLogic({ project, testKey, version, running, change, onAc
       ) : !data.result ? (
         <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">Run this test to see the business logic behind its steps.</p>
       ) : !steps.length ? (
-        <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">None of the steps called the server, so there is no backend logic to show.</p>
+        <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">None of the steps called the server or clicked something with rules of its own, so there is no logic to show.</p>
       ) : (
         <div className="overflow-hidden rounded-xl border bg-card">
           {steps.map((s, i) => (
             <div key={i} className="border-t first:border-t-0">
               <div className="px-4 pt-2.5 pb-1 text-sm font-medium" title={`Line ${s.line} of the test: ${s.text}`}>{humanize(s.text).text}</div>
               <div className="space-y-1 px-2 pb-2">
+                {s.page && hasPageRules(s) && <PageRulesBlock page={s.page} frontRoot={data.result?.frontRoot} />}
                 {s.calls.map((c, j) => <CallRules key={j} call={c} codeRoot={data.result?.codeRoot} />)}
               </div>
             </div>
@@ -68,8 +74,10 @@ export function BusinessLogic({ project, testKey, version, running, change, onAc
 }
 
 /** What changed in the logic since it was accepted, rule by rule, with a way to accept it. */
-function ChangeBox({ change, onAccept, codeRoot }: { change: TestChange; onAccept: () => Promise<void>; codeRoot?: string }) {
+function ChangeBox({ change, onAccept, codeRoot, frontRoot }: { change: TestChange; onAccept: () => Promise<void>; codeRoot?: string; frontRoot?: string }) {
   const [busy, setBusy] = useState(false)
+  // A click's rules live in the frontend's code, an API call's in the backend's.
+  const rootOf = (request: string) => (request.startsWith('CLICK ') ? frontRoot : codeRoot)
   const accepted = change.acceptedAt ? new Date(change.acceptedAt).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : undefined
   return (
     <div role="region" aria-label="Business logic changes" className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-100">
@@ -104,7 +112,7 @@ function ChangeBox({ change, onAccept, codeRoot }: { change: TestChange; onAccep
                 ) : (
                   <p><span className="font-semibold">{x.change === 'added' ? 'New: ' : 'Removed: '}</span>{x.change === 'added' ? x.after : x.before}</p>
                 )}
-                <p className="mt-0.5 font-mono text-xs opacity-75">{codeRoot ? `${codeRoot}/` : ''}{x.source.file}:{x.source.line}</p>
+                <p className="mt-0.5 font-mono text-xs opacity-75">{rootOf(r.request) ? `${rootOf(r.request)}/` : ''}{x.source.file}:{x.source.line}</p>
               </li>
             ))}
           </ul>
@@ -114,6 +122,29 @@ function ChangeBox({ change, onAccept, codeRoot }: { change: TestChange; onAccep
         </div>
       ))}
     </div>
+  )
+}
+
+/** The page's own rules for a click: what the browser and the component check before anything is sent. */
+function PageRulesBlock({ page, frontRoot }: { page: PageRules; frontRoot?: string }) {
+  const count = page.groups.reduce((n, g) => n + g.lines.length, 0)
+  return (
+    <Collapsible>
+      <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+        <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+        <MousePointerClickIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <span className="font-semibold">On the page</span>
+        <span className="min-w-0 truncate text-muted-foreground">"{page.label}" in {page.component}</span>
+        <span className="ml-auto shrink-0 text-muted-foreground">{count} rule{count === 1 ? '' : 's'}</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-2.5 px-2 pt-1 pb-2 pl-7">
+        {page.groups.map((g) => (
+          <ul key={g.title} className="space-y-1">
+            {g.lines.map((l, k) => <RuleItem key={k} line={l} codeRoot={frontRoot} />)}
+          </ul>
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 

@@ -62,10 +62,31 @@ export interface RejectRule {
   onError?: boolean;
 }
 
-export type RuleFacts = AccessRule | FieldRule | CheckRule | RejectRule;
+/** A button or link that can't be used while something is true: `disabled={isSamePort || !port}`. */
+export interface UiBlockRule {
+  kind: 'ui-block';
+  /** Its visible name, e.g. "Create Route". */
+  element: string;
+  when: Condition;
+}
+
+/** The page stops before sending anything: `if (!description) { toast.error('…'); return; }`. */
+export interface UiGuardRule {
+  kind: 'ui-guard';
+  message?: string;
+  otherMessages?: string[];
+  /** All the conditions around the stop, outermost first. */
+  when: Condition[];
+  /** The function it is in, e.g. "handleSubmit". */
+  in: string;
+}
+
+export type RuleFacts = AccessRule | FieldRule | CheckRule | RejectRule | UiBlockRule | UiGuardRule;
 
 export type Rule = RuleFacts & {
   /** Stable across runs and edits elsewhere: what the rule is about, not what it says. */
   id: string;
   source: Source;
+  /** Where the rule lives. Missing means the backend. */
+  side?: 'frontend';
 };

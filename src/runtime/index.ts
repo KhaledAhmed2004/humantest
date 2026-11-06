@@ -96,6 +96,8 @@ export interface TraceStep {
   text: string;
   status: 'passed' | 'failed';
   calls: TraceCall[];
+  /** The page (path) the step ended on. */
+  pageUrl?: string;
 }
 
 export interface Trace { version: 1; test: string; source: string; status: 'passed' | 'failed'; steps: TraceStep[] }
@@ -110,6 +112,8 @@ export class Scenario {
   currentLine = 0;
   /** Set when an API call went to a host outside `apiHosts`. The test fails at the end of the step. */
   blocked?: string;
+  /** The page (path) each step ended on, by index into `records`: discovery finds the page's code from it. */
+  readonly stepPages: (string | undefined)[] = [];
 
   constructor(readonly opts: Options, readonly config: Config) {}
 
@@ -345,6 +349,7 @@ export class Scenario {
       steps: this.records.map((r, i) => ({
         title: r.user === 'setup' ? `line ${r.line} · ${r.text}` : `line ${r.line} · ${r.user} · ${r.text}`,
         user: r.user, line: r.line, text: r.text, status: r.status, calls: calls.get(i) ?? [],
+        ...(this.stepPages[i] ? { pageUrl: this.stepPages[i] } : {}),
       })),
     };
     const file = path.join(process.cwd(), '.humantest', 'traces', `${fileSlug(`${this.opts.source} ${info.title}`)}.json`);
@@ -536,13 +541,19 @@ export class User {
       this.caption = `👤 ${this.name}   ·   line ${line}   ·   ${text}`;
       const rec: ReplayStep = { user: this.name, line, text, start: Date.now(), end: 0, status: 'passed' };
       if (!opts.check || this.stepIndex < 0) this.stepIndex = this.ht.records.length;
+      const index = this.ht.records.length;
       this.ht.records.push(rec);
       this.focus = undefined;
       await this.showCaption();
+      const notePage = () => {
+        try { this.ht.stepPages[index] = new URL(this.page.url()).pathname; } catch { /* about:blank */ }
+      };
       try {
         await fn(this);
+        notePage();
         if (this.ht.blocked) throw new Error(this.ht.blocked);
       } catch (e) {
+        notePage();
         const err = this.ht.humanError(line, this.name, text, e, this);
         rec.status = 'failed';
         rec.error = err.message.split('\n').slice(2).join('\n').trim();

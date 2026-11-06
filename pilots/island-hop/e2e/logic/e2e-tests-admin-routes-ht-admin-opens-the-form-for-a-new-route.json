@@ -24,7 +24,9 @@
    "title": "line 12 · admin · click \"Add Route\"",
    "line": 12,
    "text": "click \"Add Route\"",
-   "requests": []
+   "requests": [
+    "CLICK \"Add Route\" on src/app/dashboard/admin/routes/page.tsx"
+   ]
   },
   {
    "title": "line 13 · admin · \"Add New Ferry Route\" dialog should be open",
@@ -620,7 +622,32 @@
      "text": "limit: at most 100."
     }
    ]
+  },
+  {
+   "request": "CLICK \"Add Route\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "Add Route"
+   },
+   "functions": [
+    {
+     "name": "AdminRoutesPage",
+     "file": "src/app/dashboard/admin/routes/page.tsx",
+     "line": 38,
+     "role": "helper",
+     "hash": "2c1d4d894fa7"
+    },
+    {
+     "name": "handleOpenAdd",
+     "file": "src/app/dashboard/admin/routes/page.tsx",
+     "line": 116,
+     "role": "helper",
+     "hash": "cbf7488e9925"
+    }
+   ],
+   "rules": []
   }
  ],
- "acceptedAt": "2026-11-06T15:45:20.877Z"
+ "frontend": true,
+ "acceptedAt": "2026-11-06T16:22:11.779Z"
 }

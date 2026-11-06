@@ -9,6 +9,11 @@ import { sliceRoute, type Slice } from './backend/slice.mts';
 import { extractRules, type Rule } from './rules/index.mts';
 import { markChecked, present, type Group } from './rules/present.mts';
 import { openTsProject, type TsProject } from './ts-project.mts';
+import { matchStep } from '../compiler/steps.mts';
+import { check } from '../compiler/index.mts';
+import { actionRules } from './frontend/actions.mts';
+import { pageFor, type Frontend } from './frontend/next.mts';
+export { openFrontend, type Frontend } from './frontend/next.mts';
 
 export interface Backend { ts: TsProject; table: RouteTable }
 
@@ -43,20 +48,51 @@ export function discover(project: Project, backend: Backend, method: string, pat
   return { request: l.request, route: { method: r.method, path: r.path, file: r.file, line: r.line }, rules, groups: present(rules) };
 }
 
+/** What the page's own code does for a click step. */
+export interface PageDiscovered {
+  label: string;
+  /** The page file, relative to the frontend folder. */
+  page: string;
+  element: { file: string; line: number; tag: string };
+  component: string;
+  rules: Rule[];
+  groups: Group[];
+}
+
 export interface DiscoveryFile {
   test: string;
   source: string;
   file: string;
   /** The backend folder's name, which rule file paths are relative to (e.g. "backend"). */
   codeRoot: string;
-  steps: { title: string; line: number; text: string; calls: Discovered[] }[];
+  /** The frontend folder's name, for the page rules' file paths. */
+  frontRoot?: string;
+  steps: { title: string; line: number; text: string; calls: Discovered[]; page?: PageDiscovered }[];
+}
+
+/** The label a click step clicks: `click "Create Route"`, `in "Add issue" dialog, click "Save"`. */
+export function clickedLabel(text: string): string | undefined {
+  const hit = matchStep(text);
+  return hit && hit.def.kind === 'click' ? String(hit.args.name) : undefined;
+}
+
+/** For a click step: the element it clicked and the page's own rules around it. */
+export function discoverClick(project: Project, fe: Frontend, pathname: string, label: string): PageDiscovered | undefined {
+  const pageFile = pageFor(fe, pathname);
+  if (!pageFile) return undefined;
+  const found = actionRules(fe, pageFile, label, { glossary: project.config.glossary });
+  if (!found) return undefined;
+  return {
+    label, page: path.relative(fe.ts.root, pageFile).split(path.sep).join('/'),
+    element: found.element, component: found.component, rules: found.rules, groups: present(found.rules),
+  };
 }
 
 /**
  * Rules for every API call of one traced test, marked with what the test checks, saved to
  * .humantest/discovery/<same name as the trace>.json for the UI.
  */
-export function writeDiscovery(project: Project, backend: Backend, t: { file: string; trace: TraceFile }): DiscoveryFile {
+export function writeDiscovery(project: Project, backend: Backend, t: { file: string; trace: TraceFile }, fe?: Frontend): DiscoveryFile {
   const seen = t.trace.steps.flatMap((s) => (/\bsee\b/i.test(s.text) && !/\bnot\s+see\b|shouldn't see/i.test(s.text) ? [...s.text.matchAll(/"([^"]+)"/g)].map((m) => m[1]) : []));
   const cache = new Map<string, Discovered>();
   const steps = t.trace.steps.map((s) => {
@@ -70,10 +106,16 @@ export function writeDiscovery(project: Project, backend: Backend, t: { file: st
       if ('groups' in d) markChecked(d.groups, seen);
       calls.push(d);
     }
-    return { title: s.title, line: s.line, text: s.text, calls };
+    const label = fe && s.pageUrl ? clickedLabel(s.text) : undefined;
+    const page = label ? discoverClick(project, fe!, s.pageUrl!, label) : undefined;
+    if (page) markChecked(page.groups, seen);
+    return { title: s.title, line: s.line, text: s.text, calls, ...(page ? { page } : {}) };
   });
   const out = path.join(project.root, '.humantest', 'discovery', path.basename(t.file));
-  const result: DiscoveryFile = { test: t.trace.test, source: t.trace.source, file: out, codeRoot: path.basename(backend.ts.root), steps };
+  const result: DiscoveryFile = {
+    test: t.trace.test, source: t.trace.source, file: out, codeRoot: path.basename(backend.ts.root),
+    ...(fe ? { frontRoot: path.basename(fe.ts.root) } : {}), steps,
+  };
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, JSON.stringify({ ...result, file: undefined }, (k, v) => (k === 'decl' || k === 'node' ? undefined : v), 1));
   return result;
@@ -83,17 +125,36 @@ export function writeDiscovery(project: Project, backend: Backend, t: { file: st
 export interface TraceFile {
   test: string;
   source: string;
-  steps: { title: string; user: string; line: number; text: string; calls: { method: string; path: string; status?: number; simulated?: boolean }[] }[];
+  steps: { title: string; user: string; line: number; text: string; pageUrl?: string; calls: { method: string; path: string; status?: number; simulated?: boolean; pageUrl?: string }[] }[];
 }
 
-export function readTraces(project: Project): { file: string; trace: TraceFile }[] {
+/** The keys ("<.ht file>::<test name>") of the tests that exist now. */
+export function currentTestKeys(project: Project): Set<string> {
+  return new Set(check(project).parsed.flatMap((pf) => pf.tests.map((t) => `${pf.relFile}::${t.name}`)));
+}
+
+const traceKey = (t: TraceFile) => `${t.source.replace(/:\d+$/, '')}::${t.test}`;
+
+/**
+ * The last trace of each test that still exists. Traces of tests that were renamed or deleted are
+ * left out (and removed with their discovery files when `prune` is set: they are only a cache).
+ */
+export function readTraces(project: Project, prune = false): { file: string; trace: TraceFile }[] {
   const dir = path.join(project.root, '.humantest', 'traces');
   if (!fs.existsSync(dir)) return [];
+  const keys = currentTestKeys(project);
   return fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort().flatMap((f) => {
+    let trace: TraceFile;
     try {
-      return [{ file: path.join(dir, f), trace: JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) as TraceFile }];
+      trace = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) as TraceFile;
     } catch {
       return [];
     }
+    if (keys.has(traceKey(trace))) return [{ file: path.join(dir, f), trace }];
+    if (prune) {
+      fs.rmSync(path.join(dir, f), { force: true });
+      fs.rmSync(path.join(project.root, '.humantest', 'discovery', f), { force: true });
+    }
+    return [];
   });
 }

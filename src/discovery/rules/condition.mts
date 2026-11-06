@@ -9,7 +9,12 @@ import type { TsProject } from '../ts-project.mts';
 import type { Condition } from './types.mts';
 
 /** Names that only hold the real thing: `dto.departurePortId` reads as "departure port id". */
-const CONTAINERS = new Set(['dto', 'data', 'payload', 'body', 'req', 'request', 'args', 'input', 'options', 'opts', 'params', 'query', 'this', 'ctx', 'value', 'values', 'props']);
+const CONTAINERS = new Set(['dto', 'data', 'payload', 'body', 'req', 'request', 'args', 'input', 'options', 'opts', 'params', 'query', 'this', 'ctx', 'value', 'values', 'props',
+  // React state and forms: `formData.departurePortId` reads as "departure port id".
+  'formData', 'form', 'state', 'prev', 'fields']);
+
+/** React Query / form flags that mean "busy": `isPending`, `createMutation.isPending`, `isSubmitting`. */
+const BUSY = /^is(Pending|Loading|Submitting|Saving|Fetching|Mutating)$/;
 
 export interface Words { glossary?: Record<string, string> }
 
@@ -68,9 +73,16 @@ class Humanizer {
         };
         const parts = [part(e.left), part(e.right)];
         if (parts.some((x) => x === undefined)) return undefined;
+        // `!x || !x.trim()` reads as one thing once trim is ignored.
+        if (parts[0] === parts[1]) return parts[0];
         return parts.join(and ? ', and ' : ', or ');
       }
       return this.compare(e, neg);
+    }
+    // `!text.trim()`: whether the text (ignoring spaces) is empty.
+    if (ts.isCallExpression(e) && ts.isPropertyAccessExpression(e.expression) && !e.arguments.length &&
+      ['trim', 'trimStart', 'trimEnd', 'toLowerCase', 'toUpperCase'].includes(e.expression.name.text)) {
+      return this.cond(e.expression.expression, neg);
     }
     if (ts.isCallExpression(e)) return this.call(e, neg);
     // A value used as a condition: `if (schedule)`, `if (user.isActive)`.
@@ -161,6 +173,7 @@ class Humanizer {
   private truthy(e: ts.Expression, neg: boolean): string | undefined {
     const name = ts.isPropertyAccessExpression(e) ? e.name.text : ts.isIdentifier(e) ? e.text : undefined;
     if (!name) return undefined;
+    if (BUSY.test(name)) return neg ? 'no request is in progress' : 'a request is in progress';
     // user.isActive → "user is active"; departurePort.hasSeats → "departure port has seats"
     const m = name.match(/^(is|has|can|should|was|were)([A-Z].*)$/);
     if (m) {
@@ -219,8 +232,9 @@ class Humanizer {
       const kept = parts.filter((x, i) => !(CONTAINERS.has(x) && i < parts.length - 1));
       return kept.map((x) => words(x, this.w)).join(' ');
     }
-    // date.getTime(): the date itself.
-    if (ts.isCallExpression(e) && ts.isPropertyAccessExpression(e.expression) && e.expression.name.text === 'getTime' && !e.arguments.length) {
+    // date.getTime(), text.trim(), text.toLowerCase(): the value itself, for the purpose of a condition.
+    if (ts.isCallExpression(e) && ts.isPropertyAccessExpression(e.expression) && !e.arguments.length &&
+      ['getTime', 'trim', 'trimStart', 'trimEnd', 'toLowerCase', 'toUpperCase', 'toString', 'valueOf'].includes(e.expression.name.text)) {
       return this.value(e.expression.expression);
     }
     return undefined;

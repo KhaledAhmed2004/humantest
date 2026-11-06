@@ -54,14 +54,22 @@ export interface RuleGroup { title: string; lines: RuleLine[] }
 export type DiscoveredCall =
   | { request: string; route: { method: string; path: string; file: string; line: number }; groups: RuleGroup[] }
   | { request: string; problem: string }
-export interface DiscoveryResult { test: string; source: string; codeRoot?: string; steps: { title: string; line: number; text: string; calls: DiscoveredCall[] }[] }
+/** What the page's own code does for a click step. */
+export interface PageRules { label: string; page: string; element: { file: string; line: number; tag: string }; component: string; groups: RuleGroup[] }
+export interface DiscoveryResult {
+  test: string
+  source: string
+  codeRoot?: string
+  frontRoot?: string
+  steps: { title: string; line: number; text: string; calls: DiscoveredCall[]; page?: PageRules }[]
+}
 export interface DiscoveryResponse { configured: boolean; running?: boolean; at?: string; result?: DiscoveryResult }
 
 /** What changed in a test's business logic since it was accepted (src/discovery/baseline.mts). */
 export interface RuleChange { change: 'added' | 'removed' | 'changed'; before?: string; after?: string; source: { file: string; line: number } }
 export interface FunctionChange { change: 'added' | 'removed' | 'changed'; name: string; file: string; line: number; lastCommit?: string }
 export interface RequestChange { request: string; change: 'added' | 'removed' | 'changed' | 'same'; problem?: string; ruleCount?: number; functions: FunctionChange[]; rules: RuleChange[] }
-export interface TestChange { key: string; test: string; source: string; acceptedAt?: string; status: 'same' | 'changed' | 'code-only' | 'new'; requests: RequestChange[] }
+export interface TestChange { key: string; test: string; source: string; acceptedAt?: string; status: 'same' | 'changed' | 'code-only' | 'new' | 'gone'; requests: RequestChange[] }
 export interface ChangesResponse { computing: boolean; at?: string; tests: TestChange[]; error?: string }
 
 export async function getChanges(project: string): Promise<ChangesResponse> {

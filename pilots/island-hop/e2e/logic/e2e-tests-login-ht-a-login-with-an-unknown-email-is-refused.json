@@ -27,6 +27,7 @@
    "line": 11,
    "text": "click \"Sign In\"",
    "requests": [
+    "CLICK \"Sign In\" on src/app/(authentication)/login/page.tsx",
     "POST /api/v1/auth/login"
    ]
   },
@@ -44,6 +45,154 @@
   }
  ],
  "requests": [
+  {
+   "request": "CLICK \"Sign In\" on src/app/(authentication)/login/page.tsx",
+   "ui": {
+    "url": "/login",
+    "label": "Sign In"
+   },
+   "functions": [
+    {
+     "name": "LoginForm",
+     "file": "src/app/(authentication)/login/_components/LoginForm.tsx",
+     "line": 36,
+     "role": "helper",
+     "hash": "1454050473ab"
+    },
+    {
+     "name": "loginSchema",
+     "file": "src/schemas/auth.ts",
+     "line": 13,
+     "role": "validation",
+     "hash": "214e965f5f39"
+    },
+    {
+     "name": "onSubmit",
+     "file": "src/app/(authentication)/login/_components/LoginForm.tsx",
+     "line": 89,
+     "role": "helper",
+     "hash": "a8db980d822d"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Sign In",
+     "when": {
+      "code": "loginMutation.isPending",
+      "text": "a request is in progress"
+     },
+     "id": "ui-block:Sign In",
+     "source": {
+      "file": "src/app/(authentication)/login/_components/LoginForm.tsx",
+      "line": 221
+     },
+     "text": "\"Sign In\" can't be used while a request is in progress."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "Enter your email",
+     "side": "frontend",
+     "facet": "format",
+     "format": "email",
+     "id": "fe:html:Enter your email:format:email",
+     "source": {
+      "file": "src/app/(authentication)/login/_components/LoginForm.tsx",
+      "line": 164
+     },
+     "text": "Enter your email: must be a valid email address."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "required",
+     "required": true,
+     "id": "fe:field:body.email:required",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 14
+     },
+     "side": "frontend",
+     "text": "email: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "type",
+     "type": "text",
+     "id": "fe:field:body.email:type",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 14
+     },
+     "side": "frontend",
+     "text": "email: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "format",
+     "format": "email",
+     "message": "Invalid email address",
+     "id": "fe:field:body.email:format:email",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 14
+     },
+     "side": "frontend",
+     "text": "email: must be a valid email address."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "required",
+     "required": true,
+     "id": "fe:field:body.password:required",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 15
+     },
+     "side": "frontend",
+     "text": "password: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "type",
+     "type": "text",
+     "id": "fe:field:body.password:type",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 15
+     },
+     "side": "frontend",
+     "text": "password: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "min",
+     "value": 6,
+     "unit": "characters",
+     "message": "Password must be at least 6 characters",
+     "id": "fe:field:body.password:min",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 15
+     },
+     "side": "frontend",
+     "text": "password: at least 6 characters."
+    }
+   ]
+  },
   {
    "request": "POST /api/v1/auth/login",
    "route": {
@@ -431,5 +580,6 @@
    ]
   }
  ],
- "acceptedAt": "2026-11-06T15:45:20.880Z"
+ "frontend": true,
+ "acceptedAt": "2026-11-06T16:22:11.865Z"
 }

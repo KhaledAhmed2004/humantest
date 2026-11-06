@@ -19,12 +19,21 @@ const FORMAT_WORDS: Record<string, string> = {
 
 const quote = (m?: string) => (m ? ` "${m}"` : '');
 const condition = (c: Condition) => c.text ?? `\`${c.code}\``;
+/**
+ * Several conditions that all hold ("and"). One that is itself an "or" goes in brackets, so
+ * "edit is false, and (port A is empty, or port B is empty)" can only be read one way.
+ */
+const allOf = (cs: Condition[]) => cs.map((c) => {
+  const t = condition(c);
+  return cs.length > 1 && c.text && c.text.includes(', or ') && !(t.startsWith('(') && t.endsWith(')')) ? `(${t})` : t;
+}).join(', and ');
 const list = (xs: string[], word = 'or') => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} ${word} ${xs.at(-1)}`);
 
 /** Whether every condition in the rule could be put into words. */
 export function isTranslated(r: Rule): boolean {
-  if (r.kind === 'reject') return r.when.every((c) => c.text !== undefined);
+  if (r.kind === 'reject' || r.kind === 'ui-guard') return r.when.every((c) => c.text !== undefined);
   if (r.kind === 'check') return !r.when || r.when.text !== undefined;
+  if (r.kind === 'ui-block') return r.when.text !== undefined;
   return true;
 }
 
@@ -40,6 +49,13 @@ export function renderRule(r: Rule): string {
       return renderReject(r);
     case 'field':
       return `${r.field}: ${fieldFacet(r)}.`;
+    case 'ui-block':
+      return `"${r.element}" can't be used while ${condition(r.when)}.`;
+    case 'ui-guard': {
+      const others = r.otherMessages?.length ? ` (or${r.otherMessages.map(quote).join(', or')})` : '';
+      const stop = r.message ? `the page stops and shows${quote(r.message)}${others}` : 'the page stops';
+      return r.when.length ? `If ${allOf(r.when)}, ${stop}, before sending anything.` : `${stop[0].toUpperCase()}${stop.slice(1)}, before sending anything.`;
+    }
   }
 }
 
@@ -54,7 +70,7 @@ function renderReject(r: RejectRule): string {
   const answer = `the server answers ${statusText(r.status)}${r.message ? `:${quote(r.message)}${others}` : ''}`;
   if (r.onError) return `If the work before it fails, ${answer}.`;
   if (!r.when.length) return `Whenever ${r.in} runs this far, ${answer}.`;
-  return `If ${r.when.map(condition).join(', and ')}, ${answer}.`;
+  return `If ${allOf(r.when)}, ${answer}.`;
 }
 
 function fieldFacet(r: FieldRule): string {

@@ -11,7 +11,10 @@ import { spawnSync } from 'node:child_process';
 import { explainStep } from './compiler/steps.mts';
 import { build, check, loadPhrases, loadProject, listTestFiles, parseFile, rel, type Diagnostic } from './compiler/index.mts';
 import type { Project } from './compiler/project.mts';
-import { discover, locate, openBackend, readTraces, writeDiscovery, type Backend, type Discovered, type Located } from './discovery/index.mts';
+import {
+  discover, discoverClick, locate, openBackend, openFrontend, readTraces, writeDiscovery,
+  type Backend, type Discovered, type Frontend, type Located, type PageDiscovered,
+} from './discovery/index.mts';
 import type { Group } from './discovery/rules/present.mts';
 import { accept, afterRun, changes, logicDir, type TestChange } from './discovery/baseline.mts';
 
@@ -74,8 +77,25 @@ function openOrExit(project: Project): Backend {
 /** Without "decl"/"node": those are compiler objects (huge and circular). */
 const jsonOut = (v: unknown) => JSON.stringify(v, (k, x) => (k === 'decl' || k === 'node' ? undefined : x), 1);
 
-function printGroups(project: Project, groups: Group[], indent: string) {
-  const base = path.basename(path.resolve(project.root, project.config.source!.backend!));
+/** The frontend's code, when the config says where it is (page rules are then shown too). */
+function frontendOf(project: Project): Frontend | undefined {
+  try {
+    return openFrontend(project);
+  } catch (e) {
+    console.log(c.yellow(`⚠ Can't read the frontend code: ${(e as Error).message}`));
+    return undefined;
+  }
+}
+
+function printPage(project: Project, d: PageDiscovered, indent = '') {
+  const base = path.basename(path.resolve(project.root, project.config.source!.frontend!));
+  console.log(`${indent}${c.green('→')} ${c.bold(`clicks "${d.label}"`)}  ${c.dim(`<${d.element.tag}> in ${d.component}, ${base}/${d.element.file}:${d.element.line}`)}`);
+  if (!d.groups.length) console.log(`${indent}    ${c.dim('No rules of its own on the page.')}`);
+  printGroups(project, d.groups, `${indent}    `, base);
+}
+
+function printGroups(project: Project, groups: Group[], indent: string, root?: string) {
+  const base = root ?? path.basename(path.resolve(project.root, project.config.source!.backend!));
   for (const g of groups) {
     console.log(`${indent}${c.bold(g.title)}`);
     for (const l of g.lines) {
@@ -96,19 +116,25 @@ function printDiscovered(project: Project, d: Discovered, indent = '') {
 }
 
 function printChange(project: Project, t: TestChange) {
-  const base = path.basename(path.resolve(project.root, project.config.source!.backend!));
-  const at = (s: { file: string; line: number }) => c.dim(`${base}/${s.file}:${s.line}`);
+  const folder = (dir?: string) => (dir ? path.basename(path.resolve(project.root, dir)) : '');
   const when = t.acceptedAt ? c.dim(` (accepted ${new Date(t.acceptedAt).toLocaleString()})`) : '';
   if (t.status === 'same') { console.log(`${c.green('✔')} ${t.test}${when}  ${c.dim('no change')}`); return; }
   if (t.status === 'new') { console.log(`${c.cyan('+')} ${t.test}  ${c.dim('no baseline yet')}`); return; }
+  if (t.status === 'gone') { console.log(c.dim(`− ${t.test}  no longer a test: its old baseline is still in ${path.relative(project.root, logicDir(project))} (discover --accept removes it)`)); return; }
   const head = t.status === 'changed' ? c.yellow('⚠ business logic changed') : c.dim('code changed, rules the same');
   console.log(`\n${t.status === 'changed' ? c.yellow('⚠') : c.dim('~')} ${c.bold(t.test)}  ${head}${when}`);
   for (const r of t.requests) {
     if (r.change === 'same') continue;
+    // A click's code is in the frontend, an API call's in the backend.
+    const base = r.request.startsWith('CLICK ') ? folder(project.config.source?.frontend) : folder(project.config.source?.backend);
+    const at = (s: { file: string; line: number }) => c.dim(`${base}/${s.file}:${s.line}`);
     const label = { added: c.cyan('new call'), removed: c.red('no longer reached'), changed: c.yellow('changed') }[r.change];
     console.log(`  ${c.bold(r.request)}  ${label}${r.problem ? c.red(`  ${r.problem}`) : ''}`);
     if (r.change === 'removed') console.log(c.dim(`    ${r.ruleCount ?? 0} rule(s) were behind it. Run the test again to see what it reaches now.`));
-    if (r.change === 'added') console.log(c.dim(`    The test now makes this call: ${r.ruleCount ?? 0} rule(s) behind it (npm run ht -- discover "${r.request}").`));
+    if (r.change === 'added') {
+      const how = r.request.startsWith('CLICK ') ? 'npm run ht -- discover' : `npm run ht -- discover "${r.request}"`;
+      console.log(c.dim(`    The test now does this: ${r.ruleCount ?? 0} rule(s) behind it (${how}).`));
+    }
     for (const x of r.rules) {
       if (x.change === 'added') console.log(`    ${c.green('+')} ${x.after}  ${at(x.source)}`);
       else if (x.change === 'removed') console.log(`    ${c.red('−')} ${x.before}  ${at(x.source)}`);
@@ -127,28 +153,44 @@ function runDiscover(project: Project, rest: string[]) {
   const flags = new Set(rest.filter((a) => a.startsWith('--')));
   const ki = rest.indexOf('--key');
   const key = ki >= 0 ? rest[ki + 1] : undefined;
-  const words = rest.filter((a, i) => !a.startsWith('--') && !(ki >= 0 && i === ki + 1));
+  const value = (name: string) => { const i = rest.indexOf(name); return i >= 0 ? rest[i + 1] : undefined; };
+  const valued = new Set(['--key', '--page', '--click']);
+  const words = rest.filter((a, i) => !a.startsWith('--') && !valued.has(rest[i - 1]));
   const backend = openOrExit(project);
 
+  // discover --page /login --click "Sign In": the page's own rules for one click.
+  if (value('--click')) {
+    const fe = frontendOf(project);
+    if (!fe) { console.log(c.red('✘ No "source.frontend" in humantest.config.json.')); process.exit(1); }
+    const d = discoverClick(project, fe, value('--page') ?? '/', value('--click')!);
+    if (json) { console.log(jsonOut(d ?? null)); return; }
+    if (!d) console.log(c.yellow(`Couldn't find "${value('--click')}" on the page ${value('--page') ?? '/'} in the frontend code.`));
+    else printPage(project, d);
+    return;
+  }
+
   if (flags.has('--accept')) {
-    const saved = accept(project, backend, key);
-    if (json) { console.log(JSON.stringify({ saved: saved.map((f) => path.relative(project.root, f)) })); return; }
-    if (!saved.length) console.log(c.yellow(key ? `Nothing to accept for ${key}: run the test first.` : 'Nothing to accept: run the tests first.'));
-    for (const f of saved) console.log(`${c.green('✔')} accepted ${c.dim(path.relative(project.root, f))}`);
+    const { saved, removed } = accept(project, backend, key, frontendOf(project));
+    const rel = (f: string) => path.relative(project.root, f);
+    if (json) { console.log(JSON.stringify({ saved: saved.map(rel), removed: removed.map(rel) })); return; }
+    if (!saved.length && !removed.length) console.log(c.yellow(key ? `Nothing to accept for ${key}: run the test first.` : 'Nothing to accept: run the tests first.'));
+    for (const f of saved) console.log(`${c.green('✔')} accepted ${c.dim(rel(f))}`);
+    for (const f of removed) console.log(`${c.dim('−')} removed ${c.dim(rel(f))} ${c.dim('(its test no longer exists)')}`);
     return;
   }
   if (flags.has('--changes') || flags.has('--check')) {
-    const all = changes(project, backend);
+    const all = changes(project, backend, frontendOf(project));
     if (json) { console.log(JSON.stringify(all)); return; }
     if (!all.length) { console.log(c.yellow(`No accepted business logic yet (${path.relative(project.root, logicDir(project))} is empty). Run the tests, then: discover --accept`)); return; }
     for (const t of all) printChange(project, t);
-    const changed = all.filter((t) => t.status === 'changed');
+    const live = all.filter((t) => t.status !== 'gone');
+    const changed = live.filter((t) => t.status === 'changed');
     console.log('');
     if (changed.length) {
-      console.log(c.yellow(`${changed.length} of ${all.length} test(s) rely on business logic that changed. If the change is intended: npm run ht -- discover --accept`));
+      console.log(c.yellow(`${changed.length} of ${live.length} test(s) rely on business logic that changed. If the change is intended: npm run ht -- discover --accept`));
       if (flags.has('--check')) process.exit(1);
     } else {
-      console.log(c.green(`✔ The business logic behind all ${all.length} test(s) is as accepted.`));
+      console.log(c.green(`✔ The business logic behind all ${live.length} test(s) is as accepted.`));
     }
     return;
   }
@@ -163,18 +205,23 @@ function runDiscover(project: Project, rest: string[]) {
   const traces = readTraces(project);
   if (!traces.length) { console.log(c.yellow('No traces yet. Run the tests first (npm test), then discover again.')); return; }
   // Tests seen for the first time get their baseline here too (the UI runs this after each run).
-  const { started } = afterRun(project, backend);
+  const fe = frontendOf(project);
+  const { started } = afterRun(project, backend, fe);
   if (started && !json) console.log(c.dim(`Saved the business logic of ${started} new test(s) in ${path.relative(project.root, logicDir(project))} (commit it).`));
   for (const t of traces) {
-    const result = writeDiscovery(project, backend, t);
+    const result = writeDiscovery(project, backend, t, fe);
     if (json) { console.log(jsonOut(result)); continue; }
     console.log(`\n📄 ${c.bold(result.test)}  ${c.dim(result.source)}`);
     for (const st of result.steps) {
-      if (!st.calls.length) continue;
+      if (!st.calls.length && !st.page) continue;
       console.log(`\n  ${c.dim(String(st.line).padStart(4) + ' │')} ${st.text}`);
+      if (st.page) printPage(project, st.page, '    ');
       for (const d of st.calls) printDiscovered(project, d, '    ');
     }
-    const lines = result.steps.flatMap((s) => s.calls.flatMap((d) => ('groups' in d ? d.groups.flatMap((g) => g.lines) : [])));
+    const lines = result.steps.flatMap((s) => [
+      ...(s.page ? s.page.groups.flatMap((g) => g.lines) : []),
+      ...s.calls.flatMap((d) => ('groups' in d ? d.groups.flatMap((g) => g.lines) : [])),
+    ]);
     const checked = lines.filter((l) => l.checked).length;
     console.log(`\n  ${c.green(`✔ ${checked} checked by this test`)} · ${c.yellow(`○ ${lines.length - checked} not checked`)}  ${c.dim(`(saved for the UI in ${path.relative(project.root, result.file)})`)}`);
   }
@@ -297,18 +344,22 @@ function main() {
         // The business rules behind what the tests just did, for `discover` and the UI.
         try {
           const backend = openBackend(project);
+          const fe = frontendOf(project);
           const traces = readTraces(project);
           const flag = pi >= 0 ? ` --project ${path.relative(process.cwd(), projectDir).split(path.sep).join('/') || '.'}` : '';
           let lines = 0, checked = 0;
           for (const t of traces) {
-            const d = writeDiscovery(project, backend, t);
-            for (const l of d.steps.flatMap((s) => s.calls.flatMap((x) => ('groups' in x ? x.groups.flatMap((g) => g.lines) : [])))) {
+            const d = writeDiscovery(project, backend, t, fe);
+            for (const l of d.steps.flatMap((s) => [
+              ...(s.page ? s.page.groups.flatMap((g) => g.lines) : []),
+              ...s.calls.flatMap((x) => ('groups' in x ? x.groups.flatMap((g) => g.lines) : [])),
+            ])) {
               lines++;
               if (l.checked) checked++;
             }
           }
           // The first time a test runs, what it relies on becomes its baseline; later changes need accepting.
-          const { started, changed } = afterRun(project, backend);
+          const { started, changed } = afterRun(project, backend, fe);
           console.log(c.dim(`Business logic behind these tests: ${lines} rules, ${checked} checked by a step. See them with: npm run ht -- discover${flag}`));
           if (started) console.log(c.dim(`Saved the business logic of ${started} new test(s) in ${path.relative(project.root, logicDir(project))} (commit it).`));
           if (changed.length) {

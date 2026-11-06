@@ -10,7 +10,9 @@ import path from 'node:path';
 import type { Project } from '../compiler/project.mts';
 import { matchRoute } from './backend/express.mts';
 import { sliceRoute } from './backend/slice.mts';
-import { readTraces, type Backend, type TraceFile } from './index.mts';
+import { clickedLabel, currentTestKeys, discoverClick, readTraces, type Backend, type Frontend, type TraceFile } from './index.mts';
+import { actionRules } from './frontend/actions.mts';
+import { pageFor } from './frontend/next.mts';
 import { extractRules } from './rules/index.mts';
 import { renderRule } from './rules/render.mts';
 import type { Rule } from './rules/types.mts';
@@ -24,6 +26,8 @@ export interface SnapRequest {
   route?: { method: string; path: string; file: string; line: number };
   /** No route matched (it may have been removed or renamed). */
   problem?: string;
+  /** For a click on the page (not an API call): where, and on what, so it can be found again. */
+  ui?: { url: string; label: string };
   functions: SnapFunction[];
   rules: SnapRule[];
 }
@@ -38,6 +42,8 @@ export interface Snapshot {
   steps: { title: string; line: number; text: string; requests: string[] }[];
   requests: SnapRequest[];
   acceptedAt?: string;
+  /** The page's own code (clicks) is part of it. Baselines saved before HumanTest read the frontend lack this. */
+  frontend?: boolean;
 }
 
 const fileSlug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -74,11 +80,35 @@ function snapRequest(project: Project, backend: Backend, method: string, pathnam
   };
 }
 
+/** A click on the page, in the current frontend code: the element's own rules and the code behind them. */
+function snapClick(project: Project, fe: Frontend, url: string, label: string): SnapRequest {
+  const d = discoverClick(project, fe, url, label);
+  const pageFile = pageFor(fe, url);
+  const where = pageFile ? path.relative(fe.ts.root, pageFile).split(path.sep).join('/') : url;
+  const request = `CLICK "${label}" on ${where}`;
+  if (!d) return { request, ui: { url, label }, problem: `"${label}" is no longer on ${where} in the frontend code.`, functions: [], rules: [] };
+  const found = actionRules(fe, pageFile!, label, { glossary: project.config.glossary });
+  return {
+    request, ui: { url, label },
+    functions: (found?.functions ?? []).map((f) => ({ name: f.name, file: f.file, line: f.line, role: f.role, hash: f.hash })),
+    rules: d.rules.map((x) => ({ ...x, text: renderRule(x) })),
+  };
+}
+
 /** A snapshot of a test from its last trace: the requests it really made, in the current code. */
-export function snapshotFromTrace(project: Project, backend: Backend, trace: TraceFile): Snapshot {
+export function snapshotFromTrace(project: Project, backend: Backend, trace: TraceFile, fe?: Frontend): Snapshot {
   const requests = new Map<string, SnapRequest>();
   const steps = trace.steps.map((s) => {
     const made: string[] = [];
+    const label = fe && s.pageUrl ? clickedLabel(s.text) : undefined;
+    if (label) {
+      const snap = snapClick(project, fe!, s.pageUrl!, label);
+      // Only clicks whose element was found: a button from a design library has no rules of its own here.
+      if (!snap.problem) {
+        if (!requests.has(snap.request)) requests.set(snap.request, snap);
+        made.push(snap.request);
+      }
+    }
     for (const c of s.calls) {
       if (c.simulated) continue;
       const snap = snapRequest(project, backend, c.method, c.path);
@@ -87,18 +117,19 @@ export function snapshotFromTrace(project: Project, backend: Backend, trace: Tra
     }
     return { title: s.title, line: s.line, text: s.text, requests: made };
   });
-  return { version: 1, key: keyOfTrace(trace), test: trace.test, source: trace.source, steps, requests: [...requests.values()] };
+  return { version: 1, key: keyOfTrace(trace), test: trace.test, source: trace.source, steps, requests: [...requests.values()], ...(fe ? { frontend: true } : {}) };
 }
 
 /** The same test, rebuilt from a baseline's requests against the current code (no test run needed). */
-export function snapshotFromBaseline(project: Project, backend: Backend, base: Snapshot): Snapshot {
+export function snapshotFromBaseline(project: Project, backend: Backend, base: Snapshot, fe?: Frontend): Snapshot {
   const requests = base.requests.map((r) => {
+    if (r.ui) return fe ? snapClick(project, fe, r.ui.url, r.ui.label) : r;
     const [method, ...rest] = r.request.split(' ');
     return snapRequest(project, backend, method, rest.join(' '));
   });
   // A request whose route moved to a new pattern is still the same request for the steps.
   const renamed = new Map(base.requests.map((r, i) => [r.request, requests[i].request]));
-  return { ...base, acceptedAt: undefined, steps: base.steps.map((s) => ({ ...s, requests: s.requests.map((q) => renamed.get(q) ?? q) })), requests };
+  return { ...base, acceptedAt: undefined, ...(fe ? { frontend: true } : {}), steps: base.steps.map((s) => ({ ...s, requests: s.requests.map((q) => renamed.get(q) ?? q) })), requests };
 }
 
 export function readBaseline(project: Project, key: string): Snapshot | undefined {
@@ -153,7 +184,7 @@ export interface TestChange {
   source: string;
   acceptedAt?: string;
   /** "changed": rules differ. "code-only": code changed but no rule did (e.g. a refactor). */
-  status: 'same' | 'changed' | 'code-only' | 'new';
+  status: 'same' | 'changed' | 'code-only' | 'new' | 'gone';
   requests: RequestChange[];
 }
 
@@ -167,7 +198,10 @@ export function compare(before: Snapshot | undefined, after: Snapshot): TestChan
   const base = { key: after.key, test: after.test, source: after.source, acceptedAt: before?.acceptedAt };
   if (!before) return { ...base, status: 'new', requests: [] };
   const old = new Map(before.requests.map((r) => [r.request, r]));
-  const now = new Map(after.requests.map((r) => [r.request, r]));
+  // A baseline from before HumanTest read the frontend has no clicks: they are not new logic, so they are left out
+  // (accepting again adds them).
+  const comparable = before.frontend || !after.frontend ? after.requests : after.requests.filter((r) => !r.ui);
+  const now = new Map(comparable.map((r) => [r.request, r]));
   const requests: RequestChange[] = [];
   for (const [req, b] of old) {
     const a = now.get(req);
@@ -255,11 +289,16 @@ export function lastCommit(root: string, file: string): string | undefined {
  * What changed since each test's baseline, in the current code. Without running the tests: the
  * requests are the ones the test made when its baseline was accepted.
  */
-export function changes(project: Project, backend: Backend): TestChange[] {
-  return readBaselines(project).map((base) => {
-    const result = compare(base, snapshotFromBaseline(project, backend, base));
+export function changes(project: Project, backend: Backend, fe?: Frontend): TestChange[] {
+  const keys = currentTestKeys(project);
+  return readBaselines(project).map((base): TestChange => {
+    // Its test was renamed or deleted: nothing to compare (accepting removes the old baseline).
+    if (!keys.has(base.key)) return { key: base.key, test: base.test, source: base.source, acceptedAt: base.acceptedAt, status: 'gone', requests: [] };
+    const result = compare(base, snapshotFromBaseline(project, backend, base, fe));
     for (const r of result.requests) {
-      for (const f of r.functions) f.lastCommit = lastCommit(backend.ts.root, f.file);
+      // A click's code is the frontend's; an API call's is the backend's.
+      const root = r.request.startsWith('CLICK ') && fe ? fe.ts.root : backend.ts.root;
+      for (const f of r.functions) f.lastCommit = lastCommit(root, f.file);
     }
     return result;
   });
@@ -269,11 +308,11 @@ export function changes(project: Project, backend: Backend): TestChange[] {
  * After a run: tests run for the first time get their baseline (what they rely on now); for the
  * others, what changed since it was accepted, including calls the test makes now and didn't before.
  */
-export function afterRun(project: Project, backend: Backend): { started: number; changed: TestChange[] } {
+export function afterRun(project: Project, backend: Backend, fe?: Frontend): { started: number; changed: TestChange[] } {
   let started = 0;
   const changed: TestChange[] = [];
-  for (const { trace } of readTraces(project)) {
-    const snap = snapshotFromTrace(project, backend, trace);
+  for (const { trace } of readTraces(project, true)) {
+    const snap = snapshotFromTrace(project, backend, trace, fe);
     const base = readBaseline(project, snap.key);
     if (!base) { saveBaseline(project, snap); started++; continue; }
     const diff = compare(base, snap);
@@ -282,16 +321,29 @@ export function afterRun(project: Project, backend: Backend): { started: number;
   return { started, changed };
 }
 
-/** Accepts the current logic as the baseline: from the test's last trace, else from its old baseline. */
-export function accept(project: Project, backend: Backend, key?: string): string[] {
+/**
+ * Accepts the current logic as the baseline: from the test's last trace, else from its old baseline.
+ * Accepting everything also removes the baselines of tests that no longer exist.
+ */
+export function accept(project: Project, backend: Backend, key?: string, fe?: Frontend): { saved: string[]; removed: string[] } {
   const saved: string[] = [];
+  const removed: string[] = [];
+  const current = currentTestKeys(project);
   const traces = new Map(readTraces(project).map((t) => [keyOfTrace(t.trace), t.trace]));
-  const keys = key ? [key] : [...new Set([...traces.keys(), ...readBaselines(project).map((b) => b.key)])];
+  const baselines = readBaselines(project);
+  const keys = key ? [key] : [...new Set([...traces.keys(), ...baselines.map((b) => b.key)])];
   for (const k of keys) {
+    if (!current.has(k)) {
+      if (!key) {
+        const f = baselineFile(project, k);
+        if (fs.existsSync(f)) { fs.rmSync(f); removed.push(f); }
+      }
+      continue;
+    }
     const trace = traces.get(k);
     const old = readBaseline(project, k);
-    const snap = trace ? snapshotFromTrace(project, backend, trace) : old ? snapshotFromBaseline(project, backend, old) : undefined;
+    const snap = trace ? snapshotFromTrace(project, backend, trace, fe) : old ? snapshotFromBaseline(project, backend, old, fe) : undefined;
     if (snap) saved.push(saveBaseline(project, snap));
   }
-  return saved;
+  return { saved, removed };
 }

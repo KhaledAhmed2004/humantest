@@ -109,9 +109,16 @@ Two settings in `humantest.config.json` for apps with a separate backend:
 When `humantest.config.json` says where the backend's code is, HumanTest also shows what the code does behind each step, without any AI: it reads the code (it never runs it) and writes the rules out in plain English.
 
 ```json
-"source": { "backend": "../my-app/backend" },
+"source": { "backend": "../my-app/backend", "frontend": "../my-app/frontend" },
 "glossary": { "isArch": "archived" }
 ```
+
+For every step that clicks something (`click "Create Route"`), the button is found by its words in the page's own components (Next.js App Router), and its rules come out under **On the page, before anything is sent**:
+
+- when it can't be used: `disabled={…}` → `"Create Route" can't be used while the number of ports is less than 2, …`
+- what the browser checks first: `required`, `min`, `maxLength`, `type="email"` on the form's inputs
+- the form's own schema: `useForm({ resolver: zodResolver(schema) })`
+- when the page stops before sending: `if (…) { toast.error('…'); return; }` in the click or submit handler
 
 After every run, each step's API calls are followed into the backend (Express routes, middleware, controllers, services) and three kinds of rules come out, each with the file and line it comes from:
 
@@ -127,6 +134,7 @@ The first time a test runs, what it relies on is saved in `e2e/logic/` (commit i
 |---|---|
 | `npm run ht -- discover` | The rules behind every step of the last run. |
 | `npm run ht -- discover "POST /api/v1/routes"` | The rules behind one API call. |
+| `npm run ht -- discover --page /login --click "Sign In"` | The page's own rules for one click. |
 | `npm run ht -- locate "POST /api/v1/routes"` | The code it runs through, function by function. |
 | `npm run ht -- discover --changes` | What changed since the logic was accepted (no test run needed). |
 | `npm run ht -- discover --check` | The same, exiting with 1 on changes: for CI. |
