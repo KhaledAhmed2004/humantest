@@ -81,6 +81,19 @@ const short = (v: unknown, max = 300) => {
   const t = typeof v === 'string' ? v : JSON.stringify(v);
   return t && t.length > max ? `${t.slice(0, max)}…` : t;
 };
+/**
+ * {today}, {tomorrow}, {yesterday}, {in 3 days}, {3 days ago} in a step's text: that date on the
+ * test machine, as YYYY-MM-DD. Tests that need "a day with trips" keep working as days pass.
+ */
+export function withDates(text: string): string {
+  return text.replace(/{(today|tomorrow|yesterday|in (d+) days?|(d+) days? ago)}/gi, (_m, word: string, ahead?: string, back?: string) => {
+    const shift = ahead ? Number(ahead) : back ? -Number(back) : ({ today: 0, tomorrow: 1, yesterday: -1 } as Record<string, number>)[word.toLowerCase()];
+    const d = new Date();
+    d.setDate(d.getDate() + shift);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** `a.b[0].c` inside a parsed JSON reply. */
 const pick = (obj: unknown, dotted: string) =>
@@ -486,6 +499,8 @@ interface Reply { label: string; status: number; text: () => Promise<string | nu
 export class User {
   readonly log: LogEntry[] = [];
   private mark = 0;
+  /** The element the last click landed on: while it is still there, the page hasn't moved on. */
+  private lastClicked?: Locator;
   private lastReply?: Reply;
   private readonly mocked = new WeakSet<Request>();
   /** Reply bodies, captured on the Node side so they survive page navigations. */
@@ -562,7 +577,18 @@ export class User {
     });
     page.on('pageerror', (err) => ht.warn(name, `JavaScript error on the page: ${err.message}`));
     page.on('console', (msg) => {
-      if (msg.type() === 'error' && !/Failed to load resource/i.test(msg.text())) ht.warn(name, `Console error: ${msg.text()}`);
+      if (msg.type() !== 'error' || /Failed to load resource/i.test(msg.text())) return;
+      // React writes console.error('In HTML, %s cannot be a descendant of <%s>.', '<div>', 'p'):
+      // the text alone keeps the %s, so the arguments are put in.
+      const text = msg.text();
+      if (!/%[sdoOif]/.test(text)) { ht.warn(name, `Console error: ${text}`); return; }
+      void Promise.all(msg.args().map((a) => a.jsonValue().catch(() => '…')))
+        .then(([format, ...args]) => {
+          let k = 0;
+          const filled = (typeof format === 'string' ? format : text).replace(/%[sdoOif]/g, () => (k < args.length ? String(typeof args[k] === 'object' ? JSON.stringify(args[k++]) : args[k++]) : '…'));
+          ht.warn(name, `Console error: ${filled}`);
+        })
+        .catch(() => ht.warn(name, `Console error: ${text}`));
     });
     if (DEMO) page.on('load', () => { void this.showCaption(); });
   }
@@ -699,29 +725,57 @@ export class User {
   }
 
   /** Wait until one of the candidates is visible, then use the best one. */
-  private async pick(candidates: Locator[], what: string): Promise<Locator> {
+  /**
+   * `exact`: how many of the candidates (the first ones) are a sure match. When only a weaker
+   * match is on screen, the page may still be changing: "Continue to pay" is part of "Continue to
+   * Payment" on the page before. So an exact match gets a moment to appear first.
+   */
+  private async pick(candidates: Locator[], what: string, exact = candidates.length): Promise<Locator> {
     let any = candidates[0];
     for (const c of candidates.slice(1)) any = any.or(c);
     await expect(any.first(), `I can't find ${what}.`).toBeVisible();
-    for (const c of candidates) {
-      if (await c.first().isVisible().catch(() => false)) return c.first();
+    const firstVisible = async () => {
+      for (const [i, c] of candidates.entries()) {
+        if (await c.first().isVisible().catch(() => false)) return i;
+      }
+      return -1;
+    };
+    // The partial match is the very thing the last step clicked: the page hasn't changed yet
+    // (a dev server compiles a page on its first visit), so wait as long as for anything else.
+    const stale = async (j: number) => !!this.lastClicked &&
+      await candidates[j].first().evaluate((el, last) => el === last, await this.lastClicked.elementHandle({ timeout: 100 }).catch(() => null)).catch(() => false);
+    let i = await firstVisible();
+    for (const start = Date.now(); i >= exact;) {
+      const waited = Date.now() - start;
+      if (waited > 15_000 || (waited > 1500 && !(await stale(i)))) break;
+      await sleep(100);
+      i = await firstVisible();
     }
-    return any.first();
+    return i >= 0 ? candidates[i].first() : any.first();
   }
 
   private clickable(name: string, role?: string) {
     const where = this.scope ? ` inside "${this.scope.name}"` : '';
-    return this.pick(this.clickableCandidates(name, role), `a ${role ?? 'button, link or menu item'} called "${name}"${where}`);
+    const candidates = this.clickableCandidates(name, role);
+    // Buttons and links with exactly these words come first. Plain text with the same words (help text
+    // that names the button: "Click Continue to pay") and partial matches only win when no such
+    // button shows up: a button that is still loading would otherwise lose to its own description.
+    const special = role === 'dialog' || role === 'panel' || role === 'section' || !!this.mapped(name);
+    const strong = special ? candidates.length : role === 'button' || role === 'link' ? 1 : 10;
+    return this.pick(candidates, `a ${role ?? 'button, link or menu item'} called "${name}"${where}`, strong);
   }
 
   private field(name: string) {
     const where = this.scope ? ` inside "${this.scope.name}"` : '';
-    return this.pick(this.fieldCandidates(name), `an input or dropdown called "${name}"${where} (looked for a label, placeholder or name)`);
+    const candidates = this.fieldCandidates(name);
+    // The last four are partial: label, placeholder, dropdown name, the words next to it.
+    return this.pick(candidates, `an input or dropdown called "${name}"${where} (looked for a label, placeholder or name)`, candidates.length > 1 ? candidates.length - 4 : 1);
   }
 
   // ---------------- browser actions ----------------
 
   async goTo(url: string) {
+    url = withDates(url);
     this.mark = this.log.length;
     await this.page.goto(url);
   }
@@ -732,6 +786,7 @@ export class User {
   }
 
   async type(value: string, field: string) {
+    value = withDates(value);
     const loc = await this.field(field);
     await this.noteFocus(loc);
     this.mark = this.log.length;
@@ -756,6 +811,7 @@ export class User {
   }
 
   async choose(option: string, field: string) {
+    option = withDates(option);
     const loc = await this.field(field);
     await this.noteFocus(loc);
     this.mark = this.log.length;
@@ -812,9 +868,11 @@ export class User {
     if (DEMO) await this.highlight(loc);
     this.mark = this.log.length;
     await loc.click();
+    this.lastClicked = loc;
   }
 
   async see(text: string) {
+    text = withDates(text);
     try {
       await expect(this.root.getByText(text).first(), `"${text}" should be visible${this.scope ? ` inside "${this.scope.name}"` : ' on the page'}, but it isn't.`).toBeVisible();
       await this.noteFocus(this.root.getByText(text).first());
@@ -841,6 +899,7 @@ export class User {
   }
 
   async notSee(text: string) {
+    text = withDates(text);
     await expect(this.root.getByText(text).first(), `"${text}" should NOT be visible, but it is.`).toBeHidden();
   }
 

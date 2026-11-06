@@ -56,7 +56,11 @@ in "Add issue" dialog, should see "Choose a condition"
 ```
 
 The name can be part of the full name (`"Add issue"` finds the dialog "Add issue · Maxilla 11").
-Names in `click` work the same way: an exact match wins, otherwise a partial one is used (`click "Actions for gingivitis"`).
+Names in `click` work the same way: a button or link with exactly those words wins, otherwise text with those words or a partial match is used (`click "Actions for gingivitis"`). While the page is still changing, HumanTest waits for the exact one: "Continue to pay" is never taken for "Continue to Payment" on the page before.
+
+### Dates
+
+`{today}`, `{tomorrow}`, `{yesterday}`, `{in 3 days}` and `{3 days ago}` in a step's quoted text become that date on the test machine, as YYYY-MM-DD: `go to "/ferries?departureDate={tomorrow}"`. Tests that need "a day with trips" keep working as days pass.
 
 Page names come from `pages` in the config. Fields are found by label, placeholder or name, or by the words next to them (`<Label>From *</Label>` beside a dropdown it isn't linked to). Buttons and links are found by their visible name. If something can't be found that way, add it under `elements` in the config (`"Sign up": "#submit"`).
 
@@ -145,6 +149,8 @@ The first time a test runs, what it relies on is saved in `e2e/logic/` (commit i
 | `npm run ht -- discover --changes` | What changed since the logic was accepted (no test run needed). |
 | `npm run ht -- discover --check` | The same, exiting with 1 on changes: for CI. |
 | `npm run ht -- discover --accept` | Accept the current logic (`--key "<file>::<test>"` for one test). |
+| `npm run ht -- discover --gaps` | What the tests don't cover: per part of the app, how many requests a test reaches and how many of their rules a test checks; then each unchecked rule. `--all` lists the requests no test reaches. |
+| `npm run ht -- discover --gaps --drafts` | Also a draft test for each unchecked refusal or page stop: the steps of a test that gets there, what to make true, and the message to see. |
 
 The UI shows the same: a **Business logic** panel under the steps, a **Logic changed** mark in the test list a few seconds after someone saves a backend file, and an **Accept the change** button.
 

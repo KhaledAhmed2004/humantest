@@ -1,0 +1,21 @@
+# A traveller books a ferry and cancels it again, in Island Hop.
+# Payments are off on a local backend (no PAYMENTS_ENABLED), so a booking is confirmed straight
+# away and nothing is charged. Cancelling gives the seats back, so the trip is as it was.
+# The traveller is a seeded account (prisma/seed.ts).
+
+Test: A traveller books two seats and cancels the booking
+
+  As traveller:
+    go to "/ferries?from=Blowing Point, Anguilla&to=Marigot, Saint Martin&departureDate={tomorrow}&adults=2&passengers=2 Passengers"
+    click "Select Trip"
+    click "Continue to Passenger Details"
+    click "Continue to Payment"
+    click "Continue to pay"
+    backend should receive POST /api/v1/bookings
+    backend should reply 201 Created
+    click "Manage booking"
+    click "Cancel Booking"
+    in "Cancel Booking" dialog, click "Confirm Cancellation"
+    backend should receive PATCH /api/v1/bookings/:id/cancel
+    backend should reply 200 OK
+    should see "Booking cancelled successfully"

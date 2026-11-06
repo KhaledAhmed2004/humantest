@@ -17,6 +17,7 @@ import {
 } from './discovery/index.mts';
 import type { Group } from './discovery/rules/present.mts';
 import { accept, afterRun, changes, logicDir, type TestChange } from './discovery/baseline.mts';
+import { draftFor, gaps, type GapReport } from './discovery/gaps.mts';
 
 const c = {
   red: (s: string) => `\x1b[31m${s}\x1b[0m`,
@@ -148,6 +149,54 @@ function printChange(project: Project, t: TestChange) {
   }
 }
 
+function printGaps(project: Project, r: GapReport, drafts: boolean, all: boolean) {
+  const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : '–');
+  console.log(c.bold('\nWhat the tests cover'));
+  console.log(c.dim('  part of the app      requests reached   rules checked (of the reached ones)'));
+  for (const a of r.areas) {
+    const reached = `${a.reached} of ${a.requests}`.padEnd(17);
+    const checked = a.reached ? `${a.checked} of ${a.reachedRules} (${pct(a.checked, a.reachedRules)})` : c.dim('nothing reached');
+    console.log(`  ${(a.name === 'page' ? 'on the page' : a.name).padEnd(20)} ${a.reached ? reached : c.dim(reached)}  ${checked}`);
+  }
+
+  console.log(c.bold('\nNot checked by any test, in what the tests reach'));
+  console.log(c.dim('  (what stops the user and what changes first; field-by-field rules are counted)'));
+  const draftsOut: string[] = [];
+  for (const q of r.reached) {
+    const open = q.lines.filter((l) => !l.checked);
+    if (!open.length) continue;
+    const by = q.reachedBy.slice(0, 2).map((b) => `"${b.test}"`).join(', ') + (q.reachedBy.length > 2 ? ` and ${q.reachedBy.length - 2} more` : '');
+    console.log(`\n  ${c.bold(q.request)}  ${c.dim(`${q.lines.length - open.length} of ${q.lines.length} checked · reached by ${by}`)}`);
+    const fields = open.filter((l) => l.group === 'What the request must contain' && !l.ids.some((id) => id.startsWith('check:')));
+    for (const l of open) {
+      if (fields.includes(l)) continue;
+      console.log(`    ${c.yellow('○')} ${l.text}  ${c.dim(`${q.root}/${l.source.file}:${l.source.line}`)}`);
+      if (drafts && l.messages.length && /says no|On the page/.test(l.group)) {
+        const d = draftFor(project, q, l);
+        if (d) draftsOut.push(d);
+      }
+    }
+    if (fields.length) console.log(c.dim(`    ○ and ${fields.length} rule(s) about single fields of the request`));
+  }
+
+  const total = r.unreached.length;
+  if (total) {
+    const byArea = new Map<string, number>();
+    for (const u of r.unreached) byArea.set(u.area, (byArea.get(u.area) ?? 0) + 1);
+    console.log(c.bold(`\nNot reached by any test: ${total} request(s)`), c.dim([...byArea].sort((a, b) => b[1] - a[1]).map(([a, n]) => `${a} ${n}`).join(', ')));
+    if (all) for (const u of r.unreached) console.log(`  ${u.request}  ${c.dim(`${u.rules} rule(s)`)}`);
+    else console.log(c.dim('  --all lists them.'));
+  }
+  if (drafts) {
+    const shown = all ? draftsOut : draftsOut.slice(0, 12);
+    console.log(c.bold(`\nDraft tests (${draftsOut.length})`), c.dim('Copy one into a .ht file and change its steps so that its rule happens.'));
+    for (const d of shown) console.log(`\n${d}`);
+    if (shown.length < draftsOut.length) console.log(c.dim(`\n… and ${draftsOut.length - shown.length} more (--all shows them all).`));
+  } else if (r.reached.some((q) => q.lines.some((l) => !l.checked && l.messages.length))) {
+    console.log(c.dim('\nnpm run ht -- discover --gaps --drafts writes a draft test for each unchecked message.'));
+  }
+}
+
 function runDiscover(project: Project, rest: string[]) {
   const json = rest.includes('--json');
   const flags = new Set(rest.filter((a) => a.startsWith('--')));
@@ -168,6 +217,14 @@ function runDiscover(project: Project, rest: string[]) {
     if (json) { console.log(jsonOut(d ?? null)); return; }
     if (!d) console.log(c.yellow(`Couldn't find ${kind === 'upload' ? 'a file input for ' : ''}"${pageLabel}" on the page ${value('--page') ?? '/'} in the frontend code.`));
     else printPage(project, d);
+    return;
+  }
+
+  // discover --gaps: what the tests don't cover (--drafts: a draft test for each unchecked message).
+  if (flags.has('--gaps')) {
+    const report = gaps(project, backend, frontendOf(project));
+    if (json) { console.log(jsonOut(report)); return; }
+    printGaps(project, report, flags.has('--drafts'), flags.has('--all'));
     return;
   }
 

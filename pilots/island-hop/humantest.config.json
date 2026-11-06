@@ -15,7 +15,8 @@
 
   "users": {
     "admin": { "email": "admin@example.com", "password": "strong_password_here" },
-    "visitor": {}
+    "visitor": {},
+    "traveller": { "email": "user001@testmail.com", "password": "Password123!" }
   },
 
   "pages": {

@@ -72,3 +72,27 @@ Test: Admin saves a new route and deletes it again
     backend should receive DELETE /api/v1/routes/:id
     backend should reply 200 OK
     should see "Route deleted successfully"
+
+
+# Made from the draft that "npm run ht -- discover --gaps --drafts" wrote for the server's 409.
+# Blowing Point to Marigot already exists, so nothing is saved. (If it ever were, the state removes it.)
+Test: A route that already exists is refused
+
+  Start with: no test routes
+
+  As admin:
+    go to routes page
+    click "Add Route"
+    in "Add New Ferry Route" dialog, should not see "Loading ports..."
+    press Escape
+    click "Add Route"
+    in "Add New Ferry Route" dialog, choose "Blowing Point, Anguilla" for "From"
+    in "Add New Ferry Route" dialog, choose "Marigot, Saint Martin" for "To"
+    type "HumanTest test route" in "Route Description"
+    upload "cover.png" to "Route Cover Photo"
+    in "Add New Ferry Route" dialog, "Replace" button should be visible
+    click "Create Route"
+    backend should receive POST /api/v1/routes
+    backend should reply 409 Conflict
+    should see "A route from Blowing Point, Anguilla to Marigot, Saint Martin already exists"
+    "Add New Ferry Route" dialog should be open
