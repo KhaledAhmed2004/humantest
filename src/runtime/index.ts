@@ -50,6 +50,12 @@ export interface StateContext {
   token: (user: string) => Promise<string>;
 }
 export type StateFn = (ctx: StateContext) => Promise<void>;
+/**
+ * A state file: its default export sets the data up. `export const logsOut = true` when it resets
+ * the users or their sessions (a fresh database): logins from before it then no longer work, so
+ * HumanTest logs in again after it. Otherwise logins are kept (backends limit how many there are).
+ */
+export type StateModule = { default: StateFn; logsOut?: boolean };
 
 interface Session { cookies: Awaited<ReturnType<BrowserContext['cookies']>>; token?: string; at: number }
 // One login per user per run (per Playwright worker). Access tokens usually live 15 minutes or more.
@@ -130,6 +136,8 @@ export interface Trace { version: 1; test: string; source: string; status: 'pass
 export class Scenario {
   readonly users: User[] = [];
   readonly warnings: Warning[] = [];
+  /** Error replies a step checked (`backend should reply 409`): the page complaining about them is expected. */
+  readonly expectedErrors: { user: string; method: string; path: string; status: number }[] = [];
   /** Every step with its timing, for the replay. */
   readonly records: ReplayStep[] = [];
   /** When each user's video started recording (ms since epoch). */
@@ -154,6 +162,19 @@ export class Scenario {
     }
   }
 
+  /**
+   * Where `call GET /api/...` goes. A path is the app's own address, unless the API is on one other
+   * host (`apiHosts`, and the app itself is not on it): then it is that host's.
+   */
+  apiURL(pathname: string): URL {
+    const base = new URL(this.config.baseURL);
+    const hosts = this.config.apiHosts ?? [];
+    if (/^https?:\/\//i.test(pathname) || hosts.length !== 1 || hosts.includes(base.host) || hosts.includes(base.hostname)) {
+      return new URL(pathname, base);
+    }
+    return new URL(pathname, `${base.protocol}//${hosts[0]}`);
+  }
+
   blockedError(url: string, who: 'page' | 'login' | 'call' = 'page'): string {
     const allowed = `not one of the allowed API hosts (${this.config.apiHosts!.join(', ')})`;
     if (who === 'login') {
@@ -170,21 +191,22 @@ export class Scenario {
     this.warnings.push({ line: this.currentLine, user, message });
   }
 
-  async startWith(line: number, name: string, args: string[], fn: StateFn) {
+  async startWith(line: number, name: string, args: string[], state: StateFn | StateModule) {
+    const fn = typeof state === 'function' ? state : state.default;
     this.currentLine = line;
     const rec: ReplayStep = { user: 'setup', line, text: `start with: ${name}`, start: Date.now(), end: 0, status: 'passed' };
     this.records.push(rec);
     await test.step(`line ${line} · start with: ${name}`, async () => {
       const api = await apiRequest.newContext({ baseURL: this.config.baseURL });
       try {
-        // A state may reset the data, sessions included: logins from before it may no longer work.
-        SESSIONS.clear();
         const token = async (user: string) => {
           const t = (await this.login(user)).token;
           if (!t) throw new Error('token() needs "login.tokenCookie" in humantest.config.json, to know where the token is in the login reply.');
           return t;
         };
         await fn({ api, args, token });
+        // After it: the logins from before it (and from inside it) may no longer work.
+        if (typeof state !== 'function' && state.logsOut) SESSIONS.clear();
       } catch (e) {
         rec.status = 'failed';
         const err = this.humanError(line, 'setup', `Start with: ${name}`, e);
@@ -308,6 +330,7 @@ export class Scenario {
 
   async finish(passed: boolean) {
     const info = this.opts.testInfo;
+    this.dropExpected();
     const videoDir = path.join(process.cwd(), 'humantest-videos', fileSlug(info.title));
     const saved: { user: string; file: string; started: number; burnedCaptions?: boolean }[] = [];
     for (const u of this.users) {
@@ -382,6 +405,20 @@ export class Scenario {
       throw new HumanError(`The test steps passed, but the watchdog found ${this.warnings.length} problem(s):\n` +
         this.warnings.map((w) => `   ⚠ line ${w.line} · ${w.user} · ${w.message}`).join('\n'));
     }
+  }
+
+  /**
+   * The test asked for a 409 from POST /api/v1/routes, so the page logging "[API Error 409]: POST
+   * /routes", or the 5xx it answered, is what the test checks, not a hidden problem. A warning goes
+   * only when it names that status, the method, and the last fixed part of the path, for that user.
+   */
+  private dropExpected() {
+    const expected = (w: Warning) => this.expectedErrors.some((e) => {
+      if (e.user !== w.user) return false;
+      const last = e.path.split('/').filter((x) => x && !x.startsWith(':')).pop() ?? '';
+      return new RegExp(`\\b${e.status}\\b`).test(w.message) && w.message.includes(e.method) && w.message.includes(`/${last}`);
+    });
+    for (let i = this.warnings.length - 1; i >= 0; i--) if (expected(this.warnings[i])) this.warnings.splice(i, 1);
   }
 
   /**
@@ -986,9 +1023,11 @@ export class User {
 
   async call(method: string, pathname: string) {
     this.mark = this.log.length;
-    const url = new URL(pathname, this.ht.config.baseURL);
+    const url = this.ht.apiURL(pathname);
     if (!this.ht.allowsHost(url.toString())) throw new Error(this.ht.blockedError(url.toString(), 'call'));
-    const res = await this.context.request.fetch(url.toString(), { method });
+    // The login's cookies go with it; its token too, the way the page sends it (many APIs read only the header).
+    const token = this.ht.config.users[this.name]?.email ? (await this.ht.login(this.name)).token : undefined;
+    const res = await this.context.request.fetch(url.toString(), { method, ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}) });
     const body = res.text().catch(() => null);
     this.log.push({
       method, path: pathname, line: this.ht.currentLine, at: Date.now(), status: res.status(), body,
@@ -1016,6 +1055,10 @@ export class User {
     if (r.status !== expected) {
       const body = await r.text().catch(() => null);
       throw new Error(`${r.label} replied ${r.status}, expected ${expected}.${body ? `\nReply body: ${short(body)}` : ''}`);
+    }
+    if (expected >= 400) {
+      const [method, pathname] = r.label.split(' ');
+      this.ht.expectedErrors.push({ user: this.name, method, path: pathname, status: expected });
     }
   }
 

@@ -110,6 +110,7 @@ export function discoverClick(project: Project, fe: Frontend, pathname: string, 
  */
 export function writeDiscovery(project: Project, backend: Backend, t: { file: string; trace: TraceFile }, fe?: Frontend): DiscoveryFile {
   const seen = t.trace.steps.flatMap((s) => (/\bsee\b/i.test(s.text) && !/\bnot\s+see\b|shouldn't see/i.test(s.text) ? [...s.text.matchAll(/"([^"]+)"/g)].map((m) => m[1]) : []));
+  const statuses = checkedStatuses(t.trace);
   const cache = new Map<string, Discovered>();
   const steps = t.trace.steps.map((s) => {
     const calls: Discovered[] = [];
@@ -119,7 +120,7 @@ export function writeDiscovery(project: Project, backend: Backend, t: { file: st
       if (calls.some((d) => d.request === key)) continue;
       if (!cache.has(key)) cache.set(key, discover(project, backend, c.method, c.path));
       const d = cache.get(key)!;
-      if ('groups' in d) markChecked(d.groups, seen);
+      if ('groups' in d) markChecked(d.groups, seen, statuses.get(key));
       calls.push(d);
     }
     const act = fe && s.pageUrl ? pageAction(s.text) : undefined;
@@ -137,10 +138,41 @@ export function writeDiscovery(project: Project, backend: Backend, t: { file: st
   return result;
 }
 
+/**
+ * The statuses a test checks, by the request ("POST /api/v1/routes") that answered them. As in the
+ * runtime, `backend should reply 409` checks the last reply: of the last `backend should receive …`
+ * (the latest matching call so far) or `call …` step before it.
+ */
+export function checkedStatuses(trace: TraceFile): Map<string, number[]> {
+  const out = new Map<string, number[]>();
+  const calls: { method: string; path: string }[] = [];
+  let last: string | undefined;
+  for (const s of trace.steps) {
+    const real = s.calls.filter((c) => !c.simulated);
+    calls.push(...real);
+    const receive = s.text.match(/backend\s+should\s+receive\s+([A-Z]+)\s+(\S+)/i);
+    if (receive) {
+      const [method, pattern] = [receive[1].toUpperCase(), receive[2].split('?')[0]];
+      const parts = pattern.split('/');
+      const hit = [...calls].reverse().find((c) => {
+        const q = c.path.split('/');
+        return c.method === method && q.length === parts.length && parts.every((x, i) => (x.startsWith(':') ? q[i] !== '' : x === q[i]));
+      });
+      last = hit ? `${hit.method} ${hit.path}` : undefined;
+    } else if (/^\s*call\s+[A-Z]+\s/i.test(s.text) && real.length) {
+      last = `${real.at(-1)!.method} ${real.at(-1)!.path}`;
+    }
+    const reply = s.text.match(/(?:backend\s+should\s+(?:reply|respond)(?:\s+with)?|reply\s+status\s+should\s+be)\s+(\d{3})/i);
+    if (reply && last) out.set(last, [...(out.get(last) ?? []), Number(reply[1])]);
+  }
+  return out;
+}
+
 /** A trace written by the runtime (see TraceStep in src/runtime/index.ts). */
 export interface TraceFile {
   test: string;
   source: string;
+  status?: 'passed' | 'failed';
   steps: { title: string; user: string; line: number; text: string; pageUrl?: string; calls: { method: string; path: string; status?: number; simulated?: boolean; pageUrl?: string }[] }[];
 }
 

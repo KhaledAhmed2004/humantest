@@ -45,7 +45,7 @@ export function generate(project: Project, parsed: ParsedFile): string {
   lines.push(`import path from 'node:path';`);
   lines.push(`import { test } from '@playwright/test';`);
   lines.push(`import { humantest } from ${s(relImport(outDir, RUNTIME))};`);
-  for (const [file, id] of stateImports) lines.push(`import ${id} from ${s(relImport(outDir, file))};`);
+  for (const [file, id] of stateImports) lines.push(`import * as ${id} from ${s(relImport(outDir, file))};`);
   lines.push('');
   lines.push(`const project = {`);
   lines.push(`  configPath: path.join(__dirname, ${s(posix(path.relative(outDir, project.configPath)))}),`);

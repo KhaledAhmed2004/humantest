@@ -9,10 +9,11 @@
 import ts from 'typescript';
 import type { SliceItem } from '../backend/slice.mts';
 import { declarationOf, where, type TsProject } from '../ts-project.mts';
-import { translate, translateEquals, words, type Words } from './condition.mts';
+import { translate, words, type Words } from './condition.mts';
+import { context, pathTo, type Tx } from './paths.mts';
 import { messageTexts } from './messages.mts';
 import { statusOf } from './throws.mts';
-import type { Condition, EffectRule, Rule, RulePath, WrittenField } from './types.mts';
+import type { Condition, EffectRule, Rule, RulePath, TogetherRule, WrittenField } from './types.mts';
 
 const SCANNED = new Set(['route', 'controller', 'service', 'helper', 'shared']);
 
@@ -42,6 +43,8 @@ const RESPOND = /(^|\.)(sendResponse|sendSuccess|respond)$/;
 export function effectRules(p: TsProject, items: SliceItem[], w: Words = {}): Rule[] {
   const out: Rule[] = [];
   const done = new Set<ts.Node>();
+  // The database changes in each transaction, in the order found.
+  const txs = new Map<ts.CallExpression, { tx: Tx; changes: TogetherRule['changes'] }>();
   items.forEach((it, index) => {
     if (it.repeat || !SCANNED.has(it.role) || done.has(it.decl)) return;
     done.add(it.decl);
@@ -62,85 +65,26 @@ export function effectRules(p: TsProject, items: SliceItem[], w: Words = {}): Ru
           if (path.bestEffort && r.kind === 'effect') r.bestEffort = true;
         }
         if (r) out.push(r);
+        // Inside a transaction here, or called from inside one: the outermost one is what counts.
+        const tx = path?.tx ?? (r ? context(p, n, it, w).tx : undefined);
+        if (r && r.kind === 'effect' && tx && !r.onError && (r.effect === 'create' || r.effect === 'update' || r.effect === 'delete')) {
+          if (!txs.has(tx.call)) txs.set(tx.call, { tx, changes: [] });
+          txs.get(tx.call)!.changes.push({ effect: r.effect, model: r.model ?? 'record', ...(r.many ? { many: true } : {}) });
+        }
       }
       ts.forEachChild(n, visit);
     };
     visit(it.decl);
   });
+  // One change alone needs no transaction to be all or nothing.
+  const count = new Map<string, number>();
+  for (const { tx, changes } of txs.values()) {
+    if (changes.length < 2) continue;
+    const k = count.get(tx.in) ?? 0;
+    count.set(tx.in, k + 1);
+    out.push({ kind: 'together', changes, in: tx.in, id: `together:${tx.in}#${k}`, source: where(p, tx.call) });
+  }
   return out;
-}
-
-/**
- * The conditions on the way from the route to a called function: at each call site up the chain
- * (`if (intent.status === 'succeeded') await PaymentService.applyIntentResult(…)`). A function
- * called from more than one place in its caller gets none from there: they may differ.
- */
-function pathTo(p: TsProject, items: SliceItem[], index: number, w: Words): { when: Condition[]; bestEffort: boolean } | undefined {
-  const when: Condition[] = [];
-  let bestEffort = false;
-  for (let i = index, guard = 0; items[i] && items[i].parent >= 0 && guard < 10; i = items[i].parent, guard++) {
-    const child = items[i], parent = items[child.parent];
-    const sites: ts.CallExpression[] = [];
-    const visit = (n: ts.Node) => {
-      if (ts.isCallExpression(n) && declarationOf(p, n.expression) === child.decl) sites.push(n);
-      ts.forEachChild(n, visit);
-    };
-    visit(parent.decl);
-    if (sites.length !== 1) continue;
-    const ctx = context(p, sites[0], parent, w);
-    when.unshift(...ctx.when);
-    if (ctx.bestEffort || ctx.onError) bestEffort = bestEffort || ctx.bestEffort;
-  }
-  return when.length || bestEffort ? { when, bestEffort } : undefined;
-}
-
-/** The conditions that lead to a node inside its function, and how a failure there is handled. */
-function context(p: TsProject, node: ts.Node, it: SliceItem, w: Words) {
-  const when: Condition[] = [];
-  let onError = false;
-  let bestEffort = false;
-  let child: ts.Node = node;
-  for (let n = node.parent; n && n !== it.decl.parent; child = n, n = n.parent) {
-    // `if (existing) return existing;` before it: it only runs when that is not so.
-    // (Early throws are left out: they are the refusals, listed on their own.)
-    if (ts.isBlock(n) || ts.isSourceFile(n)) {
-      const before = n.statements.slice(0, n.statements.indexOf(child as ts.Statement));
-      for (const st of [...before].reverse()) {
-        if (ts.isIfStatement(st) && !st.elseStatement && leavesEarly(st.thenStatement)) when.unshift(translate(p, st.expression, true, w));
-      }
-    }
-    if (ts.isIfStatement(n)) {
-      if (child === n.thenStatement) when.unshift(translate(p, n.expression, false, w));
-      else if (child === n.elseStatement) when.unshift(translate(p, n.expression, true, w));
-    } else if (ts.isConditionalExpression(n)) {
-      if (child === n.whenTrue) when.unshift(translate(p, n.condition, false, w));
-      else if (child === n.whenFalse) when.unshift(translate(p, n.condition, true, w));
-    } else if (ts.isCatchClause(n)) {
-      onError = true;
-    } else if (ts.isTryStatement(n) && child === n.tryBlock && n.catchClause && !rethrows(n.catchClause)) {
-      bestEffort = true;
-    } else if (ts.isCaseClause(n) && ts.isSwitchStatement(n.parent.parent)) {
-      when.unshift(translateEquals(p, n.parent.parent.expression, n.expression, w));
-    }
-  }
-  return { when, onError, bestEffort };
-}
-
-/** `return x;` / `{ log(); return; }` / `continue;`: the rest of the block is skipped. */
-function leavesEarly(st: ts.Statement): boolean {
-  const last = ts.isBlock(st) ? st.statements.at(-1) : st;
-  return !!last && (ts.isReturnStatement(last) || ts.isContinueStatement(last));
-}
-
-function rethrows(c: ts.CatchClause): boolean {
-  let found = false;
-  const visit = (n: ts.Node) => {
-    if (found || ts.isFunctionLike(n)) return;
-    if (ts.isThrowStatement(n)) { found = true; return; }
-    ts.forEachChild(n, visit);
-  };
-  visit(c.block);
-  return found;
 }
 
 const strip = (e: ts.Expression): ts.Expression => {
@@ -211,6 +155,11 @@ function writtenFields(data: ts.Expression | undefined, w: Words, optional = fal
         else if (ts.isBinaryExpression(v) && v.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken) {
           const fb = fixedValue(v.right);
           if (fb !== undefined) { field.value = fb; field.fallback = true; }
+        } else if (ts.isConditionalExpression(v)) {
+          // `startsPending ? BookingStatus.PENDING : BookingStatus.CONFIRMED`: both, with when.
+          const a = fixedValue(v.whenTrue), b = fixedValue(v.whenFalse);
+          const when = p ? translate(p, v.condition, false, w).text : undefined;
+          if (a !== undefined && b !== undefined) field.value = a === b ? a : when ? `${a} if ${when}, otherwise ${b}` : `${a} or ${b}`;
         }
       }
     }

@@ -1,0 +1,9 @@
+# Who may do what in Island Hop: a traveller is refused what only an admin may do.
+# Nothing is written: the server refuses before it reads the request.
+
+Test: A traveller can't add a route
+
+  As traveller:
+    go to "/"
+    call POST /api/v1/routes
+    backend should reply 403 Forbidden

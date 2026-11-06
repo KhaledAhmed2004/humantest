@@ -9,5 +9,7 @@ Test: A login with an unknown email is refused
     type "nobody.humantest@example.com" in "Enter your email"
     type "Wrong-password-1" in "Enter your password"
     click "Sign In"
+    backend should receive POST /api/v1/auth/login
+    backend should reply 401 Unauthorized
     should see "Invalid credentials"
     should still be on login page

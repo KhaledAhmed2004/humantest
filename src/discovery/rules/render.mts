@@ -32,8 +32,8 @@ const list = (xs: string[], word = 'or') => (xs.length <= 1 ? xs.join('') : `${x
 
 /** Whether every condition in the rule could be put into words. */
 export function isTranslated(r: Rule): boolean {
-  if (r.kind === 'effect' || r.kind === 'reply') return [...(r.path?.when ?? []), ...r.when].every((c) => c.text !== undefined);
-  if (r.kind === 'reject' || r.kind === 'ui-guard') return r.when.every((c) => c.text !== undefined);
+  if (r.kind === 'effect' || r.kind === 'reply' || r.kind === 'reject') return [...(r.path?.when ?? []), ...r.when].every((c) => c.text !== undefined);
+  if (r.kind === 'ui-guard') return r.when.every((c) => c.text !== undefined);
   if (r.kind === 'check') return !r.when || r.when.text !== undefined;
   if (r.kind === 'ui-block') return r.when.text !== undefined;
   return true;
@@ -55,6 +55,11 @@ export function renderRule(r: Rule): string {
       return `"${r.element}" can't be used while ${condition(r.when)}.`;
     case 'effect':
       return renderEffect(r);
+    case 'together': {
+      const what = r.changes.map((c) => (c.effect === 'create' ? (c.many ? `new ${plural(c.model)} are saved` : `a new ${c.model} is saved`)
+        : `the ${c.many ? `matching ${plural(c.model)} are` : `${c.model} is`} ${c.effect === 'update' ? 'changed' : 'deleted'}`));
+      return `These happen together: ${list([...new Set(what)], 'and')}. If one of them fails, none of them is kept.`;
+    }
     case 'reply': {
       const others = r.otherMessages?.length ? ` (or${r.otherMessages.map(quote).join(', or')})` : '';
       const answer = `the server answers ${statusText(r.status)}${r.message ? `:${quote(r.message)}${others}` : ''}`;
@@ -147,9 +152,8 @@ const FAILED: Condition = { code: '(catch)', text: 'the work before it fails' };
 function renderReject(r: RejectRule): string {
   const others = r.otherMessages?.length ? ` (or${r.otherMessages.map(quote).join(', or')})` : '';
   const answer = `the server answers ${statusText(r.status)}${r.message ? `:${quote(r.message)}${others}` : ''}`;
-  if (r.onError) return `If the work before it fails${r.when.length ? `, and ${allOf(r.when, true)}` : ''}, ${answer}.`;
-  if (!r.when.length) return `Whenever ${r.in} runs this far, ${answer}.`;
-  return `If ${allOf(r.when)}, ${answer}.`;
+  const lead = leadOf(r.path, r.onError ? [FAILED, ...r.when] : r.when);
+  return lead ? `${lead}${answer}.` : `Whenever ${r.in} runs this far, ${answer}.`;
 }
 
 function fieldFacet(r: FieldRule): string {

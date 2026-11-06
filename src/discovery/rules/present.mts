@@ -42,12 +42,14 @@ export function present(rules: Rule[]): Group[] {
       text, source: r.source, translated: isTranslated(r), ids: [r.id],
       messages: [...('message' in r && r.message ? [r.message] : []), ...((r.kind === 'reject' || r.kind === 'ui-guard' || r.kind === 'reply') ? r.otherMessages ?? [] : [])],
       ...((r.kind === 'reject' || r.kind === 'reply') && r.status !== undefined ? { status: r.status } : {}),
+      // Who may: a wrong role is told 403, someone not logged in 401.
+      ...(r.kind === 'access' && r.login === 'required' ? { status: r.roles.length && !r.allRoles ? 403 : 401 } : {}),
     });
     // Rules in the page's own code: what happens before anything reaches the server.
     const front = r.side === 'frontend';
     if (r.kind === 'access') access.push(line(renderRule(r)));
     else if (r.kind === 'reject') refuse.push(line(renderRule(r)));
-    else if (r.kind === 'effect') changes.push(line(renderRule(r)));
+    else if (r.kind === 'effect' || r.kind === 'together') changes.push(line(renderRule(r)));
     else if (r.kind === 'reply') reply.push(line(renderRule(r)));
     else if (r.kind === 'ui-block' || r.kind === 'ui-guard' || r.kind === 'ui-file') page.push(line(renderRule(r)));
     else if (r.kind === 'check') (front ? page : contain).push(line(renderRule(r)));
@@ -71,24 +73,32 @@ export function present(rules: Rule[]): Group[] {
     { title: 'Who can do it', lines: access },
     { title: 'What the request must contain', lines: [...contain.filter((l) => !isCheck(l)), ...contain.filter(isCheck)] },
     { title: 'When the server says no', lines: refuse },
-    { title: 'What it changes', lines: changes },
+    // What happens together, after the changes it is about.
+    { title: 'What it changes', lines: [...changes.filter((l) => !l.ids[0].startsWith('together:')), ...changes.filter((l) => l.ids[0].startsWith('together:'))] },
     { title: 'The answer when all is well', lines: reply },
   ].filter((g) => g.lines.length);
 }
 
 /**
- * Marks lines whose message the test looks for (`should see "…"`). Only a message match counts:
- * a status alone (every refusal is some 400) would claim far more than the test checks.
+ * Marks lines the test checks: it looks for their message (`should see "…"`), or it checks the
+ * status this request answered (`backend should reply 409`) and only one rule of the request gives
+ * that status. A status shared by several rules says nothing about which one it was, so none of them
+ * counts; except a 401 or 403, which is the "who can do it" rule's when the request has one.
  */
-export function markChecked(groups: Group[], seen: string[]) {
+export function markChecked(groups: Group[], seen: string[], statuses: number[] = []) {
   const texts = seen.map((s) => s.toLowerCase()).filter((s) => s.length >= 4);
-  for (const g of groups) {
-    for (const l of g.lines) {
-      l.checked = l.messages.some((m) => {
-        // "{…}" placeholders in a message stand for any text.
-        const re = new RegExp(m.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{[^}]*\\\}/g, '.*'));
-        return texts.some((t) => re.test(t) || m.toLowerCase().includes(t));
-      });
-    }
+  const lines = groups.flatMap((g) => g.lines.map((l) => ({ l, access: g.title === 'Who can do it' })));
+  const byStatus = new Set<Line>();
+  for (const st of new Set(statuses)) {
+    const same = lines.filter((x) => x.l.status === st);
+    const access = same.filter((x) => x.access);
+    for (const x of access.length ? access : same.length === 1 ? same : []) byStatus.add(x.l);
+  }
+  for (const { l } of lines) {
+    l.checked = byStatus.has(l) || l.messages.some((m) => {
+      // "{…}" placeholders in a message stand for any text.
+      const re = new RegExp(m.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{[^}]*\\\}/g, '.*'));
+      return texts.some((t) => re.test(t) || m.toLowerCase().includes(t));
+    });
   }
 }

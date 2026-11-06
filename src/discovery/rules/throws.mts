@@ -6,7 +6,8 @@ import type { SliceItem } from '../backend/slice.mts';
 import { where, type TsProject } from '../ts-project.mts';
 import { translate, translateEquals, type Words } from './condition.mts';
 import { messageTexts } from './messages.mts';
-import type { Condition, Rule } from './types.mts';
+import { pathTo, rethrows } from './paths.mts';
+import type { Condition, RejectRule, Rule } from './types.mts';
 
 /** Status codes of common exception class names (NestJS style and the like). */
 const EXCEPTION_STATUS: Record<string, number> = {
@@ -27,18 +28,31 @@ const SCANNED = new Set(['route', 'controller', 'service', 'helper', 'shared']);
 export function rejectRules(p: TsProject, items: SliceItem[], w: Words = {}): Rule[] {
   const out: Rule[] = [];
   const done = new Set<ts.Node>();
-  for (const it of items) {
-    if (it.repeat || !SCANNED.has(it.role) || done.has(it.decl)) continue;
+  items.forEach((it, index) => {
+    if (it.repeat || !SCANNED.has(it.role) || done.has(it.decl)) return;
     done.add(it.decl);
+    const path = pathTo(p, items, index, w);
+    // Called where its failure is caught and let go: what it throws never reaches the client.
+    if (path?.bestEffort) return;
     const visit = (n: ts.Node) => {
       if (ts.isThrowStatement(n) && n.expression) {
-        const r = rejectFor(p, n, it, w);
+        const r = rejectFor(p, n, it, w) as (Rule & RejectRule) | undefined;
+        if (r && path) {
+          // The conditions on the way to this function; one that is also the rule's own is said once.
+          const own = new Set(r.when.map((c) => c.code));
+          const seen = new Set<string>();
+          const way = path.when.filter((c) => !own.has(c.code) && !seen.has(c.code) && seen.add(c.code));
+          if (way.length) {
+            r.path = { through: it.name, when: way };
+            r.id = `${r.id}|via:${way.map((c) => c.code).join(' && ')}`;
+          }
+        }
         if (r) out.push(r);
       }
       ts.forEachChild(n, visit);
     };
     visit(it.decl);
-  }
+  });
   return out;
 }
 
@@ -74,6 +88,9 @@ function rejectFor(p: TsProject, t: ts.ThrowStatement, it: SliceItem, w: Words):
       else if (child === n.elseStatement) when.unshift(translate(p, n.expression, true, w));
     } else if (ts.isCatchClause(n)) {
       onError = true;
+    } else if (ts.isTryStatement(n) && child === n.tryBlock && n.catchClause && !rethrows(n.catchClause)) {
+      // Thrown where its own catch lets it go: not a refusal.
+      return undefined;
     } else if (ts.isCaseClause(n) && ts.isSwitchStatement(n.parent.parent)) {
       when.unshift(translateEquals(p, n.parent.parent.expression, n.expression, w));
     }

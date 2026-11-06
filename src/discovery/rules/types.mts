@@ -60,6 +60,8 @@ export interface RejectRule {
   in: string;
   /** It is inside a catch block: it happens when the code before it fails. */
   onError?: boolean;
+  /** It is in a function the route's code calls: the conditions at the call sites on the way there. */
+  path?: RulePath;
 }
 
 /** A button or link that can't be used while something is true: `disabled={isSamePort || !port}`. */
@@ -142,7 +144,19 @@ export interface ReplyRule {
   path?: RulePath;
 }
 
-export type RuleFacts = AccessRule | FieldRule | CheckRule | RejectRule | UiBlockRule | UiGuardRule | UiFileRule | EffectRule | ReplyRule;
+/**
+ * Database changes made in one `prisma.$transaction(…)`: if one fails, none of them is kept.
+ * Taking the transaction away is a change of business logic too (a booking without its seats).
+ */
+export interface TogetherRule {
+  kind: 'together';
+  /** The changes, in the order of the code. */
+  changes: { effect: 'create' | 'update' | 'delete'; model: string; many?: boolean }[];
+  /** The function the transaction is in. */
+  in: string;
+}
+
+export type RuleFacts = AccessRule | FieldRule | CheckRule | RejectRule | UiBlockRule | UiGuardRule | UiFileRule | EffectRule | ReplyRule | TogetherRule;
 
 export type Rule = RuleFacts & {
   /** Stable across runs and edits elsewhere: what the rule is about, not what it says. */

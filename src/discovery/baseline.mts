@@ -314,6 +314,8 @@ export function afterRun(project: Project, backend: Backend, fe?: Frontend): { s
   let started = 0;
   const changed: TestChange[] = [];
   for (const { trace } of readTraces(project, true)) {
+    // A test that failed stopped part way: what it did is not all it relies on. Its failure says enough.
+    if (trace.status === 'failed') continue;
     const snap = snapshotFromTrace(project, backend, trace, fe);
     const base = readBaseline(project, snap.key);
     if (!base) { saveBaseline(project, snap); started++; continue; }

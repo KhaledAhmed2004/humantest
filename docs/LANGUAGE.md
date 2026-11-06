@@ -83,7 +83,7 @@ The page's API calls (anything under `apiPrefix`, default `/api`) are recorded a
 |---|---|
 | `backend should receive POST /api/users` | Waits for the page to send this request since the last action, and remembers its reply. `:id` stands for one part of the path that changes from run to run (`DELETE /api/routes/:id`). |
 | `backend should not receive any request` | Nothing was sent since the last action (e.g. the frontend validation stopped it). |
-| `call GET /api/admin/users` | Call the API directly as this user (with their login). Remembers the reply. |
+| `call GET /api/admin/users` | Call the API directly as this user (with their login: its cookies, and its token as `Authorization: Bearer …`). Remembers the reply. A path goes to the API host when `apiHosts` names one other host than the app's. |
 | `backend should reply 201 Created` | Status of the remembered reply. The text after the number is optional. |
 | `reply should contain email` / `reply should not contain password` | A field name or value appears anywhere in the reply. |
 | `reply total should be 1` / `reply users[0].email should be "a@b.com"` | One field of the reply. |
@@ -109,7 +109,7 @@ Two settings in `humantest.config.json` for apps with a separate backend:
 - `apiHosts`: the only hosts the page may send API calls to. A call anywhere else is blocked and fails the test, so a frontend that still points at a real server can't change its data. The login endpoint and `call …` steps are checked too.
 - `login.tokenCookie`: for apps that read the token from a cookie the frontend sets itself. After logging in, HumanTest takes the token from the reply (`from` is a path like `data.accessToken`) and sets the cookie `name` on the app's address.
 
-Each user logs in once per run, and the next tests reuse that login (in memory only), because backends often allow only a few logins a minute. A `Start with:` state may reset the data, so after one runs, users log in again. A state can use the same login for its own calls: `` headers: { Authorization: `Bearer ${await token('admin')}` } ``.
+Each user logs in once per run, and the next tests reuse that login (in memory only), because backends often allow only a few logins a minute. A `Start with:` state that resets the users or their sessions (a fresh database) says so with `export const logsOut = true`; after it runs, users log in again. A state can use the same login for its own calls: `` headers: { Authorization: `Bearer ${await token('admin')}` } ``.
 
 ## Business logic behind the tests
 
@@ -136,7 +136,7 @@ After every run, each step's API calls are followed into the backend (Express ro
 - **What it changes**: database writes (Prisma), with what happens to each field ("available seats goes down by seats", "status: ACTIVE unless given"), emails (with their subject), live notifications and Stripe calls. Each with its conditions, including the ones on the way to the function it is in. "If that fails, the request still goes on" when the code catches that failure and carries on.
 - **The answer when all is well**: `sendResponse(res, { statusCode, message })` or `res.status(…).json(…)`: "When nothing stops it, the server answers 201 Created: \"Route created successfully\"". A test that shows that message checks it.
 
-A rule is **checked** (✔) when the test looks for its message with `should see "…"`; the others (○) are what the test doesn't cover. A condition HumanTest can't put into words is shown as code, never guessed. `glossary` gives plain words for names in the code.
+A rule is **checked** (✔) when the test looks for its message with `should see "…"`, or checks the status that request answered (`backend should reply 409`) and only that rule of the request gives it. A 403 or 401 checks "Who can do it" (a traveller refused what only an admin may do). The others (○) are what the test doesn't cover. A condition HumanTest can't put into words is shown as code, never guessed. `glossary` gives plain words for names in the code.
 
 The first time a test runs, what it relies on is saved in `e2e/logic/` (commit it, `logicDir` changes the folder). From then on, a change in that logic is reported, rule by rule ("was … / now …"), until it is accepted. Comments and formatting don't count; code outside the test's flow doesn't either.
 
@@ -218,6 +218,8 @@ You don't write anything for this. In every test, HumanTest also reports:
 - JavaScript errors and console errors on the page
 - API calls slower than `watchdog.slowApiMs`
 - requests that failed
+
+An error the test asks for is not a hidden problem: after `backend should reply 409`, the page's own console error about that reply (one that names 409, the method and the path) is not reported.
 
 By default these are warnings. Set `"failTestOnWarning": true` to make them fail the test.
 

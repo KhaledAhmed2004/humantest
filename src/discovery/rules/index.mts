@@ -7,6 +7,7 @@ import type { TsProject } from '../ts-project.mts';
 import { accessRules } from './access.mts';
 import type { Words } from './condition.mts';
 import { effectRules } from './effects.mts';
+import { forAddress } from './request-url.mts';
 import { rejectRules } from './throws.mts';
 import type { Rule } from './types.mts';
 import { schemaRules } from './zod.mts';
@@ -29,7 +30,8 @@ export function extractRules(p: TsProject, slice: Slice, w: Words = {}): Rule[] 
 
   // Ids must be unique: a second rule with the same id (e.g. two identical throws) gets a number.
   const count = new Map<string, number>();
-  return rules.map((r) => {
+  // Conditions on the request's own address, worked out for this route.
+  return forAddress(rules, slice.route).map((r) => {
     const n = (count.get(r.id) ?? 0) + 1;
     count.set(r.id, n);
     return n === 1 ? r : { ...r, id: `${r.id}#${n}` };

@@ -24,6 +24,8 @@ export interface RouteEntry {
   method: string;
   /** The full path, mount prefixes included, e.g. `/api/v1/routes/:id`. */
   path: string;
+  /** The mount prefixes alone (what Express calls `req.baseUrl`), e.g. `/api/v1/routes`. */
+  mount?: string;
   file: string;
   line: number;
   /** Everything between the path and the handler, router-level middleware first. */
@@ -164,6 +166,7 @@ export function buildRouteTable(p: TsProject): RouteTable {
       table.routes.push({
         method: reg.method.toUpperCase(),
         path: joinPath(prefix, literal),
+        mount: prefix,
         ...at,
         middlewares: [...inherited, ...routerLevel, ...handlers.slice(0, -1)],
         handler: handlers.at(-1),

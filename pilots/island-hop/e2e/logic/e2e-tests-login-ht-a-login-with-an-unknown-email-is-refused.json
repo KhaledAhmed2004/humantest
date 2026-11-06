@@ -32,14 +32,26 @@
    ]
   },
   {
-   "title": "line 12 · visitor · should see \"Invalid credentials\"",
+   "title": "line 12 · visitor · backend should receive POST /api/v1/auth/login",
    "line": 12,
+   "text": "backend should receive POST /api/v1/auth/login",
+   "requests": []
+  },
+  {
+   "title": "line 13 · visitor · backend should reply 401 Unauthorized",
+   "line": 13,
+   "text": "backend should reply 401 Unauthorized",
+   "requests": []
+  },
+  {
+   "title": "line 14 · visitor · should see \"Invalid credentials\"",
+   "line": 14,
    "text": "should see \"Invalid credentials\"",
    "requests": []
   },
   {
-   "title": "line 13 · visitor · should still be on login page",
-   "line": 13,
+   "title": "line 15 · visitor · should still be on login page",
+   "line": 15,
    "text": "should still be on login page",
    "requests": []
   }
@@ -751,5 +763,5 @@
   }
  ],
  "frontend": true,
- "acceptedAt": "2026-11-06T19:10:31.854Z"
+ "acceptedAt": "2026-11-06T21:50:35.889Z"
 }

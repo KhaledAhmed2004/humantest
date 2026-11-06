@@ -1056,60 +1056,6 @@
      "text": "If schedule is not found, or schedule route status is not ACTIVE, the server answers 404 Not Found: \"Trip not found or unavailable\"."
     },
     {
-     "kind": "reject",
-     "id": "reject:getScheduleById:404:!schedule || schedule.ferry.operatorId !== operator.id",
-     "source": {
-      "file": "src/app/modules/schedule/schedule.service.ts",
-      "line": 350
-     },
-     "in": "getScheduleById",
-     "when": [
-      {
-       "code": "!schedule || schedule.ferry.operatorId !== operator.id",
-       "text": "schedule is not found, or schedule ferry operator id is different from operator id"
-      }
-     ],
-     "status": 404,
-     "message": "Schedule slot not found",
-     "text": "If schedule is not found, or schedule ferry operator id is different from operator id, the server answers 404 Not Found: \"Schedule slot not found\"."
-    },
-    {
-     "kind": "reject",
-     "id": "reject:resolveOperatorProfile:403:!operator",
-     "source": {
-      "file": "src/app/modules/schedule/schedule.service.ts",
-      "line": 36
-     },
-     "in": "resolveOperatorProfile",
-     "when": [
-      {
-       "code": "!operator",
-       "text": "no matching operator profile is found"
-      }
-     ],
-     "status": 403,
-     "message": "Operator profile not found for this user",
-     "text": "If no matching operator profile is found, the server answers 403 Forbidden: \"Operator profile not found for this user\"."
-    },
-    {
-     "kind": "reject",
-     "id": "reject:resolveOperatorProfile:403:operator.user && operator.user.status === AccountStatus.SUSPENDED",
-     "source": {
-      "file": "src/app/modules/schedule/schedule.service.ts",
-      "line": 43
-     },
-     "in": "resolveOperatorProfile",
-     "when": [
-      {
-       "code": "operator.user && operator.user.status === AccountStatus.SUSPENDED",
-       "text": "operator user is found, and operator user status is SUSPENDED"
-      }
-     ],
-     "status": 403,
-     "message": "Suspended operators cannot perform this operation",
-     "text": "If operator user is found, and operator user status is SUSPENDED, the server answers 403 Forbidden: \"Suspended operators cannot perform this operation\"."
-    },
-    {
      "kind": "reply",
      "when": [],
      "in": "getPublicTripById",
@@ -1121,36 +1067,6 @@
       "line": 105
      },
      "text": "When nothing stops it, the server answers 200 OK: \"Trip details retrieved successfully\"."
-    },
-    {
-     "kind": "reply",
-     "when": [],
-     "in": "getScheduleById",
-     "status": 200,
-     "message": "Schedule details retrieved successfully",
-     "id": "reply:getScheduleById:200:|via:!(req.baseUrl.endsWith('/trips') || req.originalUrl.includes('/trips/')) && req.headers.authorization && !(err)",
-     "source": {
-      "file": "src/app/modules/schedule/schedule.controller.ts",
-      "line": 39
-     },
-     "path": {
-      "through": "getScheduleById",
-      "when": [
-       {
-        "code": "!(req.baseUrl.endsWith('/trips') || req.originalUrl.includes('/trips/'))",
-        "text": "base url does not end with \"/trips\", and original url does not contain \"/trips/\""
-       },
-       {
-        "code": "req.headers.authorization",
-        "text": "headers authorization is set"
-       },
-       {
-        "code": "!(err)",
-        "text": "err is missing"
-       }
-      ]
-     },
-     "text": "If base url does not end with \"/trips\", and original url does not contain \"/trips/\", and headers authorization is set, and err is missing, the server answers 200 OK: \"Schedule details retrieved successfully\"."
     }
    ]
   },
@@ -2509,7 +2425,8 @@
       },
       {
        "name": "status",
-       "how": "set"
+       "how": "set",
+       "value": "PENDING if starts pending is true, otherwise CONFIRMED"
       },
       {
        "name": "hold expires at",
@@ -2527,7 +2444,7 @@
       "file": "src/app/modules/booking/booking.service.ts",
       "line": 220
      },
-     "text": "A new booking is saved."
+     "text": "A new booking is saved (status becomes PENDING if starts pending is true, otherwise CONFIRMED)."
     },
     {
      "kind": "effect",
@@ -2574,11 +2491,13 @@
       },
       {
        "name": "provider",
-       "how": "set"
+       "how": "set",
+       "value": "STRIPE if starts pending is true, otherwise MANUAL"
       },
       {
        "name": "status",
-       "how": "set"
+       "how": "set",
+       "value": "COMPLETED if free booking is true, otherwise PENDING"
       },
       {
        "name": "paid at",
@@ -2592,7 +2511,7 @@
       "file": "src/app/modules/booking/booking.service.ts",
       "line": 258
      },
-     "text": "A new payment is saved."
+     "text": "A new payment is saved (provider becomes STRIPE if starts pending is true, otherwise MANUAL; status becomes COMPLETED if free booking is true, otherwise PENDING)."
     },
     {
      "kind": "effect",
@@ -2679,6 +2598,40 @@
       "line": 42
      },
      "text": "If result count is not 1, the schedule is changed: available seats goes up by seats."
+    },
+    {
+     "kind": "together",
+     "changes": [
+      {
+       "effect": "create",
+       "model": "booking"
+      },
+      {
+       "effect": "create",
+       "model": "ticket",
+       "many": true
+      },
+      {
+       "effect": "create",
+       "model": "payment"
+      },
+      {
+       "effect": "update",
+       "model": "schedule",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "schedule"
+      }
+     ],
+     "in": "createBooking",
+     "id": "together:createBooking#0",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 132
+     },
+     "text": "These happen together: a new booking is saved, new tickets are saved, a new payment is saved, the matching schedules are changed and the schedule is changed. If one of them fails, none of them is kept."
     }
    ]
   },
@@ -3480,42 +3433,6 @@
      "status": 400,
      "message": "Booking is already cancelled",
      "text": "If cancellation count is not 1, the server answers 400 Bad Request: \"Booking is already cancelled\"."
-    },
-    {
-     "kind": "reject",
-     "id": "reject:applyIntentResultInTx:500:completed.count !== 1",
-     "source": {
-      "file": "src/app/modules/payment/payment.service.ts",
-      "line": 547
-     },
-     "in": "applyIntentResultInTx",
-     "when": [
-      {
-       "code": "completed.count !== 1",
-       "text": "completed count is not 1"
-      }
-     ],
-     "status": 500,
-     "message": "Payment {current id} changed while confirming booking {current booking id}",
-     "text": "If completed count is not 1, the server answers 500 Server Error: \"Payment {current id} changed while confirming booking {current booking id}\"."
-    },
-    {
-     "kind": "reject",
-     "id": "reject:retakeSeats:500:confirmed.count !== 1",
-     "source": {
-      "file": "src/app/modules/payment/payment.service.ts",
-      "line": 401
-     },
-     "in": "retakeSeats",
-     "when": [
-      {
-       "code": "confirmed.count !== 1",
-       "text": "confirmed count is not 1"
-      }
-     ],
-     "status": 500,
-     "message": "Booking {booking id} changed while taking its seats again",
-     "text": "If confirmed count is not 1, the server answers 500 Server Error: \"Booking {booking id} changed while taking its seats again\"."
     },
     {
      "kind": "reply",
@@ -4624,10 +4541,116 @@
      },
      "bestEffort": true,
      "text": "After 5 earlier checks (the first: intent to cancel is found; on the way to applyRefundStatus), if payment stripe payment intent id is set, and status is not PENDING, and status is not SUCCEEDED, the matching refunds are changed: status becomes FAILED; failure message is set. If that fails, the request still goes on."
+    },
+    {
+     "kind": "together",
+     "changes": [
+      {
+       "effect": "update",
+       "model": "booking",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "payment"
+      },
+      {
+       "effect": "update",
+       "model": "schedule"
+      }
+     ],
+     "in": "cancelBooking",
+     "id": "together:cancelBooking#0",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 325
+     },
+     "text": "These happen together: the matching bookings are changed, the payment is changed and the schedule is changed. If one of them fails, none of them is kept."
+    },
+    {
+     "kind": "together",
+     "changes": [
+      {
+       "effect": "update",
+       "model": "payment",
+       "many": true
+      },
+      {
+       "effect": "create",
+       "model": "refund"
+      },
+      {
+       "effect": "create",
+       "model": "refund"
+      },
+      {
+       "effect": "update",
+       "model": "booking",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "payment",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "booking",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "schedule",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "schedule"
+      }
+     ],
+     "in": "applyIntentResult",
+     "id": "together:applyIntentResult#0",
+     "source": {
+      "file": "src/app/modules/payment/payment.service.ts",
+      "line": 561
+     },
+     "text": "These happen together: the matching payments are changed, a new refund is saved, the matching bookings are changed, the matching schedules are changed and the schedule is changed. If one of them fails, none of them is kept."
+    },
+    {
+     "kind": "together",
+     "changes": [
+      {
+       "effect": "update",
+       "model": "refund",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "refund",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "payment",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "refund",
+       "many": true
+      }
+     ],
+     "in": "sendRefund",
+     "id": "together:sendRefund#0",
+     "source": {
+      "file": "src/app/modules/payment/payment.refund.ts",
+      "line": 124
+     },
+     "text": "These happen together: the matching refunds are changed and the matching payments are changed. If one of them fails, none of them is kept."
     }
    ]
   }
  ],
  "frontend": true,
- "acceptedAt": "2026-11-06T19:42:21.417Z"
+ "acceptedAt": "2026-11-06T21:50:35.858Z"
 }
