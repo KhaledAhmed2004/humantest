@@ -24,6 +24,8 @@ export function present(rules: Rule[]): Group[] {
   const access: Line[] = [];
   const contain: Line[] = [];
   const refuse: Line[] = [];
+  const changes: Line[] = [];
+  const reply: Line[] = [];
 
   const fieldKey = (r: FieldRule & Rule) => `${r.side ?? 'backend'}:${r.section}.${r.field}`;
   const fields = new Map<string, FieldRule[]>();
@@ -38,14 +40,16 @@ export function present(rules: Rule[]): Group[] {
   for (const r of rules) {
     const line = (text: string): Line => ({
       text, source: r.source, translated: isTranslated(r), ids: [r.id],
-      messages: [...('message' in r && r.message ? [r.message] : []), ...((r.kind === 'reject' || r.kind === 'ui-guard') ? r.otherMessages ?? [] : [])],
-      ...(r.kind === 'reject' && r.status !== undefined ? { status: r.status } : {}),
+      messages: [...('message' in r && r.message ? [r.message] : []), ...((r.kind === 'reject' || r.kind === 'ui-guard' || r.kind === 'reply') ? r.otherMessages ?? [] : [])],
+      ...((r.kind === 'reject' || r.kind === 'reply') && r.status !== undefined ? { status: r.status } : {}),
     });
     // Rules in the page's own code: what happens before anything reaches the server.
     const front = r.side === 'frontend';
     if (r.kind === 'access') access.push(line(renderRule(r)));
     else if (r.kind === 'reject') refuse.push(line(renderRule(r)));
-    else if (r.kind === 'ui-block' || r.kind === 'ui-guard') page.push(line(renderRule(r)));
+    else if (r.kind === 'effect') changes.push(line(renderRule(r)));
+    else if (r.kind === 'reply') reply.push(line(renderRule(r)));
+    else if (r.kind === 'ui-block' || r.kind === 'ui-guard' || r.kind === 'ui-file') page.push(line(renderRule(r)));
     else if (r.kind === 'check') (front ? page : contain).push(line(renderRule(r)));
     else if (r.kind === 'field') {
       const key = fieldKey(r as FieldRule & Rule);
@@ -67,6 +71,8 @@ export function present(rules: Rule[]): Group[] {
     { title: 'Who can do it', lines: access },
     { title: 'What the request must contain', lines: [...contain.filter((l) => !isCheck(l)), ...contain.filter(isCheck)] },
     { title: 'When the server says no', lines: refuse },
+    { title: 'What it changes', lines: changes },
+    { title: 'The answer when all is well', lines: reply },
   ].filter((g) => g.lines.length);
 }
 

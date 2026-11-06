@@ -1,0 +1,1926 @@
+{
+ "version": 1,
+ "key": "e2e/tests/admin-routes.ht::Admin saves a new route and deletes it again",
+ "test": "Admin saves a new route and deletes it again",
+ "source": "e2e/tests/admin-routes.ht:47",
+ "steps": [
+  {
+   "title": "line 51 · start with: no test routes",
+   "line": 51,
+   "text": "start with: no test routes",
+   "requests": []
+  },
+  {
+   "title": "line 54 · admin · go to routes page",
+   "line": 54,
+   "text": "go to routes page",
+   "requests": []
+  },
+  {
+   "title": "line 55 · admin · click \"Add Route\"",
+   "line": 55,
+   "text": "click \"Add Route\"",
+   "requests": [
+    "CLICK \"Add Route\" on src/app/dashboard/admin/routes/page.tsx",
+    "GET /api/v1/user/profile",
+    "GET /api/v1/routes",
+    "GET /api/v1/ports"
+   ]
+  },
+  {
+   "title": "line 56 · admin · in \"Add New Ferry Route\" dialog, should not see \"Loading ports...\"",
+   "line": 56,
+   "text": "in \"Add New Ferry Route\" dialog, should not see \"Loading ports...\"",
+   "requests": []
+  },
+  {
+   "title": "line 57 · admin · press Escape",
+   "line": 57,
+   "text": "press Escape",
+   "requests": []
+  },
+  {
+   "title": "line 58 · admin · click \"Add Route\"",
+   "line": 58,
+   "text": "click \"Add Route\"",
+   "requests": [
+    "CLICK \"Add Route\" on src/app/dashboard/admin/routes/page.tsx"
+   ]
+  },
+  {
+   "title": "line 59 · admin · in \"Add New Ferry Route\" dialog, choose \"Blowing Point, Anguilla\" for \"From\"",
+   "line": 59,
+   "text": "in \"Add New Ferry Route\" dialog, choose \"Blowing Point, Anguilla\" for \"From\"",
+   "requests": []
+  },
+  {
+   "title": "line 60 · admin · in \"Add New Ferry Route\" dialog, choose \"Fort Bay Harbor, Saba\" for \"To\"",
+   "line": 60,
+   "text": "in \"Add New Ferry Route\" dialog, choose \"Fort Bay Harbor, Saba\" for \"To\"",
+   "requests": []
+  },
+  {
+   "title": "line 61 · admin · type \"HumanTest test route\" in \"Route Description\"",
+   "line": 61,
+   "text": "type \"HumanTest test route\" in \"Route Description\"",
+   "requests": []
+  },
+  {
+   "title": "line 62 · admin · upload \"cover.png\" to \"Route Cover Photo\"",
+   "line": 62,
+   "text": "upload \"cover.png\" to \"Route Cover Photo\"",
+   "requests": [
+    "UPLOAD \"Route Cover Photo\" on src/app/dashboard/admin/routes/page.tsx"
+   ]
+  },
+  {
+   "title": "line 63 · admin · in \"Add New Ferry Route\" dialog, \"Replace\" button should be visible",
+   "line": 63,
+   "text": "in \"Add New Ferry Route\" dialog, \"Replace\" button should be visible",
+   "requests": []
+  },
+  {
+   "title": "line 64 · admin · click \"Create Route\"",
+   "line": 64,
+   "text": "click \"Create Route\"",
+   "requests": [
+    "CLICK \"Create Route\" on src/app/dashboard/admin/routes/page.tsx",
+    "POST /api/v1/routes",
+    "GET /api/v1/routes"
+   ]
+  },
+  {
+   "title": "line 65 · admin · backend should receive POST /api/v1/routes",
+   "line": 65,
+   "text": "backend should receive POST /api/v1/routes",
+   "requests": []
+  },
+  {
+   "title": "line 66 · admin · backend should reply 201 Created",
+   "line": 66,
+   "text": "backend should reply 201 Created",
+   "requests": []
+  },
+  {
+   "title": "line 67 · admin · should see \"Route created successfully\"",
+   "line": 67,
+   "text": "should see \"Route created successfully\"",
+   "requests": []
+  },
+  {
+   "title": "line 68 · admin · \"Add New Ferry Route\" dialog should be closed",
+   "line": 68,
+   "text": "\"Add New Ferry Route\" dialog should be closed",
+   "requests": []
+  },
+  {
+   "title": "line 69 · admin · in \"Blowing Point, Anguilla to Fort Bay Harbor, Saba\" row, click \"Open menu\"",
+   "line": 69,
+   "text": "in \"Blowing Point, Anguilla to Fort Bay Harbor, Saba\" row, click \"Open menu\"",
+   "requests": []
+  },
+  {
+   "title": "line 70 · admin · click \"Delete route\"",
+   "line": 70,
+   "text": "click \"Delete route\"",
+   "requests": [
+    "CLICK \"Delete route\" on src/app/dashboard/admin/routes/page.tsx"
+   ]
+  },
+  {
+   "title": "line 71 · admin · in \"Delete Ferry Route\" dialog, click \"Delete Route\"",
+   "line": 71,
+   "text": "in \"Delete Ferry Route\" dialog, click \"Delete Route\"",
+   "requests": [
+    "CLICK \"Delete Route\" on src/app/dashboard/admin/routes/page.tsx",
+    "DELETE /api/v1/routes/:id",
+    "GET /api/v1/routes"
+   ]
+  },
+  {
+   "title": "line 72 · admin · backend should receive DELETE /api/v1/routes/:id",
+   "line": 72,
+   "text": "backend should receive DELETE /api/v1/routes/:id",
+   "requests": []
+  },
+  {
+   "title": "line 73 · admin · backend should reply 200 OK",
+   "line": 73,
+   "text": "backend should reply 200 OK",
+   "requests": []
+  },
+  {
+   "title": "line 74 · admin · should see \"Route deleted successfully\"",
+   "line": 74,
+   "text": "should see \"Route deleted successfully\"",
+   "requests": []
+  }
+ ],
+ "requests": [
+  {
+   "request": "CLICK \"Add Route\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "Add Route"
+   },
+   "functions": [
+    {
+     "name": "AdminRoutesPage",
+     "file": "src/app/dashboard/admin/routes/page.tsx",
+     "line": 38,
+     "role": "helper",
+     "hash": "2c1d4d894fa7"
+    },
+    {
+     "name": "handleOpenAdd",
+     "file": "src/app/dashboard/admin/routes/page.tsx",
+     "line": 116,
+     "role": "helper",
+     "hash": "cbf7488e9925"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "GET /api/v1/user/profile",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/user/profile",
+    "file": "src/app/modules/user/user.route.ts",
+    "line": 62
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "ALL_ROLES",
+     "file": "src/app/modules/user/user.route.ts",
+     "line": 12,
+     "role": "route",
+     "hash": "913c02cd2251"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.controller.ts",
+     "line": 22,
+     "role": "controller",
+     "hash": "1b11bbc47fa4"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 52,
+     "role": "service",
+     "hash": "82c23bb34c74"
+    },
+    {
+     "name": "findById",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 28,
+     "role": "service",
+     "hash": "96ee5e8a404f"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "USER",
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(...ALL_ROLES)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/user/user.route.ts",
+      "line": 62
+     },
+     "text": "Only USER, OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:getProfile:404:!user || user.deletedAt",
+     "source": {
+      "file": "src/app/modules/user/user.service.ts",
+      "line": 55
+     },
+     "in": "getProfile",
+     "when": [
+      {
+       "code": "!user || user.deletedAt",
+       "text": "user is not found, or user is deleted"
+      }
+     ],
+     "status": 404,
+     "message": "User not found",
+     "text": "If user is not found, or user is deleted, the server answers 404 Not Found: \"User not found\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getProfile",
+     "status": 200,
+     "message": "Profile retrieved successfully",
+     "id": "reply:getProfile:200:",
+     "source": {
+      "file": "src/app/modules/user/user.controller.ts",
+      "line": 27
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Profile retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/routes",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/routes",
+    "file": "src/app/modules/route/route.route.ts",
+    "line": 33
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listRoutesQueryZodSchema",
+     "file": "src/app/modules/route/route.validation.ts",
+     "line": 74,
+     "role": "validation",
+     "hash": "0b79c222436d"
+    },
+    {
+     "name": "listRoutes",
+     "file": "src/app/modules/route/route.controller.ts",
+     "line": 20,
+     "role": "controller",
+     "hash": "7bb8d08c7723"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listRoutes",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 96,
+     "role": "service",
+     "hash": "c61d9d1beea6"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "PORT_SELECT",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 13,
+     "role": "service",
+     "hash": "970698444a30"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/route/route.route.ts",
+      "line": 33
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "message": "page must be a number",
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "page must be at least 1",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "10",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: optional (default 10)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "message": "limit must be a number",
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "limit must be at least 1",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "message": "limit cannot exceed 100",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.status:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 89
+     },
+     "text": "status: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "oneOf",
+     "values": [
+      "ACTIVE",
+      "INACTIVE"
+     ],
+     "message": "status must be ACTIVE or INACTIVE",
+     "id": "field:query.status:oneOf",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 89
+     },
+     "text": "status: one of ACTIVE or INACTIVE."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listRoutes",
+     "status": 200,
+     "message": "Routes retrieved successfully",
+     "id": "reply:listRoutes:200:",
+     "source": {
+      "file": "src/app/modules/route/route.controller.ts",
+      "line": 24
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Routes retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/ports",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/ports",
+    "file": "src/app/modules/port/port.route.ts",
+    "line": 17
+   },
+   "functions": [
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listPortsQueryZodSchema",
+     "file": "src/app/modules/port/port.validation.ts",
+     "line": 35,
+     "role": "validation",
+     "hash": "d27ec35b5ac6"
+    },
+    {
+     "name": "listPorts",
+     "file": "src/app/modules/port/port.controller.ts",
+     "line": 18,
+     "role": "controller",
+     "hash": "31318e3a29ee"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listPorts",
+     "file": "src/app/modules/port/port.service.ts",
+     "line": 22,
+     "role": "service",
+     "hash": "9c308046b51a"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.search:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 37
+     },
+     "text": "search: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.search:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 37
+     },
+     "text": "search: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "isActive",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.isActive:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 38
+     },
+     "text": "isActive: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "isActive",
+     "facet": "oneOf",
+     "values": [
+      "true",
+      "false"
+     ],
+     "id": "field:query.isActive:oneOf",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 38
+     },
+     "text": "isActive: one of true or false."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "20",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: optional (default 20)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listPorts",
+     "status": 200,
+     "message": "Ports retrieved successfully",
+     "id": "reply:listPorts:200:",
+     "source": {
+      "file": "src/app/modules/port/port.controller.ts",
+      "line": 21
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Ports retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "UPLOAD \"Route Cover Photo\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "Route Cover Photo",
+    "kind": "upload"
+   },
+   "functions": [
+    {
+     "name": "RouteFormModalDialog",
+     "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+     "line": 36,
+     "role": "helper",
+     "hash": "614c37ca429d"
+    },
+    {
+     "name": "VesselImageUploader",
+     "file": "src/components/widgets/dashboard/operator/VesselImageUploader.tsx",
+     "line": 27,
+     "role": "helper",
+     "hash": "21e05de62df5"
+    },
+    {
+     "name": "handleFileChange",
+     "file": "src/components/widgets/dashboard/operator/VesselImageUploader.tsx",
+     "line": 128,
+     "role": "helper",
+     "hash": "69fd06be6d3a"
+    },
+    {
+     "name": "processImageFile",
+     "file": "src/components/widgets/dashboard/operator/VesselImageUploader.tsx",
+     "line": 45,
+     "role": "helper",
+     "hash": "7aff0f0a54a4"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-file",
+     "side": "frontend",
+     "field": "Route Cover Photo",
+     "accept": [
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp"
+     ],
+     "id": "ui-file:Route Cover Photo",
+     "source": {
+      "file": "src/components/widgets/dashboard/operator/VesselImageUploader.tsx",
+      "line": 175
+     },
+     "text": "\"Route Cover Photo\" takes one file: the file picker offers only PNG, JPEG, JPG or WEBP."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "processImageFile",
+     "when": [
+      {
+       "code": "!file.type.startsWith(\"image/\")",
+       "text": "file type does not start with \"image/\""
+      }
+     ],
+     "message": "Invalid file format. Please upload a PNG, JPG, or WEBP image.",
+     "id": "ui-guard:processImageFile:!file.type.startsWith(\"image/\")",
+     "source": {
+      "file": "src/components/widgets/dashboard/operator/VesselImageUploader.tsx",
+      "line": 47
+     },
+     "text": "If file type does not start with \"image/\", the page stops and shows \"Invalid file format. Please upload a PNG, JPG, or WEBP image.\", before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "processImageFile",
+     "when": [
+      {
+       "code": "file.size > 10 * 1024 * 1024",
+       "text": "file size is more than 10 MB"
+      }
+     ],
+     "message": "Image file is too large. Please select a photo under 10MB.",
+     "id": "ui-guard:processImageFile:file.size > 10 * 1024 * 1024",
+     "source": {
+      "file": "src/components/widgets/dashboard/operator/VesselImageUploader.tsx",
+      "line": 52
+     },
+     "text": "If file size is more than 10 MB, the page stops and shows \"Image file is too large. Please select a photo under 10MB.\", before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "processImageFile",
+     "when": [
+      {
+       "code": "typeof result !== \"string\"",
+       "text": "result is not text"
+      }
+     ],
+     "message": "Failed to read image file.",
+     "id": "ui-guard:processImageFile:typeof result !== \"string\"",
+     "source": {
+      "file": "src/components/widgets/dashboard/operator/VesselImageUploader.tsx",
+      "line": 62
+     },
+     "text": "If result is not text, the page stops and shows \"Failed to read image file.\", before sending anything."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Create Route\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "Create Route"
+   },
+   "functions": [
+    {
+     "name": "RouteFormModalDialog",
+     "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+     "line": 36,
+     "role": "helper",
+     "hash": "614c37ca429d"
+    },
+    {
+     "name": "handleSubmit",
+     "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+     "line": 77,
+     "role": "helper",
+     "hash": "b581a5c4f981"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Create Route",
+     "when": {
+      "code": "isPending || (!isEdit && (ports.length < 2 || isSamePort || !formData.departurePortId || !formData.destinationPortId))",
+      "text": "a request is in progress, or (edit is false, and (the number of ports is less than 2, or same port is true, or departure port id is empty, or destination port id is empty))"
+     },
+     "id": "ui-block:Create Route",
+     "source": {
+      "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+      "line": 342
+     },
+     "text": "\"Create Route\" can't be used while a request is in progress, or (edit is false, and (the number of ports is less than 2, or same port is true, or departure port id is empty, or destination port id is empty))."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "Estimated Travel Time",
+     "side": "frontend",
+     "facet": "required",
+     "required": true,
+     "id": "fe:html:Estimated Travel Time:required",
+     "source": {
+      "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+      "line": 245
+     },
+     "text": "Estimated Travel Time: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "Estimated Travel Time",
+     "side": "frontend",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "fe:html:Estimated Travel Time:min:min",
+     "source": {
+      "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+      "line": 245
+     },
+     "text": "Estimated Travel Time: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "Route Description",
+     "side": "frontend",
+     "facet": "required",
+     "required": true,
+     "id": "fe:html:Route Description:required",
+     "source": {
+      "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+      "line": 272
+     },
+     "text": "Route Description: required."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "!isEdit",
+       "text": "edit is false"
+      },
+      {
+       "code": "!formData.departurePortId || !formData.destinationPortId",
+       "text": "departure port id is empty, or destination port id is empty"
+      }
+     ],
+     "message": "Please select both Departure Port and Arrival Port.",
+     "id": "ui-guard:handleSubmit:!isEdit && !formData.departurePortId || !formData.destinationPortId",
+     "source": {
+      "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+      "line": 81
+     },
+     "text": "If edit is false, and (departure port id is empty, or destination port id is empty), the page stops and shows \"Please select both Departure Port and Arrival Port.\", before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "!isEdit",
+       "text": "edit is false"
+      },
+      {
+       "code": "formData.departurePortId === formData.destinationPortId",
+       "text": "departure port id is the same as destination port id"
+      }
+     ],
+     "message": "Departure port and arrival port cannot be the same.",
+     "id": "ui-guard:handleSubmit:!isEdit && formData.departurePortId === formData.destinationPortId",
+     "source": {
+      "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+      "line": 86
+     },
+     "text": "If edit is false, and departure port id is the same as destination port id, the page stops and shows \"Departure port and arrival port cannot be the same.\", before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "!formData.durationMinutes || formData.durationMinutes < 1",
+       "text": "duration minutes is empty, or duration minutes is less than 1"
+      }
+     ],
+     "message": "Please enter a valid estimated travel time.",
+     "id": "ui-guard:handleSubmit:!formData.durationMinutes || formData.durationMinutes < 1",
+     "source": {
+      "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+      "line": 92
+     },
+     "text": "If duration minutes is empty, or duration minutes is less than 1, the page stops and shows \"Please enter a valid estimated travel time.\", before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "!formData.description || !formData.description.trim()",
+       "text": "description is empty"
+      }
+     ],
+     "message": "Route description is required.",
+     "id": "ui-guard:handleSubmit:!formData.description || !formData.description.trim()",
+     "source": {
+      "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+      "line": 97
+     },
+     "text": "If description is empty, the page stops and shows \"Route description is required.\", before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "!formData.imageUrl || !formData.imageUrl.trim()",
+       "text": "image url is empty"
+      }
+     ],
+     "message": "Route cover photo is required. Please upload an image.",
+     "id": "ui-guard:handleSubmit:!formData.imageUrl || !formData.imageUrl.trim()",
+     "source": {
+      "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
+      "line": 102
+     },
+     "text": "If image url is empty, the page stops and shows \"Route cover photo is required. Please upload an image.\", before sending anything."
+    }
+   ]
+  },
+  {
+   "request": "POST /api/v1/routes",
+   "route": {
+    "method": "POST",
+    "path": "/api/v1/routes",
+    "file": "src/app/modules/route/route.route.ts",
+    "line": 25
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "createRouteZodSchema",
+     "file": "src/app/modules/route/route.validation.ts",
+     "line": 4,
+     "role": "validation",
+     "hash": "bc42bc4ce66f"
+    },
+    {
+     "name": "createRoute",
+     "file": "src/app/modules/route/route.controller.ts",
+     "line": 8,
+     "role": "controller",
+     "hash": "521f80e2df76"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "createRoute",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 18,
+     "role": "service",
+     "hash": "b124b96545b3"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/route/route.route.ts",
+      "line": 25
+     },
+     "text": "Only ADMIN can do this."
+    },
+    {
+     "kind": "check",
+     "section": "body",
+     "field": "destinationPortId",
+     "message": "Departure port and destination port cannot be the same",
+     "when": {
+      "code": "data.departurePortId === data.destinationPortId",
+      "text": "departure port id is the same as destination port id"
+     },
+     "id": "check:body.destinationPortId:Departure port and destination port cannot be the same",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 39
+     },
+     "text": "If departure port id is the same as destination port id, the request is refused (on destinationPortId): \"Departure port and destination port cannot be the same\"."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "departurePortId",
+     "facet": "required",
+     "required": true,
+     "message": "departurePortId is required",
+     "id": "field:body.departurePortId:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 7
+     },
+     "text": "departurePortId: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "departurePortId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.departurePortId:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 7
+     },
+     "text": "departurePortId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "departurePortId",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "message": "departurePortId is required",
+     "id": "field:body.departurePortId:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 7
+     },
+     "text": "departurePortId: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "destinationPortId",
+     "facet": "required",
+     "required": true,
+     "message": "destinationPortId is required",
+     "id": "field:body.destinationPortId:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 10
+     },
+     "text": "destinationPortId: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "destinationPortId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.destinationPortId:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 10
+     },
+     "text": "destinationPortId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "destinationPortId",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "message": "destinationPortId is required",
+     "id": "field:body.destinationPortId:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 10
+     },
+     "text": "destinationPortId: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "required",
+     "required": true,
+     "message": "durationMinutes must be a number",
+     "id": "field:body.durationMinutes:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 13
+     },
+     "text": "durationMinutes: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "type",
+     "type": "a whole number",
+     "id": "field:body.durationMinutes:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 13
+     },
+     "text": "durationMinutes: must be a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "durationMinutes must be at least 1 minute",
+     "id": "field:body.durationMinutes:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 13
+     },
+     "text": "durationMinutes: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "max",
+     "value": 1440,
+     "unit": "number",
+     "message": "durationMinutes cannot exceed 1440 minutes (24 hours)",
+     "id": "field:body.durationMinutes:max",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 13
+     },
+     "text": "durationMinutes: at most 1440."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "basePrice",
+     "facet": "required",
+     "required": false,
+     "default": "30",
+     "id": "field:body.basePrice:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 18
+     },
+     "text": "basePrice: optional (default 30)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "basePrice",
+     "facet": "type",
+     "type": "a number",
+     "id": "field:body.basePrice:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 18
+     },
+     "text": "basePrice: must be a number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "basePrice",
+     "facet": "min",
+     "value": 0,
+     "unit": "number",
+     "message": "basePrice cannot be negative",
+     "id": "field:body.basePrice:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 18
+     },
+     "text": "basePrice: at least 0."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "required",
+     "required": true,
+     "message": "description is required",
+     "id": "field:body.description:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 19
+     },
+     "text": "description: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.description:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 19
+     },
+     "text": "description: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "message": "description is required",
+     "id": "field:body.description:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 19
+     },
+     "text": "description: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "max",
+     "value": 1000,
+     "unit": "characters",
+     "message": "description cannot exceed 1000 characters",
+     "id": "field:body.description:max",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 19
+     },
+     "text": "description: at most 1000 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "amenities",
+     "facet": "required",
+     "required": false,
+     "default": "empty list",
+     "id": "field:body.amenities:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 24
+     },
+     "text": "amenities: optional (default empty list)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "amenities",
+     "facet": "type",
+     "type": "a list of text",
+     "id": "field:body.amenities:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 24
+     },
+     "text": "amenities: must be a list of text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "imageUrl",
+     "facet": "required",
+     "required": true,
+     "message": "imageUrl is required",
+     "id": "field:body.imageUrl:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 25
+     },
+     "text": "imageUrl: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "imageUrl",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.imageUrl:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 25
+     },
+     "text": "imageUrl: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "imageUrl",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "message": "imageUrl is required",
+     "id": "field:body.imageUrl:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 25
+     },
+     "text": "imageUrl: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "isBorderCrossing",
+     "facet": "required",
+     "required": false,
+     "default": "false",
+     "id": "field:body.isBorderCrossing:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 29
+     },
+     "text": "isBorderCrossing: optional (default false)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "isBorderCrossing",
+     "facet": "type",
+     "type": "true or false",
+     "id": "field:body.isBorderCrossing:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 29
+     },
+     "text": "isBorderCrossing: must be true or false."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "status",
+     "facet": "required",
+     "required": false,
+     "default": "ACTIVE",
+     "id": "field:body.status:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 30
+     },
+     "text": "status: optional (default ACTIVE)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "status",
+     "facet": "oneOf",
+     "values": [
+      "ACTIVE",
+      "INACTIVE"
+     ],
+     "message": "status must be ACTIVE or INACTIVE",
+     "id": "field:body.status:oneOf",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 30
+     },
+     "text": "status: one of ACTIVE or INACTIVE."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createRoute:400:dto.departurePortId === dto.destinationPortId",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 20
+     },
+     "in": "createRoute",
+     "when": [
+      {
+       "code": "dto.departurePortId === dto.destinationPortId",
+       "text": "departure port id is the same as destination port id"
+      }
+     ],
+     "status": 400,
+     "message": "Departure port and destination port cannot be the same",
+     "text": "If departure port id is the same as destination port id, the server answers 400 Bad Request: \"Departure port and destination port cannot be the same\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createRoute:404:!departurePort || !departurePort.isActive",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 32
+     },
+     "in": "createRoute",
+     "when": [
+      {
+       "code": "!departurePort || !departurePort.isActive",
+       "text": "departure port is not found, or departure port is not active"
+      }
+     ],
+     "status": 404,
+     "message": "Departure port not found or inactive: {departure port id}",
+     "text": "If departure port is not found, or departure port is not active, the server answers 404 Not Found: \"Departure port not found or inactive: {departure port id}\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createRoute:404:!destinationPort || !destinationPort.isActive",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 39
+     },
+     "in": "createRoute",
+     "when": [
+      {
+       "code": "!destinationPort || !destinationPort.isActive",
+       "text": "destination port is not found, or destination port is not active"
+      }
+     ],
+     "status": 404,
+     "message": "Destination port not found or inactive: {destination port id}",
+     "text": "If destination port is not found, or destination port is not active, the server answers 404 Not Found: \"Destination port not found or inactive: {destination port id}\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createRoute:409:existing",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 55
+     },
+     "in": "createRoute",
+     "when": [
+      {
+       "code": "existing",
+       "text": "a matching route is found"
+      }
+     ],
+     "status": 409,
+     "message": "A route from {departure port name} to {destination port name} already exists",
+     "text": "If a matching route is found, the server answers 409 Conflict: \"A route from {departure port name} to {destination port name} already exists\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "createRoute",
+     "status": 201,
+     "message": "Route created successfully",
+     "id": "reply:createRoute:201:",
+     "source": {
+      "file": "src/app/modules/route/route.controller.ts",
+      "line": 12
+     },
+     "text": "When nothing stops it, the server answers 201 Created: \"Route created successfully\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "route",
+     "fields": [
+      {
+       "name": "departure port id",
+       "how": "set"
+      },
+      {
+       "name": "destination port id",
+       "how": "set"
+      },
+      {
+       "name": "duration minutes",
+       "how": "set"
+      },
+      {
+       "name": "base price",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "description",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "amenities",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "image url",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "is border crossing",
+       "how": "set",
+       "value": "false",
+       "fallback": true
+      },
+      {
+       "name": "status",
+       "how": "set",
+       "value": "ACTIVE",
+       "fallback": true
+      }
+     ],
+     "when": [],
+     "in": "createRoute",
+     "id": "effect:createRoute:create:route:",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 61
+     },
+     "text": "A new route is saved (is border crossing: false unless given; status: ACTIVE unless given)."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Delete route\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "Delete route"
+   },
+   "functions": [
+    {
+     "name": "getRouteColumns",
+     "file": "src/app/dashboard/admin/routes/_components/routes-columns.tsx",
+     "line": 28,
+     "role": "helper",
+     "hash": "f172619ad4a3"
+    },
+    {
+     "name": "the onSelect function written there",
+     "file": "src/app/dashboard/admin/routes/_components/routes-columns.tsx",
+     "line": 161,
+     "role": "helper",
+     "hash": "3f5eb0d5a40a"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "CLICK \"Delete Route\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "Delete Route"
+   },
+   "functions": [
+    {
+     "name": "RouteDeleteDialogs",
+     "file": "src/app/dashboard/admin/routes/_components/RouteDeleteDialogs.tsx",
+     "line": 29,
+     "role": "helper",
+     "hash": "d68b3a619337"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Delete Route",
+     "when": {
+      "code": "isSingleDeleting",
+      "text": "a request is in progress"
+     },
+     "id": "ui-block:Delete Route",
+     "source": {
+      "file": "src/app/dashboard/admin/routes/_components/RouteDeleteDialogs.tsx",
+      "line": 85
+     },
+     "text": "\"Delete Route\" can't be used while a request is in progress."
+    }
+   ]
+  },
+  {
+   "request": "DELETE /api/v1/routes/:id",
+   "route": {
+    "method": "DELETE",
+    "path": "/api/v1/routes/:id",
+    "file": "src/app/modules/route/route.route.ts",
+    "line": 72
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "deleteRoute",
+     "file": "src/app/modules/route/route.controller.ts",
+     "line": 56,
+     "role": "controller",
+     "hash": "b2209aacb38f"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "deleteRoute",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 208,
+     "role": "service",
+     "hash": "df1925df8f80"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/route/route.route.ts",
+      "line": 72
+     },
+     "text": "Only ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:deleteRoute:404:!existing",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 228
+     },
+     "in": "deleteRoute",
+     "when": [
+      {
+       "code": "!existing",
+       "text": "no matching route is found"
+      }
+     ],
+     "status": 404,
+     "message": "Route not found with ID: {id}",
+     "text": "If no matching route is found, the server answers 404 Not Found: \"Route not found with ID: {id}\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:deleteRoute:409:existing.schedules && existing.schedules.length > 0",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 235
+     },
+     "in": "deleteRoute",
+     "when": [
+      {
+       "code": "existing.schedules && existing.schedules.length > 0",
+       "text": "existing schedules is found, and the number of existing schedules is more than 0"
+      }
+     ],
+     "status": 409,
+     "message": "Cannot delete route \"{route name}\" because it has existing passenger bookings on scheduled trips. Please deactivate (pause) the route instead.",
+     "text": "If existing schedules is found, and the number of existing schedules is more than 0, the server answers 409 Conflict: \"Cannot delete route \"{route name}\" because it has existing passenger bookings on scheduled trips. Please deactivate (pause) the route instead.\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:deleteRoute:409:error?.code === 'P2003' || error?.code === '23001' || error?.message?.includes('violates RESTRICT') || error?.message?.includes('foreign key constraint'):catch",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 252
+     },
+     "in": "deleteRoute",
+     "when": [
+      {
+       "code": "error?.code === 'P2003' || error?.code === '23001' || error?.message?.includes('violates RESTRICT') || error?.message?.includes('foreign key constraint')",
+       "text": "error code is \"P2003\", or error code is \"23001\", or error message contains \"violates RESTRICT\", or error message contains \"foreign key constraint\""
+      }
+     ],
+     "status": 409,
+     "message": "Cannot delete route because there are active passenger bookings referencing scheduled trips on this route. Please deactivate the route instead.",
+     "onError": true,
+     "text": "If the work before it fails, and (error code is \"P2003\", or error code is \"23001\", or error message contains \"violates RESTRICT\", or error message contains \"foreign key constraint\"), the server answers 409 Conflict: \"Cannot delete route because there are active passenger bookings referencing scheduled trips on this route. Please deactivate the route instead.\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "deleteRoute",
+     "status": 200,
+     "message": "Route deleted successfully",
+     "id": "reply:deleteRoute:200:",
+     "source": {
+      "file": "src/app/modules/route/route.controller.ts",
+      "line": 60
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Route deleted successfully\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "delete",
+     "model": "route",
+     "when": [],
+     "in": "deleteRoute",
+     "id": "effect:deleteRoute:delete:route:",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 242
+     },
+     "text": "The route is deleted."
+    }
+   ]
+  }
+ ],
+ "frontend": true,
+ "acceptedAt": "2026-11-06T19:10:31.755Z"
+}

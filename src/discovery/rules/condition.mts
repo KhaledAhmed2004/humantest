@@ -14,7 +14,8 @@ const CONTAINERS = new Set(['dto', 'data', 'payload', 'body', 'req', 'request', 
   'formData', 'form', 'state', 'prev', 'fields']);
 
 /** React Query / form flags that mean "busy": `isPending`, `createMutation.isPending`, `isSubmitting`. */
-const BUSY = /^is(Pending|Loading|Submitting|Saving|Fetching|Mutating)$/;
+// isPending, isSaving, isSingleDeleting, isBulkOperating: a request the page sent hasn't answered yet.
+const BUSY = /^is([A-Z]\w*)?(Pending|Loading|Submitting|Saving|Fetching|Mutating|Deleting|Updating|Creating|Uploading|Operating|Processing)$/;
 
 export interface Words { glossary?: Record<string, string> }
 
@@ -98,6 +99,17 @@ class Humanizer {
       [k.LessThanToken]: k.GreaterThanEqualsToken, [k.GreaterThanEqualsToken]: k.LessThanToken,
       [k.GreaterThanToken]: k.LessThanEqualsToken, [k.LessThanEqualsToken]: k.GreaterThanToken,
     };
+    // 'response' in verified → "verified has response"
+    if (e.operatorToken.kind === k.InKeyword && (ts.isStringLiteral(e.left) || ts.isNoSubstitutionTemplateLiteral(e.left))) {
+      const v = this.value(e.right);
+      return v === undefined ? undefined : `${v} ${neg ? 'does not have' : 'has'} ${words(e.left.text, this.w)}`;
+    }
+    // error instanceof Stripe.errors.StripeError → "error is a stripe error"
+    if (e.operatorToken.kind === k.InstanceOfKeyword) {
+      const v = this.value(e.left);
+      const cls = e.right.getText().split('.').pop()!;
+      return v === undefined ? undefined : `${v} is ${neg ? 'not ' : ''}${/^[aeiou]/i.test(cls) ? 'an' : 'a'} ${words(cls, this.w)}`;
+    }
     if (neg) {
       const flipped = NEG[op];
       if (flipped === undefined) return undefined;
@@ -132,8 +144,18 @@ class Humanizer {
       };
       return when[o] ? `${other} ${when[o]}` : undefined;
     }
-    const a = this.value(e.left), b = this.value(e.right);
+    // typeof result !== 'string' → "result is not text"
+    const TYPE_WORDS: Record<string, string> = { string: 'text', number: 'a number', boolean: 'true or false', object: 'an object', function: 'a function', undefined: 'missing' };
+    if ((isEq || isNe) && ts.isTypeOfExpression(strip(e.left)) && ts.isStringLiteral(strip(e.right)) && TYPE_WORDS[(strip(e.right) as ts.StringLiteral).text]) {
+      const v = this.value((strip(e.left) as ts.TypeOfExpression).expression);
+      return v === undefined ? undefined : `${v} is ${isNe ? 'not ' : ''}${TYPE_WORDS[(strip(e.right) as ts.StringLiteral).text]}`;
+    }
+    const a = this.value(e.left);
+    let b = this.value(e.right);
     if (a === undefined || b === undefined) return undefined;
+    // file.size > 10 * 1024 * 1024 → "file size is more than 10 MB"
+    const leftName = ts.isPropertyAccessExpression(strip(e.left)) ? (strip(e.left) as ts.PropertyAccessExpression).name.text : e.left.getText();
+    if (/(size|bytes)$/i.test(leftName) && /^\d+$/.test(b)) b = bytes(Number(b));
     // Two things from the request or the data (not a fixed value): "the same as".
     const fixed = (n: ts.Expression) => ts.isLiteralExpression(n) || n.kind === k.TrueKeyword || n.kind === k.FalseKeyword ||
       (ts.isPropertyAccessExpression(n) && /^[A-Z][A-Z0-9_]*$/.test(n.name.text));
@@ -160,9 +182,34 @@ class Humanizer {
 
   /** `LIST.includes(x)` → "x is (not) one of A, B"; other calls are not translated. */
   private call(e: ts.CallExpression, neg: boolean): string | undefined {
+    // this.channels.has('email') on a Set or Map → "channels includes "email""
+    if (ts.isPropertyAccessExpression(e.expression) && e.expression.name.text === 'has' && e.arguments.length === 1) {
+      const kind = this.p.checker.getTypeAtLocation(e.expression.expression).getNonNullableType().getSymbol()?.name;
+      if (kind === 'Set' || kind === 'Map' || kind === 'ReadonlySet' || kind === 'ReadonlyMap') {
+        const coll = this.value(e.expression.expression), item = this.value(e.arguments[0]);
+        if (coll !== undefined && item !== undefined) return `${coll} ${neg ? 'does not include' : 'includes'} ${item}`;
+      }
+    }
+    // file.type.startsWith('image/') → "file type starts with "image/""
+    if (ts.isPropertyAccessExpression(e.expression) && /^(startsWith|endsWith)$/.test(e.expression.name.text) && e.arguments.length === 1) {
+      const text = this.value(e.expression.expression), part = this.value(e.arguments[0]);
+      if (text === undefined || part === undefined) return undefined;
+      const verb = e.expression.name.text === 'startsWith' ? 'start' : 'end';
+      return `${text} ${neg ? `does not ${verb}` : `${verb}s`} with ${part}`;
+    }
     if (ts.isPropertyAccessExpression(e.expression) && e.expression.name.text === 'includes' && e.arguments.length === 1) {
       const item = this.value(e.arguments[0]);
-      const options = this.listValues(e.expression.expression);
+      // `message.includes('foreign key')`: a text that contains another.
+      const receiver = e.expression.expression;
+      const rt = this.p.checker.getTypeAtLocation(receiver).getNonNullableType().flags;
+      const lastName = ts.isPropertyAccessExpression(receiver) ? receiver.name.text : ts.isIdentifier(receiver) ? receiver.text : '';
+      // An untyped value (`catch (error: any)`): only its name can tell it is a text.
+      const textName = /(message|text|name|title|description|email|url|path|label|code)$/i.test(lastName);
+      if (rt & ts.TypeFlags.StringLike || (rt & (ts.TypeFlags.Any | ts.TypeFlags.Unknown) && textName)) {
+        const text = this.value(receiver);
+        return text === undefined || item === undefined ? undefined : `${text} ${neg ? 'does not contain' : 'contains'} ${item}`;
+      }
+      const options = this.listValues(receiver);
       if (item === undefined || options === undefined) return undefined;
       return `${item} is ${neg ? 'not ' : ''}one of ${options}`;
     }
@@ -213,6 +260,9 @@ class Humanizer {
     if (e.kind === ts.SyntaxKind.TrueKeyword) return 'true';
     if (e.kind === ts.SyntaxKind.FalseKeyword) return 'false';
     if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.MinusToken && ts.isNumericLiteral(e.operand)) return `-${e.operand.text}`;
+    // 10 * 1024 * 1024: a fixed number written as a sum.
+    const n = arithmetic(e);
+    if (n !== undefined) return String(n);
     if (ts.isIdentifier(e)) return words(e.text, this.w);
     if (ts.isPropertyAccessExpression(e)) {
       // BookingStatus.CANCELLED, StatusCodes.OK, USER_ROLES.ADMIN: an enum-like constant reads as its name.
@@ -248,7 +298,8 @@ class Humanizer {
     let init: ts.Expression = d.initializer;
     while (ts.isAwaitExpression(init) || ts.isParenthesizedExpression(init) || ts.isAsExpression(init) || ts.isNonNullExpression(init)) init = init.expression;
     if (!ts.isCallExpression(init) || !ts.isPropertyAccessExpression(init.expression)) return undefined;
-    if (!/^find(Unique|First|UniqueOrThrow|FirstOrThrow)?$/.test(init.expression.name.text)) return undefined;
+    // findUnique / findFirst on a database client; plain `find` is an array's (`chat.participants.find(…)`).
+    if (!/^find(Unique|First)(OrThrow)?$/.test(init.expression.name.text)) return undefined;
     const owner = init.expression.expression;
     return ts.isPropertyAccessExpression(owner) ? words(owner.name.text, this.w) : undefined;
   }
@@ -273,6 +324,25 @@ class Humanizer {
 }
 
 const isLogical = (k: ts.SyntaxKind) => k === ts.SyntaxKind.AmpersandAmpersandToken || k === ts.SyntaxKind.BarBarToken;
+
+/** The value of `10 * 1024 * 1024`, `60 * 60_000`: numbers and + - * / only. */
+function arithmetic(e: ts.Expression): number | undefined {
+  e = strip(e);
+  if (ts.isNumericLiteral(e)) return Number(e.text.replace(/_/g, ''));
+  if (!ts.isBinaryExpression(e)) return undefined;
+  const a = arithmetic(e.left), b = arithmetic(e.right);
+  if (a === undefined || b === undefined) return undefined;
+  switch (e.operatorToken.kind) {
+    case ts.SyntaxKind.AsteriskToken: return a * b;
+    case ts.SyntaxKind.PlusToken: return a + b;
+    case ts.SyntaxKind.MinusToken: return a - b;
+    case ts.SyntaxKind.SlashToken: return b ? a / b : undefined;
+    default: return undefined;
+  }
+}
+
+/** 10485760 → "10 MB" (only when it is a whole number of KB or MB). */
+const bytes = (n: number) => (n >= 1024 * 1024 && n % (1024 * 1024) === 0 ? `${n / 1024 / 1024} MB` : n >= 1024 && n % 1024 === 0 ? `${n / 1024} KB` : `${n} bytes`);
 
 const orList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} or ${xs.at(-1)}`);
 

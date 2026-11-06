@@ -39,6 +39,7 @@ Test: New user signup shows up on the admin dashboard
 | `type "text" in email` | `enter`/`write` … `into` … `field` |
 | `click "Sign up"` | `press`, `tap`, `click "Sign up" button`, `click Sign up button` |
 | `choose "Caries" for Condition` | `select`/`pick` … `from`/`in`. Works for native `<select>` and custom dropdowns (Radix, shadcn) |
+| `upload "cover.jpg" to "Route Cover Photo"` | `attach … to/for …`. The file comes from `e2e/files/`. Finds the file input by its label, or the one in the same block as those words (upload widgets often hide it). Without `to …`, the only file input on the page. |
 | `press Escape` | `Enter`, `Tab`, `Space`, arrow keys |
 | `wait 2 seconds` | |
 
@@ -57,7 +58,7 @@ in "Add issue" dialog, should see "Choose a condition"
 The name can be part of the full name (`"Add issue"` finds the dialog "Add issue · Maxilla 11").
 Names in `click` work the same way: an exact match wins, otherwise a partial one is used (`click "Actions for gingivitis"`).
 
-Page names come from `pages` in the config. Fields are found by label, placeholder or name. Buttons and links are found by their visible name. If something can't be found that way, add it under `elements` in the config (`"Sign up": "#submit"`).
+Page names come from `pages` in the config. Fields are found by label, placeholder or name, or by the words next to them (`<Label>From *</Label>` beside a dropdown it isn't linked to). Buttons and links are found by their visible name. If something can't be found that way, add it under `elements` in the config (`"Sign up": "#submit"`).
 
 ## Checking the screen
 
@@ -76,7 +77,7 @@ The page's API calls (anything under `apiPrefix`, default `/api`) are recorded a
 
 | Sentence | Meaning |
 |---|---|
-| `backend should receive POST /api/users` | Waits for the page to send this request since the last action, and remembers its reply. |
+| `backend should receive POST /api/users` | Waits for the page to send this request since the last action, and remembers its reply. `:id` stands for one part of the path that changes from run to run (`DELETE /api/routes/:id`). |
 | `backend should not receive any request` | Nothing was sent since the last action (e.g. the frontend validation stopped it). |
 | `call GET /api/admin/users` | Call the API directly as this user (with their login). Remembers the reply. |
 | `backend should reply 201 Created` | Status of the remembered reply. The text after the number is optional. |
@@ -104,6 +105,8 @@ Two settings in `humantest.config.json` for apps with a separate backend:
 - `apiHosts`: the only hosts the page may send API calls to. A call anywhere else is blocked and fails the test, so a frontend that still points at a real server can't change its data. The login endpoint and `call …` steps are checked too.
 - `login.tokenCookie`: for apps that read the token from a cookie the frontend sets itself. After logging in, HumanTest takes the token from the reply (`from` is a path like `data.accessToken`) and sets the cookie `name` on the app's address.
 
+Each user logs in once per run, and the next tests reuse that login (in memory only), because backends often allow only a few logins a minute. A `Start with:` state may reset the data, so after one runs, users log in again. A state can use the same login for its own calls: `` headers: { Authorization: `Bearer ${await token('admin')}` } ``.
+
 ## Business logic behind the tests
 
 When `humantest.config.json` says where the backend's code is, HumanTest also shows what the code does behind each step, without any AI: it reads the code (it never runs it) and writes the rules out in plain English.
@@ -117,6 +120,7 @@ For every step that clicks something (`click "Create Route"`), the button is fou
 
 - when it can't be used: `disabled={…}` → `"Create Route" can't be used while the number of ports is less than 2, …`
 - what the browser checks first: `required`, `min`, `maxLength`, `type="email"` on the form's inputs
+- for `upload …`: which files the picker offers (`accept`), and the checks in its `onChange` ("If file size is more than 10 MB, the page stops and shows …")
 - the form's own schema: `useForm({ resolver: zodResolver(schema) })`
 - when the page stops before sending: `if (…) { toast.error('…'); return; }` in the click or submit handler
 
@@ -125,6 +129,8 @@ After every run, each step's API calls are followed into the backend (Express ro
 - **Who can do it**: `auth(USER_ROLES.ADMIN)` → "Only ADMIN can do this."
 - **What the request must contain**: from its Zod schema, field by field, plus custom checks.
 - **When the server says no**: every `throw new ApiError(…)` with the conditions around it: "If departure port is not found, or departure port is not active, the server answers 404 Not Found: …".
+- **What it changes**: database writes (Prisma), with what happens to each field ("available seats goes down by seats", "status: ACTIVE unless given"), emails (with their subject), live notifications and Stripe calls. Each with its conditions, including the ones on the way to the function it is in. "If that fails, the request still goes on" when the code catches that failure and carries on.
+- **The answer when all is well**: `sendResponse(res, { statusCode, message })` or `res.status(…).json(…)`: "When nothing stops it, the server answers 201 Created: \"Route created successfully\"". A test that shows that message checks it.
 
 A rule is **checked** (✔) when the test looks for its message with `should see "…"`; the others (○) are what the test doesn't cover. A condition HumanTest can't put into words is shown as code, never guessed. `glossary` gives plain words for names in the code.
 

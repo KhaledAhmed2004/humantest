@@ -77,7 +77,7 @@ export function BusinessLogic({ project, testKey, version, running, change, onAc
 function ChangeBox({ change, onAccept, codeRoot, frontRoot }: { change: TestChange; onAccept: () => Promise<void>; codeRoot?: string; frontRoot?: string }) {
   const [busy, setBusy] = useState(false)
   // A click's rules live in the frontend's code, an API call's in the backend's.
-  const rootOf = (request: string) => (request.startsWith('CLICK ') ? frontRoot : codeRoot)
+  const rootOf = (request: string) => (/^(CLICK|UPLOAD) "/.test(request) ? frontRoot : codeRoot)
   const accepted = change.acceptedAt ? new Date(change.acceptedAt).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : undefined
   return (
     <div role="region" aria-label="Business logic changes" className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-100">
@@ -97,7 +97,7 @@ function ChangeBox({ change, onAccept, codeRoot, frontRoot }: { change: TestChan
         <div key={r.request} className="space-y-1.5">
           <p className="text-xs">
             <span className="font-mono font-semibold">{r.request}</span>
-            <span className="ml-2">{r.change === 'removed' ? 'no longer reached' : r.change === 'added' ? 'new call' : 'changed'}</span>
+            <span className="ml-2">{r.change === 'removed' ? 'no longer reached' : r.change === 'added' ? (/^(CLICK|UPLOAD) "/.test(r.request) ? 'new on the page' : 'new call') : 'changed'}</span>
           </p>
           {r.change === 'removed' && <p className="text-xs">{r.ruleCount ?? 0} rule(s) were behind it. Run the test again to see what it reaches now.</p>}
           {r.change === 'added' && <p className="text-xs">The test now makes this call, with {r.ruleCount ?? 0} rule(s) behind it.</p>}

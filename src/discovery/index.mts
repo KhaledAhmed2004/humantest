@@ -11,7 +11,7 @@ import { markChecked, present, type Group } from './rules/present.mts';
 import { openTsProject, type TsProject } from './ts-project.mts';
 import { matchStep } from '../compiler/steps.mts';
 import { check } from '../compiler/index.mts';
-import { actionRules } from './frontend/actions.mts';
+import { actionRules, uploadRules } from './frontend/actions.mts';
 import { pageFor, type Frontend } from './frontend/next.mts';
 export { openFrontend, type Frontend } from './frontend/next.mts';
 
@@ -48,8 +48,11 @@ export function discover(project: Project, backend: Backend, method: string, pat
   return { request: l.request, route: { method: r.method, path: r.path, file: r.file, line: r.line }, rules, groups: present(rules) };
 }
 
-/** What the page's own code does for a click step. */
+/** What the page's own code does for a click or upload step. */
 export interface PageDiscovered {
+  /** Clicked, or a file chosen in a file input. */
+  action: PageActionKind;
+  /** The words clicked, or the words next to the file input. */
   label: string;
   /** The page file, relative to the frontend folder. */
   page: string;
@@ -70,20 +73,33 @@ export interface DiscoveryFile {
   steps: { title: string; line: number; text: string; calls: Discovered[]; page?: PageDiscovered }[];
 }
 
-/** The label a click step clicks: `click "Create Route"`, `in "Add issue" dialog, click "Save"`. */
-export function clickedLabel(text: string): string | undefined {
+export type PageActionKind = 'click' | 'upload';
+
+/**
+ * What a step does on the page that the page's own code handles: `click "Create Route"`,
+ * `in "Add issue" dialog, click "Save"`, `upload "cover.jpg" to "Route Cover Photo"`.
+ */
+export function pageAction(text: string): { kind: PageActionKind; label: string } | undefined {
   const hit = matchStep(text);
-  return hit && hit.def.kind === 'click' ? String(hit.args.name) : undefined;
+  if (hit?.def.kind === 'click') return { kind: 'click', label: String(hit.args.name) };
+  if (hit?.def.kind === 'upload' && hit.args.field) return { kind: 'upload', label: String(hit.args.field) };
+  return undefined;
 }
 
-/** For a click step: the element it clicked and the page's own rules around it. */
-export function discoverClick(project: Project, fe: Frontend, pathname: string, label: string): PageDiscovered | undefined {
+/** How the baselines name a page action: `CLICK "Save" on app/x/page.tsx`. */
+export const pageActionKey = (kind: PageActionKind, label: string, page: string) => `${kind.toUpperCase()} "${label}" on ${page}`;
+/** A baseline request that is a page action, not an API call. */
+export const isPageActionKey = (request: string) => /^(CLICK|UPLOAD) "/.test(request);
+
+/** For a click or upload step: the element it used and the page's own rules around it. */
+export function discoverClick(project: Project, fe: Frontend, pathname: string, label: string, kind: PageActionKind = 'click'): PageDiscovered | undefined {
   const pageFile = pageFor(fe, pathname);
   if (!pageFile) return undefined;
-  const found = actionRules(fe, pageFile, label, { glossary: project.config.glossary });
+  const w = { glossary: project.config.glossary };
+  const found = kind === 'upload' ? uploadRules(fe, pageFile, label, w) : actionRules(fe, pageFile, label, w);
   if (!found) return undefined;
   return {
-    label, page: path.relative(fe.ts.root, pageFile).split(path.sep).join('/'),
+    action: kind, label, page: path.relative(fe.ts.root, pageFile).split(path.sep).join('/'),
     element: found.element, component: found.component, rules: found.rules, groups: present(found.rules),
   };
 }
@@ -106,8 +122,8 @@ export function writeDiscovery(project: Project, backend: Backend, t: { file: st
       if ('groups' in d) markChecked(d.groups, seen);
       calls.push(d);
     }
-    const label = fe && s.pageUrl ? clickedLabel(s.text) : undefined;
-    const page = label ? discoverClick(project, fe!, s.pageUrl!, label) : undefined;
+    const act = fe && s.pageUrl ? pageAction(s.text) : undefined;
+    const page = act ? discoverClick(project, fe!, s.pageUrl!, act.label, act.kind) : undefined;
     if (page) markChecked(page.groups, seen);
     return { title: s.title, line: s.line, text: s.text, calls, ...(page ? { page } : {}) };
   });

@@ -12,7 +12,7 @@ import { explainStep } from './compiler/steps.mts';
 import { build, check, loadPhrases, loadProject, listTestFiles, parseFile, rel, type Diagnostic } from './compiler/index.mts';
 import type { Project } from './compiler/project.mts';
 import {
-  discover, discoverClick, locate, openBackend, openFrontend, readTraces, writeDiscovery,
+  discover, discoverClick, isPageActionKey, locate, openBackend, openFrontend, readTraces, writeDiscovery,
   type Backend, type Discovered, type Frontend, type Located, type PageDiscovered,
 } from './discovery/index.mts';
 import type { Group } from './discovery/rules/present.mts';
@@ -89,7 +89,7 @@ function frontendOf(project: Project): Frontend | undefined {
 
 function printPage(project: Project, d: PageDiscovered, indent = '') {
   const base = path.basename(path.resolve(project.root, project.config.source!.frontend!));
-  console.log(`${indent}${c.green('→')} ${c.bold(`clicks "${d.label}"`)}  ${c.dim(`<${d.element.tag}> in ${d.component}, ${base}/${d.element.file}:${d.element.line}`)}`);
+  console.log(`${indent}${c.green('→')} ${c.bold(d.action === 'upload' ? `chooses a file for "${d.label}"` : `clicks "${d.label}"`)}  ${c.dim(`${d.element.tag.includes(' ') ? `a ${d.element.tag}` : `<${d.element.tag}>`} in ${d.component}, ${base}/${d.element.file}:${d.element.line}`)}`);
   if (!d.groups.length) console.log(`${indent}    ${c.dim('No rules of its own on the page.')}`);
   printGroups(project, d.groups, `${indent}    `, base);
 }
@@ -126,13 +126,13 @@ function printChange(project: Project, t: TestChange) {
   for (const r of t.requests) {
     if (r.change === 'same') continue;
     // A click's code is in the frontend, an API call's in the backend.
-    const base = r.request.startsWith('CLICK ') ? folder(project.config.source?.frontend) : folder(project.config.source?.backend);
+    const base = isPageActionKey(r.request) ? folder(project.config.source?.frontend) : folder(project.config.source?.backend);
     const at = (s: { file: string; line: number }) => c.dim(`${base}/${s.file}:${s.line}`);
-    const label = { added: c.cyan('new call'), removed: c.red('no longer reached'), changed: c.yellow('changed') }[r.change];
+    const label = { added: c.cyan(isPageActionKey(r.request) ? 'new on the page' : 'new call'), removed: c.red('no longer reached'), changed: c.yellow('changed') }[r.change];
     console.log(`  ${c.bold(r.request)}  ${label}${r.problem ? c.red(`  ${r.problem}`) : ''}`);
     if (r.change === 'removed') console.log(c.dim(`    ${r.ruleCount ?? 0} rule(s) were behind it. Run the test again to see what it reaches now.`));
     if (r.change === 'added') {
-      const how = r.request.startsWith('CLICK ') ? 'npm run ht -- discover' : `npm run ht -- discover "${r.request}"`;
+      const how = isPageActionKey(r.request) ? 'npm run ht -- discover' : `npm run ht -- discover "${r.request}"`;
       console.log(c.dim(`    The test now does this: ${r.ruleCount ?? 0} rule(s) behind it (${how}).`));
     }
     for (const x of r.rules) {
@@ -154,17 +154,19 @@ function runDiscover(project: Project, rest: string[]) {
   const ki = rest.indexOf('--key');
   const key = ki >= 0 ? rest[ki + 1] : undefined;
   const value = (name: string) => { const i = rest.indexOf(name); return i >= 0 ? rest[i + 1] : undefined; };
-  const valued = new Set(['--key', '--page', '--click']);
+  const valued = new Set(['--key', '--page', '--click', '--upload']);
   const words = rest.filter((a, i) => !a.startsWith('--') && !valued.has(rest[i - 1]));
   const backend = openOrExit(project);
 
-  // discover --page /login --click "Sign In": the page's own rules for one click.
-  if (value('--click')) {
+  // discover --page /login --click "Sign In": the page's own rules for one click (or --upload "Photo").
+  const pageLabel = value('--click') ?? value('--upload');
+  if (pageLabel) {
     const fe = frontendOf(project);
     if (!fe) { console.log(c.red('✘ No "source.frontend" in humantest.config.json.')); process.exit(1); }
-    const d = discoverClick(project, fe, value('--page') ?? '/', value('--click')!);
+    const kind = value('--click') ? 'click' : 'upload';
+    const d = discoverClick(project, fe, value('--page') ?? '/', pageLabel, kind);
     if (json) { console.log(jsonOut(d ?? null)); return; }
-    if (!d) console.log(c.yellow(`Couldn't find "${value('--click')}" on the page ${value('--page') ?? '/'} in the frontend code.`));
+    if (!d) console.log(c.yellow(`Couldn't find ${kind === 'upload' ? 'a file input for ' : ''}"${pageLabel}" on the page ${value('--page') ?? '/'} in the frontend code.`));
     else printPage(project, d);
     return;
   }

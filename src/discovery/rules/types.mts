@@ -81,7 +81,68 @@ export interface UiGuardRule {
   in: string;
 }
 
-export type RuleFacts = AccessRule | FieldRule | CheckRule | RejectRule | UiBlockRule | UiGuardRule;
+/** A file input that offers only some kinds of file: `<input type="file" accept="image/png,image/jpeg">`. */
+export interface UiFileRule {
+  kind: 'ui-file';
+  /** The words next to it, e.g. "Route Cover Photo". */
+  field: string;
+  /** As written, e.g. ["image/png", "image/jpeg", ".pdf"]. */
+  accept: string[];
+  multiple?: boolean;
+}
+
+/** One field a database write sets: `availableSeats: { decrement: seats }`, `status: RouteStatus.ACTIVE`. */
+export interface WrittenField {
+  name: string;
+  /** How: set to `value`, or made larger / smaller by `value`. Missing value: set from the code. */
+  how: 'set' | 'increment' | 'decrement';
+  value?: string;
+  /** `value` is only used when nothing else is given (`dto.status ?? RouteStatus.ACTIVE`). */
+  fallback?: boolean;
+  /** Written only when sent / when some condition holds (`...(dto.x !== undefined && { x })`). */
+  optional?: boolean;
+}
+
+/** What the request changes or sends: a database write, an email, a live notification, a payment. */
+export interface EffectRule {
+  kind: 'effect';
+  effect: 'create' | 'update' | 'delete' | 'email' | 'notify' | 'payment';
+  /** For database writes: the model in words, e.g. "route". */
+  model?: string;
+  /** createMany / updateMany / deleteMany. */
+  many?: boolean;
+  fields?: WrittenField[];
+  /** An email's subject, a notification's event name, a payment call ("refunds.create"). */
+  what?: string;
+  /** All the conditions around it, outermost first. Empty: whenever this code runs. */
+  when: Condition[];
+  in: string;
+  /** It is inside a catch block: it happens when the code before it fails. */
+  onError?: boolean;
+  /** Its failure is caught and ignored: the request still succeeds without it. */
+  bestEffort?: boolean;
+  /** It is in a function the route's code calls: the conditions at the call sites on the way there. */
+  path?: RulePath;
+}
+
+export interface RulePath {
+  /** The called function it is in, e.g. "applyIntentResultInTx". */
+  through: string;
+  when: Condition[];
+}
+
+/** The answer when nothing stops the request: `sendResponse(res, { statusCode: 201, message })`. */
+export interface ReplyRule {
+  kind: 'reply';
+  status?: number;
+  message?: string;
+  otherMessages?: string[];
+  when: Condition[];
+  in: string;
+  path?: RulePath;
+}
+
+export type RuleFacts = AccessRule | FieldRule | CheckRule | RejectRule | UiBlockRule | UiGuardRule | UiFileRule | EffectRule | ReplyRule;
 
 export type Rule = RuleFacts & {
   /** Stable across runs and edits elsewhere: what the rule is about, not what it says. */

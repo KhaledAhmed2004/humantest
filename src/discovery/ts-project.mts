@@ -94,13 +94,42 @@ export function nameOf(decl: ts.Node): string {
   if ((ts.isFunctionDeclaration(decl) || ts.isClassDeclaration(decl)) && decl.name) return decl.name.text;
   if (ts.isMethodDeclaration(decl) && ts.isIdentifier(decl.name)) {
     const cls = decl.parent;
-    return ts.isClassLike(cls) && cls.name ? `${cls.name.text}.${decl.name.text}` : decl.name.text;
+    if (ts.isClassLike(cls) && cls.name) return `${cls.name.text}.${decl.name.text}`;
+    const owner = objectOwner(decl);
+    return owner ? `${owner}.${decl.name.text}` : decl.name.text;
+  }
+  if (isFunctionProperty(decl)) {
+    const owner = objectOwner(decl);
+    return owner ? `${owner}.${decl.name.getText()}` : decl.name.getText();
   }
   if (ts.isVariableDeclaration(decl) && ts.isIdentifier(decl.name)) return decl.name.text;
   if (ts.isEnumMember(decl)) return `${decl.parent.name.text}.${decl.name.getText()}`;
   if (ts.isExportAssignment(decl)) return 'default';
-  if (ts.isArrowFunction(decl) || ts.isFunctionExpression(decl)) return 'function written in the route';
+  if (ts.isArrowFunction(decl) || ts.isFunctionExpression(decl)) {
+    // `{ label: 'Delete route', onSelect: () => … }` / `<Button onClick={() => …}>`: named after where it is.
+    const up = decl.parent;
+    if (ts.isPropertyAssignment(up)) return `the ${up.name.getText()} function written there`;
+    if (ts.isJsxExpression(up) && ts.isJsxAttribute(up.parent)) return `the ${up.parent.name.getText()} function written there`;
+    return 'function written in the route';
+  }
   return decl.getText().slice(0, 40);
+}
+
+/** `sendEmail: async () => …` inside an object literal. */
+function isFunctionProperty(decl: ts.Node): decl is ts.PropertyAssignment {
+  if (!ts.isPropertyAssignment(decl) || !ts.isObjectLiteralExpression(decl.parent)) return false;
+  let e = decl.initializer;
+  while (ts.isParenthesizedExpression(e) || ts.isAsExpression(e)) e = e.expression;
+  return ts.isArrowFunction(e) || ts.isFunctionExpression(e);
+}
+
+/** The variable an object literal is assigned to: `EmailService` in `const EmailService = { … }`. */
+function objectOwner(member: ts.Node): string | undefined {
+  const obj = member.parent;
+  if (!ts.isObjectLiteralExpression(obj)) return undefined;
+  let up: ts.Node = obj.parent;
+  while (ts.isAsExpression(up) || ts.isSatisfiesExpression(up) || ts.isParenthesizedExpression(up)) up = up.parent;
+  return ts.isVariableDeclaration(up) && ts.isIdentifier(up.name) ? up.name.text : undefined;
 }
 
 export function refOf(p: TsProject, decl: ts.Node): CodeRef {
@@ -111,6 +140,8 @@ export function refOf(p: TsProject, decl: ts.Node): CodeRef {
 /** Declarations that make up the app's logic: functions, methods, classes and top-level variables. */
 export function isCodeDeclaration(decl: ts.Node): boolean {
   if (ts.isFunctionDeclaration(decl) || ts.isMethodDeclaration(decl) || ts.isClassDeclaration(decl)) return true;
+  // `export const EmailService = { sendEmail: async () => … }`: one method, not the whole object.
+  if (isFunctionProperty(decl)) return true;
   // Top-level `const x = …` only: locals are part of the function they're in.
   return ts.isVariableDeclaration(decl) && ts.isVariableDeclarationList(decl.parent) && ts.isVariableStatement(decl.parent.parent) &&
     ts.isSourceFile(decl.parent.parent.parent);

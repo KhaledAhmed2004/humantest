@@ -6,6 +6,7 @@ import type { Slice } from '../backend/slice.mts';
 import type { TsProject } from '../ts-project.mts';
 import { accessRules } from './access.mts';
 import type { Words } from './condition.mts';
+import { effectRules } from './effects.mts';
 import { rejectRules } from './throws.mts';
 import type { Rule } from './types.mts';
 import { schemaRules } from './zod.mts';
@@ -24,6 +25,7 @@ export function extractRules(p: TsProject, slice: Slice, w: Words = {}): Rule[] 
   };
   slice.route.middlewares.forEach(fromArg);
   rules.push(...rejectRules(p, slice.items, w));
+  rules.push(...effectRules(p, slice.items, w));
 
   // Ids must be unique: a second rule with the same id (e.g. two identical throws) gets a number.
   const count = new Map<string, number>();

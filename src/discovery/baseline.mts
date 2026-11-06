@@ -10,8 +10,8 @@ import path from 'node:path';
 import type { Project } from '../compiler/project.mts';
 import { matchRoute } from './backend/express.mts';
 import { sliceRoute } from './backend/slice.mts';
-import { clickedLabel, currentTestKeys, discoverClick, readTraces, type Backend, type Frontend, type TraceFile } from './index.mts';
-import { actionRules } from './frontend/actions.mts';
+import { currentTestKeys, discoverClick, isPageActionKey, pageAction, pageActionKey, readTraces, type PageActionKind, type Backend, type Frontend, type TraceFile } from './index.mts';
+import { actionRules, uploadRules } from './frontend/actions.mts';
 import { pageFor } from './frontend/next.mts';
 import { extractRules } from './rules/index.mts';
 import { renderRule } from './rules/render.mts';
@@ -26,8 +26,8 @@ export interface SnapRequest {
   route?: { method: string; path: string; file: string; line: number };
   /** No route matched (it may have been removed or renamed). */
   problem?: string;
-  /** For a click on the page (not an API call): where, and on what, so it can be found again. */
-  ui?: { url: string; label: string };
+  /** For a click or upload on the page (not an API call): where, and on what, so it can be found again. Missing kind: a click. */
+  ui?: { url: string; label: string; kind?: PageActionKind };
   functions: SnapFunction[];
   rules: SnapRule[];
 }
@@ -80,16 +80,18 @@ function snapRequest(project: Project, backend: Backend, method: string, pathnam
   };
 }
 
-/** A click on the page, in the current frontend code: the element's own rules and the code behind them. */
-function snapClick(project: Project, fe: Frontend, url: string, label: string): SnapRequest {
-  const d = discoverClick(project, fe, url, label);
+/** A click or upload on the page, in the current frontend code: the element's own rules and the code behind them. */
+function snapClick(project: Project, fe: Frontend, url: string, label: string, kind: PageActionKind = 'click'): SnapRequest {
+  const d = discoverClick(project, fe, url, label, kind);
   const pageFile = pageFor(fe, url);
   const where = pageFile ? path.relative(fe.ts.root, pageFile).split(path.sep).join('/') : url;
-  const request = `CLICK "${label}" on ${where}`;
-  if (!d) return { request, ui: { url, label }, problem: `"${label}" is no longer on ${where} in the frontend code.`, functions: [], rules: [] };
-  const found = actionRules(fe, pageFile!, label, { glossary: project.config.glossary });
+  const request = pageActionKey(kind, label, where);
+  const ui = { url, label, ...(kind === 'click' ? {} : { kind }) };
+  if (!d) return { request, ui, problem: `"${label}" is no longer on ${where} in the frontend code.`, functions: [], rules: [] };
+  const w = { glossary: project.config.glossary };
+  const found = kind === 'upload' ? uploadRules(fe, pageFile!, label, w) : actionRules(fe, pageFile!, label, w);
   return {
-    request, ui: { url, label },
+    request, ui,
     functions: (found?.functions ?? []).map((f) => ({ name: f.name, file: f.file, line: f.line, role: f.role, hash: f.hash })),
     rules: d.rules.map((x) => ({ ...x, text: renderRule(x) })),
   };
@@ -100,9 +102,9 @@ export function snapshotFromTrace(project: Project, backend: Backend, trace: Tra
   const requests = new Map<string, SnapRequest>();
   const steps = trace.steps.map((s) => {
     const made: string[] = [];
-    const label = fe && s.pageUrl ? clickedLabel(s.text) : undefined;
-    if (label) {
-      const snap = snapClick(project, fe!, s.pageUrl!, label);
+    const act = fe && s.pageUrl ? pageAction(s.text) : undefined;
+    if (act) {
+      const snap = snapClick(project, fe!, s.pageUrl!, act.label, act.kind);
       // Only clicks whose element was found: a button from a design library has no rules of its own here.
       if (!snap.problem) {
         if (!requests.has(snap.request)) requests.set(snap.request, snap);
@@ -123,7 +125,7 @@ export function snapshotFromTrace(project: Project, backend: Backend, trace: Tra
 /** The same test, rebuilt from a baseline's requests against the current code (no test run needed). */
 export function snapshotFromBaseline(project: Project, backend: Backend, base: Snapshot, fe?: Frontend): Snapshot {
   const requests = base.requests.map((r) => {
-    if (r.ui) return fe ? snapClick(project, fe, r.ui.url, r.ui.label) : r;
+    if (r.ui) return fe ? snapClick(project, fe, r.ui.url, r.ui.label, r.ui.kind) : r;
     const [method, ...rest] = r.request.split(' ');
     return snapRequest(project, backend, method, rest.join(' '));
   });
@@ -297,7 +299,7 @@ export function changes(project: Project, backend: Backend, fe?: Frontend): Test
     const result = compare(base, snapshotFromBaseline(project, backend, base, fe));
     for (const r of result.requests) {
       // A click's code is the frontend's; an API call's is the backend's.
-      const root = r.request.startsWith('CLICK ') && fe ? fe.ts.root : backend.ts.root;
+      const root = isPageActionKey(r.request) && fe ? fe.ts.root : backend.ts.root;
       for (const f of r.functions) f.lastCommit = lastCommit(root, f.file);
     }
     return result;

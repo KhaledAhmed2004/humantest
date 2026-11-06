@@ -72,6 +72,13 @@
      "line": 89,
      "role": "helper",
      "hash": "a8db980d822d"
+    },
+    {
+     "name": "getDestination",
+     "file": "src/app/(authentication)/login/_components/LoginForm.tsx",
+     "line": 52,
+     "role": "helper",
+     "hash": "e4865bb2c797"
     }
    ],
    "rules": [
@@ -576,10 +583,173 @@
      "status": 401,
      "message": "Invalid credentials",
      "text": "If password valid is false, and attempts is less than 5, the server answers 401 Not Logged In: \"Invalid credentials\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "loginUser",
+     "status": 200,
+     "message": "User logged in successfully.",
+     "id": "reply:loginUser:200:",
+     "source": {
+      "file": "src/app/modules/auth/auth.controller.ts",
+      "line": 89
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"User logged in successfully.\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "user",
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "LOCKED"
+      },
+      {
+       "name": "failed login attempts",
+       "how": "set"
+      },
+      {
+       "name": "locked until",
+       "how": "set"
+      }
+     ],
+     "when": [
+      {
+       "code": "!isPasswordValid",
+       "text": "password valid is false"
+      },
+      {
+       "code": "attempts >= 5",
+       "text": "attempts is at least 5"
+      }
+     ],
+     "in": "loginUser",
+     "id": "effect:loginUser:update:user:!isPasswordValid && attempts >= 5",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 337
+     },
+     "text": "If password valid is false, and attempts is at least 5, the user is changed: status becomes LOCKED; failed login attempts is set; locked until is set."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "user",
+     "fields": [
+      {
+       "name": "failed login attempts",
+       "how": "set"
+      }
+     ],
+     "when": [
+      {
+       "code": "!isPasswordValid",
+       "text": "password valid is false"
+      },
+      {
+       "code": "!(attempts >= 5)",
+       "text": "attempts is less than 5"
+      }
+     ],
+     "in": "loginUser",
+     "id": "effect:loginUser:update:user:!isPasswordValid && !(attempts >= 5)",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 350
+     },
+     "text": "If password valid is false, and attempts is less than 5, the user is changed: failed login attempts is set."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "user",
+     "fields": [
+      {
+       "name": "failed login attempts",
+       "how": "set",
+       "value": "0"
+      },
+      {
+       "name": "locked until",
+       "how": "set",
+       "value": "empty"
+      },
+      {
+       "name": "status",
+       "how": "set",
+       "value": "ACTIVE"
+      }
+     ],
+     "when": [
+      {
+       "code": "user.failedLoginAttempts > 0 || user.status === AccountStatus.LOCKED || user.lockedUntil",
+       "text": "user failed login attempts is more than 0, or user status is LOCKED, or user locked until is set"
+      }
+     ],
+     "in": "loginUser",
+     "id": "effect:loginUser:update:user:user.failedLoginAttempts > 0 || user.status === AccountStatus.LOCKED || user.lockedUntil",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 362
+     },
+     "text": "If user failed login attempts is more than 0, or user status is LOCKED, or user locked until is set, the user is changed: failed login attempts becomes 0; locked until becomes empty; status becomes ACTIVE."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "session",
+     "fields": [
+      {
+       "name": "user id",
+       "how": "set"
+      },
+      {
+       "name": "refresh token hash",
+       "how": "set"
+      },
+      {
+       "name": "device info",
+       "how": "set"
+      },
+      {
+       "name": "ip address",
+       "how": "set"
+      },
+      {
+       "name": "expires at",
+       "how": "set"
+      },
+      {
+       "name": "last used at",
+       "how": "set",
+       "value": "the current time"
+      },
+      {
+       "name": "revoked at",
+       "how": "set",
+       "value": "empty"
+      },
+      {
+       "name": "revoked reason",
+       "how": "set",
+       "value": "empty"
+      }
+     ],
+     "when": [],
+     "in": "createSession",
+     "id": "effect:createSession:create:session:",
+     "source": {
+      "file": "src/app/modules/session/session.service.ts",
+      "line": 50
+     },
+     "text": "A new session is saved (last used at becomes the current time; revoked at becomes empty; revoked reason becomes empty)."
     }
    ]
   }
  ],
  "frontend": true,
- "acceptedAt": "2026-11-06T16:22:11.865Z"
+ "acceptedAt": "2026-11-06T19:10:31.854Z"
 }

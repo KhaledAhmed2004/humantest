@@ -88,7 +88,7 @@ function rejectFor(p: TsProject, t: ts.ThrowStatement, it: SliceItem, w: Words):
   };
 }
 
-function statusOf(p: TsProject, e: ts.Expression): number | undefined {
+export function statusOf(p: TsProject, e: ts.Expression): number | undefined {
   if (ts.isNumericLiteral(e)) return Number(e.text);
   if (ts.isPropertyAccessExpression(e) || ts.isElementAccessExpression(e)) {
     const v = p.checker.getConstantValue(e as ts.PropertyAccessExpression);
