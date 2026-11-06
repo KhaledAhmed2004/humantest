@@ -1,0 +1,17 @@
+# The admin's route form, in Island Hop.
+# This test only reads data. Saving a new route needs a cover photo, and HumanTest
+# has no upload step yet, so creating a route comes later.
+# Don't check whether "Create Route" is enabled here: the form picks the first two ports only
+# when they have loaded before it opens, so the answer depends on timing.
+
+Test: Admin opens the form for a new route
+
+  As admin:
+    go to routes page
+    should see "Routes Management"
+    click "Add Route"
+    "Add New Ferry Route" dialog should be open
+    in "Add New Ferry Route" dialog, should see "Estimated Travel Time"
+    in "Add New Ferry Route" dialog, should see "Route Cover Photo"
+    press Escape
+    "Add New Ferry Route" dialog should be closed

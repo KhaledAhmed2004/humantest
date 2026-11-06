@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  getProjects, getTests, startRun, stopRun, subscribe,
-  type Diagnostic, type History, type Project, type RunScope, type ServerEvent, type TestFile, type TestInfo,
+  acceptChanges, getChanges, getProjects, getTests, startRun, stopRun, subscribe,
+  type Diagnostic, type History, type Project, type RunScope, type ServerEvent, type TestChange, type TestFile, type TestInfo,
 } from './api'
 import { friendlyProblem, storage } from './format'
 
@@ -22,6 +22,16 @@ export function useHumanTest() {
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [logs, setLogs] = useState<string[]>([])
+  // Bumped when the business rules have been worked out again, so the panel re-reads them.
+  const [discovery, setDiscovery] = useState<{ version: number; running: boolean }>({ version: 0, running: false })
+  // What changed in each test's business logic since it was accepted, by test key.
+  const [changes, setChanges] = useState<Record<string, TestChange>>({})
+
+  const loadChanges = useCallback(async (id: string) => {
+    const r = await getChanges(id).catch(() => null)
+    if (!r || projectRef.current !== id) return
+    setChanges(Object.fromEntries(r.tests.map((t) => [t.key, t])))
+  }, [])
   // The project the latest request was for, so a slow answer for another project is ignored.
   const projectRef = useRef(project)
 
@@ -48,7 +58,9 @@ export function useHumanTest() {
     if (!project) return
     storage.set('ht.project', project)
     loadTests(project)
-  }, [project, loadTests])
+    setChanges({})
+    loadChanges(project)
+  }, [project, loadTests, loadChanges])
 
   const changeProject = useCallback((id: string) => {
     setLive({})
@@ -87,8 +99,21 @@ export function useHumanTest() {
         // A .ht file was edited: re-read the list (and its "did you mean" problems) right away.
         if (e.project === projectRef.current) loadTests(e.project)
         break
+      case 'discovery':
+        if (e.project === projectRef.current) setDiscovery((d) => ({ version: d.version + (e.state === 'done' ? 1 : 0), running: e.state === 'running' }))
+        break
+      case 'changes':
+        if (e.project === projectRef.current) loadChanges(e.project)
+        break
     }
-  }), [loadTests])
+  }), [loadTests, loadChanges])
+
+  const accept = useCallback(async (key: string) => {
+    if (!project) return
+    const r = await acceptChanges(project, key)
+    if (r.error) toast.error('Could not accept the change.', { description: r.error })
+    else toast.success('Accepted. This is now the expected business logic for this test.')
+  }, [project])
 
   const tests: TestRow[] = useMemo(
     () => files.flatMap((f) => f.tests.map((t) => ({ ...t, file: f.file, fileHasProblems: f.diagnostics.length > 0 }))),
@@ -122,7 +147,7 @@ export function useHumanTest() {
   }, [project, tests])
 
   return {
-    projects, project, setProject: changeProject, files, problems, history, tests, live, running, progress, logs,
+    projects, project, setProject: changeProject, files, problems, history, tests, live, running, progress, logs, discovery, changes, accept,
     statusOf, run, stop: stopRun,
   }
 }

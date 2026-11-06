@@ -83,6 +83,57 @@ The page's API calls (anything under `apiPrefix`, default `/api`) are recorded a
 | `reply should contain email` / `reply should not contain password` | A field name or value appears anywhere in the reply. |
 | `reply total should be 1` / `reply users[0].email should be "a@b.com"` | One field of the reply. |
 
+### Which step made which call
+
+After every run (with or without video), HumanTest writes `.humantest/traces/<test>.json`: each step with the API calls it caused, and the names (never the values) of their query and body fields. The UI shows these calls under each step.
+
+A call counts toward the last step that *did* something (go to, click, type, choose, press, reload, call). Checks and waits don't send requests, so a page's data fetches that arrive during the next `should see` still count toward the `go to` that caused them.
+
+### Logging in with a token, and keeping tests off real servers
+
+Two settings in `humantest.config.json` for apps with a separate backend:
+
+```json
+"apiHosts": ["localhost:5000"],
+"login": {
+  "endpoint": "http://localhost:5000/api/v1/auth/login",
+  "tokenCookie": { "name": "accessToken", "from": "data.accessToken" }
+}
+```
+
+- `apiHosts`: the only hosts the page may send API calls to. A call anywhere else is blocked and fails the test, so a frontend that still points at a real server can't change its data. The login endpoint and `call …` steps are checked too.
+- `login.tokenCookie`: for apps that read the token from a cookie the frontend sets itself. After logging in, HumanTest takes the token from the reply (`from` is a path like `data.accessToken`) and sets the cookie `name` on the app's address.
+
+## Business logic behind the tests
+
+When `humantest.config.json` says where the backend's code is, HumanTest also shows what the code does behind each step, without any AI: it reads the code (it never runs it) and writes the rules out in plain English.
+
+```json
+"source": { "backend": "../my-app/backend" },
+"glossary": { "isArch": "archived" }
+```
+
+After every run, each step's API calls are followed into the backend (Express routes, middleware, controllers, services) and three kinds of rules come out, each with the file and line it comes from:
+
+- **Who can do it**: `auth(USER_ROLES.ADMIN)` → "Only ADMIN can do this."
+- **What the request must contain**: from its Zod schema, field by field, plus custom checks.
+- **When the server says no**: every `throw new ApiError(…)` with the conditions around it: "If departure port is not found, or departure port is not active, the server answers 404 Not Found: …".
+
+A rule is **checked** (✔) when the test looks for its message with `should see "…"`; the others (○) are what the test doesn't cover. A condition HumanTest can't put into words is shown as code, never guessed. `glossary` gives plain words for names in the code.
+
+The first time a test runs, what it relies on is saved in `e2e/logic/` (commit it, `logicDir` changes the folder). From then on, a change in that logic is reported, rule by rule ("was … / now …"), until it is accepted. Comments and formatting don't count; code outside the test's flow doesn't either.
+
+| Command | |
+|---|---|
+| `npm run ht -- discover` | The rules behind every step of the last run. |
+| `npm run ht -- discover "POST /api/v1/routes"` | The rules behind one API call. |
+| `npm run ht -- locate "POST /api/v1/routes"` | The code it runs through, function by function. |
+| `npm run ht -- discover --changes` | What changed since the logic was accepted (no test run needed). |
+| `npm run ht -- discover --check` | The same, exiting with 1 on changes: for CI. |
+| `npm run ht -- discover --accept` | Accept the current logic (`--key "<file>::<test>"` for one test). |
+
+The UI shows the same: a **Business logic** panel under the steps, a **Logic changed** mark in the test list a few seconds after someone saves a backend file, and an **Accept the change** button.
+
 ## Simulating problems
 
 Put these **before** the action that triggers the request. They last until the end of the test, for that user.

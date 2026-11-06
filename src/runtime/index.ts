@@ -19,7 +19,16 @@ const DEMO = !!process.env.HUMANTEST_DEMO;
 interface Config {
   baseURL: string;
   apiPrefix?: string;
-  login?: { endpoint: string };
+  /**
+   * Hosts the page may send API calls to, e.g. ["localhost:5000"]. A call anywhere else is blocked
+   * and fails the test, so a frontend that still points at a real server can't change its data.
+   */
+  apiHosts?: string[];
+  login?: {
+    endpoint: string;
+    /** For apps that keep the token in a cookie they set themselves: where the token is in the reply. */
+    tokenCookie?: { name: string; from: string };
+  };
   users: Record<string, { email?: string; password?: string }>;
   elements?: Record<string, string>;
   watchdog?: { failTestOnWarning?: boolean; slowApiMs?: number };
@@ -61,8 +70,35 @@ const short = (v: unknown, max = 300) => {
   return t && t.length > max ? `${t.slice(0, max)}…` : t;
 };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** `a.b[0].c` inside a parsed JSON reply. */
+const pick = (obj: unknown, dotted: string) =>
+  dotted.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean).reduce<any>((v, k) => (v == null ? undefined : v[k]), obj);
 
 interface Warning { line: number; user: string; message: string }
+
+/** One API call, as written to the trace file. Only names of query and body fields, never their values. */
+export interface TraceCall {
+  method: string;
+  path: string;
+  query: string[];
+  bodyKeys: string[];
+  status?: number;
+  simulated?: boolean;
+  /** The page the user was on when the call was sent. */
+  pageUrl?: string;
+}
+
+export interface TraceStep {
+  /** Same title as the Playwright step, so the reporter can match them. */
+  title: string;
+  user: string;
+  line: number;
+  text: string;
+  status: 'passed' | 'failed';
+  calls: TraceCall[];
+}
+
+export interface Trace { version: 1; test: string; source: string; status: 'passed' | 'failed'; steps: TraceStep[] }
 
 export class Scenario {
   readonly users: User[] = [];
@@ -72,8 +108,33 @@ export class Scenario {
   /** When each user's video started recording (ms since epoch). */
   readonly videoStarts = new Map<string, number>();
   currentLine = 0;
+  /** Set when an API call went to a host outside `apiHosts`. The test fails at the end of the step. */
+  blocked?: string;
 
   constructor(readonly opts: Options, readonly config: Config) {}
+
+  /** Whether an API call to this URL is allowed by `apiHosts` (always, when it isn't set). */
+  allowsHost(url: string): boolean {
+    const hosts = this.config.apiHosts;
+    if (!hosts?.length) return true;
+    try {
+      const u = new URL(url, this.config.baseURL);
+      return hosts.includes(u.host) || hosts.includes(u.hostname);
+    } catch {
+      return false;
+    }
+  }
+
+  blockedError(url: string, who: 'page' | 'login' | 'call' = 'page'): string {
+    const allowed = `not one of the allowed API hosts (${this.config.apiHosts!.join(', ')})`;
+    if (who === 'login') {
+      return `The login endpoint ${url} is ${allowed}, so HumanTest did not log in there.\n` +
+        `Change "login.endpoint" or "apiHosts" in humantest.config.json.`;
+    }
+    return `${who === 'call' ? 'This step' : 'The page'} tried to call ${url}, which is ${allowed}.\n` +
+      `The call was blocked, so nothing changed there. Point the frontend at your local backend, ` +
+      `or add the host to "apiHosts" in humantest.config.json if it is safe to change.`;
+  }
 
   warn(user: string, message: string) {
     if (this.warnings.some((w) => w.message === message && w.user === user)) return;
@@ -129,12 +190,25 @@ export class Scenario {
     if (creds.email) {
       await test.step(`line ${line} · log in as ${name} (${creds.email})`, async () => {
         const endpoint = this.config.login?.endpoint ?? '/api/login';
-        const res = await context.request.post(new URL(endpoint, this.config.baseURL).toString(), {
+        const url = new URL(endpoint, this.config.baseURL).toString();
+        if (!this.allowsHost(url)) throw this.humanError(line, name, `log in as ${name}`, new Error(this.blockedError(url, 'login')));
+        const res = await context.request.post(url, {
           data: { email: creds.email, password: creds.password },
         });
         if (!res.ok()) {
           throw this.humanError(line, name, `log in as ${name}`,
             new Error(`${endpoint} replied ${res.status()}: ${short(await res.text())}\nCheck the email/password for "${name}" in humantest.config.json.`));
+        }
+        const tc = this.config.login?.tokenCookie;
+        if (tc) {
+          let token: unknown;
+          try { token = pick(await res.json(), tc.from); } catch { /* not JSON */ }
+          if (typeof token !== 'string' || !token) {
+            throw this.humanError(line, name, `log in as ${name}`,
+              new Error(`${endpoint} replied ${res.status()}, but there is no token at "${tc.from}" in the reply.\n` +
+                `Check "login.tokenCookie.from" in humantest.config.json. The reply was: ${short(await res.text())}`));
+          }
+          await context.addCookies([{ name: tc.name, value: token, url: this.config.baseURL }]);
         }
       }, { box: true });
     }
@@ -235,12 +309,51 @@ export class Scenario {
       }
     }
 
+    this.writeTrace(passed);
+
     for (const w of this.warnings) {
       info.annotations.push({ type: 'watchdog', description: `line ${w.line} · ${w.user} · ${w.message}` });
     }
+    if (passed && this.blocked) throw new HumanError(this.blocked);
     if (passed && this.warnings.length && this.config.watchdog?.failTestOnWarning) {
       throw new HumanError(`The test steps passed, but the watchdog found ${this.warnings.length} problem(s):\n` +
         this.warnings.map((w) => `   ⚠ line ${w.line} · ${w.user} · ${w.message}`).join('\n'));
+    }
+  }
+
+  /**
+   * Writes .humantest/traces/<test>.json: every step with the API calls it caused.
+   * Written on every run (not only demo runs), so other tools can see what each step touched.
+   */
+  private writeTrace(passed: boolean) {
+    const info = this.opts.testInfo;
+    const calls = new Map<number, TraceCall[]>();
+    for (const u of this.users) {
+      for (const e of u.log) {
+        if (e.step < 0) continue;
+        const list = calls.get(e.step) ?? [];
+        list.push({ method: e.method, path: e.path, query: e.query, bodyKeys: e.bodyKeys, status: e.status,
+          ...(e.mocked ? { simulated: true } : {}), ...(e.pageUrl ? { pageUrl: e.pageUrl } : {}) });
+        calls.set(e.step, list);
+      }
+    }
+    const trace: Trace = {
+      version: 1,
+      test: info.title,
+      source: `${this.opts.source}:${this.opts.line}`,
+      status: passed ? 'passed' : 'failed',
+      steps: this.records.map((r, i) => ({
+        title: r.user === 'setup' ? `line ${r.line} · ${r.text}` : `line ${r.line} · ${r.user} · ${r.text}`,
+        user: r.user, line: r.line, text: r.text, status: r.status, calls: calls.get(i) ?? [],
+      })),
+    };
+    const file = path.join(process.cwd(), '.humantest', 'traces', `${fileSlug(`${this.opts.source} ${info.title}`)}.json`);
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify(trace, null, 1));
+      info.annotations.push({ type: 'trace', description: path.relative(process.cwd(), file) });
+    } catch (e) {
+      this.warn('setup', `Could not write the trace file: ${(e as Error).message}`);
     }
   }
 }
@@ -307,6 +420,14 @@ interface LogEntry {
   mocked?: boolean;
   req?: Request;
   body?: Promise<string | null>;
+  /** Which step sent it: an index into Scenario.records, or -1 before this user's first step. */
+  step: number;
+  /** Names of the query parameters (not their values). */
+  query: string[];
+  /** Top-level field names of a JSON or form body (not their values). */
+  bodyKeys: string[];
+  /** Path of the page the user was on. */
+  pageUrl?: string;
 }
 
 interface Reply { label: string; status: number; text: () => Promise<string | null> }
@@ -320,11 +441,19 @@ export class User {
   private readonly bodies = new WeakMap<Request, string>();
   private offline = false;
   private caption?: string;
+  /** This user's latest step (index into Scenario.records), so its API calls are counted to it. */
+  private stepIndex = -1;
 
   /** Route every API call through Node so we always have its reply body. Simulations are added later and run first. */
   async init() {
     const prefix = this.ht.config.apiPrefix ?? '/api';
     await this.context.route((url) => url.pathname.startsWith(prefix), async (route) => {
+      const url = route.request().url();
+      if (!this.ht.allowsHost(url)) {
+        this.ht.blocked ??= this.ht.blockedError(url);
+        await route.abort('blockedbyclient').catch(() => {});
+        return;
+      }
       try {
         const res = await route.fetch();
         const body = await res.text();
@@ -345,7 +474,18 @@ export class User {
 
     context.on('request', (req) => {
       if (!isApi(req)) return;
-      this.log.push({ method: req.method(), path: new URL(req.url()).pathname, line: ht.currentLine, at: Date.now(), req });
+      const url = new URL(req.url());
+      let bodyKeys: string[] = [];
+      try {
+        const body = req.postDataJSON();
+        if (body && typeof body === 'object' && !Array.isArray(body)) bodyKeys = Object.keys(body);
+      } catch { /* not JSON or form data, e.g. a file upload */ }
+      let pageUrl: string | undefined;
+      try { pageUrl = new URL(page.url()).pathname; } catch { /* about:blank */ }
+      this.log.push({
+        method: req.method(), path: url.pathname, line: ht.currentLine, at: Date.now(), req,
+        step: this.stepIndex, query: [...new Set(url.searchParams.keys())], bodyKeys, pageUrl,
+      });
     });
     context.on('response', (res: Response) => {
       const req = res.request();
@@ -366,7 +506,7 @@ export class User {
     });
     context.on('requestfailed', (req) => {
       const err = req.failure()?.errorText ?? '';
-      if (this.mocked.has(req) || this.offline || /ABORTED/i.test(err)) return;
+      if (this.mocked.has(req) || this.offline || /ABORTED/i.test(err) || !ht.allowsHost(req.url())) return;
       ht.warn(name, `${req.method()} ${req.url()} failed: ${err}`);
     });
     page.on('pageerror', (err) => ht.warn(name, `JavaScript error on the page: ${err.message}`));
@@ -389,16 +529,19 @@ export class User {
     }
   }
 
-  async step(line: number, text: string, fn: (u: User) => Promise<void>) {
+  /** `check`: the step only looks (or waits), so API calls during it still belong to the step before. */
+  async step(line: number, text: string, fn: (u: User) => Promise<void>, opts: { check?: boolean } = {}) {
     await test.step(`line ${line} · ${this.name} · ${text}`, async () => {
       this.ht.currentLine = line;
       this.caption = `👤 ${this.name}   ·   line ${line}   ·   ${text}`;
       const rec: ReplayStep = { user: this.name, line, text, start: Date.now(), end: 0, status: 'passed' };
+      if (!opts.check || this.stepIndex < 0) this.stepIndex = this.ht.records.length;
       this.ht.records.push(rec);
       this.focus = undefined;
       await this.showCaption();
       try {
         await fn(this);
+        if (this.ht.blocked) throw new Error(this.ht.blocked);
       } catch (e) {
         const err = this.ht.humanError(line, this.name, text, e, this);
         rec.status = 'failed';
@@ -681,9 +824,14 @@ export class User {
 
   async call(method: string, pathname: string) {
     this.mark = this.log.length;
-    const res = await this.context.request.fetch(new URL(pathname, this.ht.config.baseURL).toString(), { method });
+    const url = new URL(pathname, this.ht.config.baseURL);
+    if (!this.ht.allowsHost(url.toString())) throw new Error(this.ht.blockedError(url.toString(), 'call'));
+    const res = await this.context.request.fetch(url.toString(), { method });
     const body = res.text().catch(() => null);
-    this.log.push({ method, path: pathname, line: this.ht.currentLine, at: Date.now(), status: res.status(), body });
+    this.log.push({
+      method, path: pathname, line: this.ht.currentLine, at: Date.now(), status: res.status(), body,
+      step: this.stepIndex, query: [...new Set(url.searchParams.keys())], bodyKeys: [],
+    });
     this.lastReply = { label: `${method} ${pathname}`, status: res.status(), text: () => body };
   }
 

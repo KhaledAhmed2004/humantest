@@ -1,0 +1,82 @@
+// Rules grouped the way people read them, for the command line and the UI.
+// Facts about one field become one sentence; everything keeps where it is in the code.
+
+import { isTranslated, renderField, renderRule } from './render.mts';
+import type { FieldRule, Rule, Source } from './types.mts';
+
+export interface Line {
+  text: string;
+  source: Source;
+  /** False when a condition is shown as code because it could not be put into words. */
+  translated: boolean;
+  /** The app's own messages in these rules, used to see whether a test checks them. */
+  messages: string[];
+  status?: number;
+  ids: string[];
+  /** Set by the caller when a step of the test checks this line (sees its message). */
+  checked?: boolean;
+}
+
+export interface Group { title: string; lines: Line[] }
+
+export function present(rules: Rule[]): Group[] {
+  const access: Line[] = [];
+  const contain: Line[] = [];
+  const refuse: Line[] = [];
+
+  const fields = new Map<string, FieldRule[]>();
+  for (const r of rules) {
+    if (r.kind === 'field') {
+      const key = `${r.section}.${r.field}`;
+      fields.set(key, [...(fields.get(key) ?? []), r as FieldRule & Rule]);
+    }
+  }
+  const fieldsDone = new Set<string>();
+
+  for (const r of rules) {
+    const line = (text: string): Line => ({
+      text, source: r.source, translated: isTranslated(r), ids: [r.id],
+      messages: [...('message' in r && r.message ? [r.message] : []), ...(r.kind === 'reject' ? r.otherMessages ?? [] : [])],
+      ...(r.kind === 'reject' && r.status !== undefined ? { status: r.status } : {}),
+    });
+    if (r.kind === 'access') access.push(line(renderRule(r)));
+    else if (r.kind === 'reject') refuse.push(line(renderRule(r)));
+    else if (r.kind === 'check') contain.push(line(renderRule(r)));
+    else if (r.kind === 'field') {
+      const key = `${r.section}.${r.field}`;
+      if (fieldsDone.has(key)) continue;
+      fieldsDone.add(key);
+      const facts = fields.get(key)!;
+      const where = r.section === 'body' ? '' : ` (in the ${r.section === 'query' ? 'address query' : r.section})`;
+      contain.push({
+        text: renderField(facts).replace(/\.$/, `${where}.`), source: r.source, translated: true,
+        ids: facts.map((f) => (f as FieldRule & Rule).id),
+        messages: [...new Set(facts.flatMap((f) => (f.message ? [f.message] : [])))],
+      });
+    }
+  }
+  // Field by field first, then the checks that span fields.
+  const isCheck = (l: Line) => l.ids.some((id) => id.startsWith('check:'));
+  return [
+    { title: 'Who can do it', lines: access },
+    { title: 'What the request must contain', lines: [...contain.filter((l) => !isCheck(l)), ...contain.filter(isCheck)] },
+    { title: 'When the server says no', lines: refuse },
+  ].filter((g) => g.lines.length);
+}
+
+/**
+ * Marks lines whose message the test looks for (`should see "…"`). Only a message match counts:
+ * a status alone (every refusal is some 400) would claim far more than the test checks.
+ */
+export function markChecked(groups: Group[], seen: string[]) {
+  const texts = seen.map((s) => s.toLowerCase()).filter((s) => s.length >= 4);
+  for (const g of groups) {
+    for (const l of g.lines) {
+      l.checked = l.messages.some((m) => {
+        // "{…}" placeholders in a message stand for any text.
+        const re = new RegExp(m.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{[^}]*\\\}/g, '.*'));
+        return texts.some((t) => re.test(t) || m.toLowerCase().includes(t));
+      });
+    }
+  }
+}

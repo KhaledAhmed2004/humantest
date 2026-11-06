@@ -3,7 +3,7 @@
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { emitStep } from './steps.mts';
+import { ACTION_KINDS, emitStep } from './steps.mts';
 import type { ParsedFile } from './parser.mts';
 import type { Project } from './project.mts';
 
@@ -75,7 +75,8 @@ export function generate(project: Project, parsed: ParsedFile): string {
         lastHeading = heading;
       }
       const label = st.story ? `${st.story.text} › ${st.text}` : st.text;
-      lines.push(`    await ${vars.get(st.user)}.step(${st.line}, ${s(label)}, (u) => ${emitStep(st.def, st.args)});`);
+      const check = ACTION_KINDS.has(st.def.kind) ? '' : ', { check: true }';
+      lines.push(`    await ${vars.get(st.user)}.step(${st.line}, ${s(label)}, (u) => ${emitStep(st.def, st.args)}${check});`);
     }
     lines.push(`  });`);
     lines.push(`});`);

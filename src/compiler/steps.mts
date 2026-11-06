@@ -235,6 +235,13 @@ export const STEP_DEFS: StepDef[] = [
   },
 ];
 
+/**
+ * Steps that make the app do something, and so cause API calls. Every other step only checks,
+ * waits or sets up a simulation; calls sent while it runs were caused by the action before it
+ * (a page load's data fetches usually land during the next "should see").
+ */
+export const ACTION_KINDS = new Set(['goTo', 'reload', 'type', 'typeToday', 'choose', 'key', 'click', 'call']);
+
 // "in "Selected tooth", click "Add issue""  /  "in the "Add issue" dialog: choose ..."
 const SCOPE = /^(?:in|inside|within)\s+(?:the\s+)?"([^"]+)"(?:\s+(dialog|panel|section|region|form|table|row|menu|list))?\s*[,:]\s*(.+)$/i;
 

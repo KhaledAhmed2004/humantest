@@ -1,0 +1,33 @@
+{
+  "name": "Island Hop",
+  "baseURL": "http://localhost:3001",
+  "apiPrefix": "/api/v1",
+  "apiHosts": ["localhost:5000"],
+  "testsDir": "e2e/tests",
+  "statesDir": "e2e/states",
+  "phrasesDir": "e2e/phrases",
+  "outDir": "e2e/.generated",
+
+  "login": {
+    "endpoint": "http://localhost:5000/api/v1/auth/login",
+    "tokenCookie": { "name": "accessToken", "from": "data.accessToken" }
+  },
+
+  "users": {
+    "admin": { "email": "admin@example.com", "password": "strong_password_here" },
+    "visitor": {}
+  },
+
+  "pages": {
+    "routes page": "/dashboard/admin/routes",
+    "login page": "/login"
+  },
+
+  "source": {
+    "backend": "../../../full-stack/cp-bryen-fullStack/backend",
+    "frontend": "../../../full-stack/cp-bryen-fullStack/frontend"
+  },
+
+  "watchdog": { "failTestOnWarning": false, "slowApiMs": 2000 },
+  "demo": { "slowMo": 150, "pauseAfterStepMs": 900, "typingDelayMs": 60 }
+}

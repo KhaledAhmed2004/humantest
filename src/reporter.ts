@@ -1,8 +1,10 @@
 // A plain-English console reporter for HumanTest.
 // With HUMANTEST_EVENTS=1 (set by the HumanTest UI) it also prints one JSON event per line,
 // prefixed with @@HT@@, so the UI can follow a run live.
+import fs from 'node:fs';
 import path from 'node:path';
 import type { FullConfig, FullResult, Reporter, Suite, TestCase, TestResult, TestStep } from '@playwright/test/reporter';
+import type { Trace, TraceCall } from './runtime';
 
 const c = {
   green: (s: string) => `\x1b[32m${s}\x1b[0m`,
@@ -22,6 +24,21 @@ function emit(event: Record<string, unknown>) {
 }
 
 const id = (test: TestCase) => ({ spec: path.basename(test.location.file), title: test.title });
+
+/**
+ * The API calls of each step, from the runtime's trace file, in the order of `steps`.
+ * Steps are matched by title, in order, so a step that appears twice gets its own calls each time.
+ */
+function callsPerStep(traceFile: string | undefined, steps: TestStep[]): (TraceCall[] | undefined)[] {
+  if (!traceFile) return steps.map(() => undefined);
+  let trace: Trace;
+  try { trace = JSON.parse(fs.readFileSync(path.resolve(traceFile), 'utf8')); } catch { return steps.map(() => undefined); }
+  const pool = [...trace.steps];
+  return steps.map((s) => {
+    const i = pool.findIndex((t) => t.title === s.title);
+    return i < 0 ? undefined : pool.splice(i, 1)[0].calls;
+  });
+}
 
 export default class HumanReporter implements Reporter {
   private passed = 0;
@@ -48,6 +65,9 @@ export default class HumanReporter implements Reporter {
     const source = annotations.find((a) => a.type === 'source')?.description ?? '';
     const watchdog = [...new Set(annotations.filter((a) => a.type === 'watchdog').map((a) => a.description ?? ''))];
     const secs = (result.duration / 1000).toFixed(1);
+    const humanSteps = result.steps.filter(isHumanStep);
+    const traceFile = annotations.find((a) => a.type === 'trace')?.description;
+    const calls = callsPerStep(traceFile, humanSteps);
 
     emit({
       type: 'test-end',
@@ -58,11 +78,13 @@ export default class HumanReporter implements Reporter {
       watchdog,
       replay: annotations.find((a) => a.type === 'replay')?.description,
       sideBySide: annotations.find((a) => a.type === 'video')?.description?.replace(/^.*?: /, ''),
-      steps: result.steps.filter(isHumanStep).map((s) => ({
+      trace: traceFile,
+      steps: humanSteps.map((s, i) => ({
         title: s.title,
         status: s.error ? 'failed' : 'passed',
         duration: s.duration,
         error: s.error ? stripAnsi(s.error.message ?? '') : undefined,
+        calls: calls[i],
       })),
     });
 

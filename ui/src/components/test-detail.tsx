@@ -6,6 +6,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { StatusIcon } from '@/components/status-icon'
 import { statusLabel } from '@/lib/status'
 import { StepList } from '@/components/step-list'
+import { BusinessLogic } from '@/components/business-logic'
 import { cleanError, errorHeading, formatDuration, formatWhen, friendlyFile, friendlyProblem } from '@/lib/format'
 import type { HumanTest, TestRow } from '@/lib/use-humantest'
 
@@ -122,6 +123,13 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
           </Empty>
         )}
       </section>
+
+      {ht.project && !live && (
+        <BusinessLogic
+          project={ht.project} testKey={test.key} version={ht.discovery.version} running={ht.discovery.running}
+          change={ht.changes[test.key]} onAccept={() => ht.accept(test.key)}
+        />
+      )}
     </div>
   )
 }
