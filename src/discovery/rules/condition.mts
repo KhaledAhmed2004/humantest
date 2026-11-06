@@ -74,16 +74,21 @@ class Humanizer {
         };
         const parts = [part(e.left), part(e.right)];
         if (parts.some((x) => x === undefined)) return undefined;
-        // `!x || !x.trim()` reads as one thing once trim is ignored.
         if (parts[0] === parts[1]) return parts[0];
+        // `!x || !x.trim()`: "x is empty or only spaces" says both. `x && x.trim()`: "x has more than spaces".
+        const [a, b] = parts as string[];
+        if (b.startsWith(a) && b.slice(a.length) === ' or only spaces') return b;
+        if (a.endsWith(' is set') && b === a.replace(/ is set$/, ' has more than spaces')) return b;
         return parts.join(and ? ', and ' : ', or ');
       }
       return this.compare(e, neg);
     }
-    // `!text.trim()`: whether the text (ignoring spaces) is empty.
+    // `!text.trim()`: the text is empty or only spaces (which the browser's `required` lets through).
     if (ts.isCallExpression(e) && ts.isPropertyAccessExpression(e.expression) && !e.arguments.length &&
       ['trim', 'trimStart', 'trimEnd', 'toLowerCase', 'toUpperCase'].includes(e.expression.name.text)) {
-      return this.cond(e.expression.expression, neg);
+      const inner = this.cond(e.expression.expression, neg);
+      if (!inner || !e.expression.name.text.startsWith('trim')) return inner;
+      return inner.replace(/ is empty$/, ' is empty or only spaces').replace(/ is set$/, ' has more than spaces');
     }
     if (ts.isCallExpression(e)) return this.call(e, neg);
     // A value used as a condition: `if (schedule)`, `if (user.isActive)`.

@@ -108,6 +108,7 @@ function runDiscovery(ref: ProjectRef) {
     if (code) broadcast({ type: 'log', line: `Working out the business rules failed:\n${out.slice(-2000)}` });
     broadcast({ type: 'discovery', project: ref.id, state: 'done' });
     computeChanges(ref);
+    computeCoverage(ref);
   });
 }
 
@@ -154,6 +155,62 @@ function computeChanges(ref: ProjectRef) {
   });
 }
 
+// ---------------- what the tests don't cover (discover --gaps), with draft tests ----------------
+
+interface CoverageState { computing: boolean; at?: string; report?: unknown; error?: string; again?: boolean }
+const coverageOf = new Map<string, CoverageState>();
+
+/** Works out the coverage again, in a separate process (it reads all the code). */
+function computeCoverage(ref: ProjectRef) {
+  try {
+    if (!loadProject(ref.root).config.source?.backend) return;
+  } catch {
+    return;
+  }
+  const state = coverageOf.get(ref.id) ?? { computing: false };
+  coverageOf.set(ref.id, state);
+  if (state.computing) { state.again = true; return; }
+  state.computing = true;
+  broadcast({ type: 'coverage', project: ref.id });
+  const child = cli(ref, ['--gaps', '--drafts', '--json']);
+  let out = '';
+  let err = '';
+  child.stdout?.on('data', (d) => { out += d; });
+  child.stderr?.on('data', (d) => { err += d; });
+  child.on('close', (code) => {
+    state.computing = false;
+    try {
+      // The JSON starts on a line of its own; anything before it is the CLI's own notes.
+      const start = out.search(/^{/m);
+      state.report = JSON.parse(out.slice(start));
+      state.error = undefined;
+      state.at = new Date().toISOString();
+    } catch {
+      state.error = `Could not work out what the tests cover (exit ${code}). ${err.slice(-500)}`;
+    }
+    broadcast({ type: 'coverage', project: ref.id });
+    if (state.again) { state.again = false; computeCoverage(ref); }
+  });
+}
+
+/**
+ * Saves a draft test as a new file in the tests folder (tests/drafts/<name>.ht), never over an
+ * existing one, so it can be opened and finished in an editor. Says if the file needs fixing.
+ */
+function saveDraft(ref: ProjectRef, text: string) {
+  const project = loadProject(ref.root);
+  const name = text.match(/^(?:Test|Draft):\s*(.+)$/m)?.[1] ?? 'draft';
+  const dir = path.join(project.testsDir, 'drafts');
+  fs.mkdirSync(dir, { recursive: true });
+  const slug = fileSlug(name).slice(0, 60) || 'draft';
+  let file = path.join(dir, `${slug}.ht`);
+  for (let n = 2; fs.existsSync(file); n++) file = path.join(dir, `${slug}-${n}.ht`);
+  fs.writeFileSync(file, `${text.trimEnd()}\n`);
+  const rel = path.relative(ref.root, file).split(path.sep).join('/');
+  const diagnostics = check(project).parsed.find((p) => p.file === file)?.diagnostics ?? [];
+  return { file: rel, path: file, diagnostics };
+}
+
 /** Re-compare whenever someone edits the backend's code: the badge shows up within seconds of saving. */
 function watchBackends() {
   for (const ref of projects) {
@@ -172,13 +229,14 @@ function watchBackends() {
           const f = String(file ?? '');
           if (!/\.[cm]?[jt]sx?$/.test(f) || /(^|[\\/])(node_modules|dist|build|coverage|\.next)[\\/]/.test(f)) return;
           clearTimeout(timer);
-          timer = setTimeout(() => computeChanges(ref), 2000);
+          timer = setTimeout(() => { computeChanges(ref); computeCoverage(ref); }, 2000);
         });
       } catch (e) {
         console.warn(`Not watching ${dir} for changes: ${(e as Error).message}`);
       }
     }
     computeChanges(ref);
+    computeCoverage(ref);
   }
 }
 
@@ -236,6 +294,7 @@ function listTests(ref: ProjectRef) {
         line: t.line,
         users: t.users.map((u) => u.name),
         state: t.state?.name,
+        ...(t.draft ? { draft: true } : {}),
         steps: t.steps.map((st) => ({ line: st.line, user: st.user, text: st.text, story: st.story?.text, title: stepTitle(st) })),
       })),
     })),
@@ -421,6 +480,18 @@ const server = http.createServer(async (req, res) => {
       const ref = findProject(url.searchParams.get('project'));
       if (!ref) return json(res, 404, { error: 'Unknown project' });
       return json(res, 200, changesOf.get(ref.id) ?? { computing: false, tests: [] });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/coverage') {
+      const ref = findProject(url.searchParams.get('project'));
+      if (!ref) return json(res, 404, { error: 'Unknown project' });
+      return json(res, 200, coverageOf.get(ref.id) ?? { computing: false });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/draft') {
+      const body = await readBody(req);
+      const ref = findProject(body.project);
+      if (!ref) return json(res, 404, { error: 'Unknown project' });
+      if (typeof body.text !== 'string' || !/^(Test|Draft):/m.test(body.text)) return json(res, 400, { error: 'That is not a draft test.' });
+      return json(res, 200, saveDraft(ref, body.text));
     }
     if (req.method === 'POST' && url.pathname === '/api/accept') {
       const body = await readBody(req);

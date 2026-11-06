@@ -17,7 +17,7 @@ import {
 } from './discovery/index.mts';
 import type { Group } from './discovery/rules/present.mts';
 import { accept, afterRun, changes, logicDir, type TestChange } from './discovery/baseline.mts';
-import { draftFor, gaps, type GapReport } from './discovery/gaps.mts';
+import { draftable, draftFor, gaps, withDrafts, type GapReport } from './discovery/gaps.mts';
 
 const c = {
   red: (s: string) => `\x1b[31m${s}\x1b[0m`,
@@ -171,7 +171,7 @@ function printGaps(project: Project, r: GapReport, drafts: boolean, all: boolean
     for (const l of open) {
       if (fields.includes(l)) continue;
       console.log(`    ${c.yellow('○')} ${l.text}  ${c.dim(`${q.root}/${l.source.file}:${l.source.line}`)}`);
-      if (drafts && l.messages.length && /says no|On the page/.test(l.group)) {
+      if (drafts && draftable(l)) {
         const d = draftFor(project, q, l);
         if (d) draftsOut.push(d);
       }
@@ -223,7 +223,7 @@ function runDiscover(project: Project, rest: string[]) {
   // discover --gaps: what the tests don't cover (--drafts: a draft test for each unchecked message).
   if (flags.has('--gaps')) {
     const report = gaps(project, backend, frontendOf(project));
-    if (json) { console.log(jsonOut(report)); return; }
+    if (json) { console.log(jsonOut(flags.has('--drafts') ? withDrafts(project, report) : report)); return; }
     printGaps(project, report, flags.has('--drafts'), flags.has('--all'));
     return;
   }

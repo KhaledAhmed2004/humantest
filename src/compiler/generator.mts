@@ -58,7 +58,8 @@ export function generate(project: Project, parsed: ParsedFile): string {
 
     lines.push('');
     lines.push(`// ${parsed.relFile}:${t.line}`);
-    lines.push(`test(${s(t.name)}, async ({ browser }, testInfo) => {`);
+    // A draft is listed but not run: it does what another test does, up to where its rule should happen.
+    lines.push(`test${t.draft ? '.skip' : ''}(${s(t.name)}, async ({ browser }, testInfo) => {`);
     lines.push(`  await humantest({ browser, testInfo, line: ${t.line}, ...project }, async (ht) => {`);
     if (t.state) {
       lines.push(`    await ht.startWith(${t.state.line}, ${s(t.state.name)}, ${s(t.state.args)}, ${stateImports.get(t.state.file)});`);

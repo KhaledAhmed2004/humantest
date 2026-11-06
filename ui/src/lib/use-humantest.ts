@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  acceptChanges, getChanges, getProjects, getTests, startRun, stopRun, subscribe,
-  type Diagnostic, type History, type Project, type RunScope, type ServerEvent, type TestChange, type TestFile, type TestInfo,
+  acceptChanges, getChanges, getCoverage, getProjects, getTests, startRun, stopRun, subscribe,
+  type CoverageResponse, type Diagnostic, type History, type Project, type RunScope, type ServerEvent, type TestChange, type TestFile, type TestInfo,
 } from './api'
 import { friendlyProblem, storage } from './format'
 
@@ -26,6 +26,12 @@ export function useHumanTest() {
   const [discovery, setDiscovery] = useState<{ version: number; running: boolean }>({ version: 0, running: false })
   // What changed in each test's business logic since it was accepted, by test key.
   const [changes, setChanges] = useState<Record<string, TestChange>>({})
+  // What the tests cover, worked out again after each run and each code change.
+  const [coverage, setCoverage] = useState<CoverageResponse | null>(null)
+  const loadCoverage = useCallback(async (id: string) => {
+    const r = await getCoverage(id).catch(() => null)
+    if (r && projectRef.current === id) setCoverage(r)
+  }, [])
 
   const loadChanges = useCallback(async (id: string) => {
     const r = await getChanges(id).catch(() => null)
@@ -60,7 +66,9 @@ export function useHumanTest() {
     loadTests(project)
     setChanges({})
     loadChanges(project)
-  }, [project, loadTests, loadChanges])
+    setCoverage(null)
+    loadCoverage(project)
+  }, [project, loadTests, loadChanges, loadCoverage])
 
   const changeProject = useCallback((id: string) => {
     setLive({})
@@ -105,8 +113,11 @@ export function useHumanTest() {
       case 'changes':
         if (e.project === projectRef.current) loadChanges(e.project)
         break
+      case 'coverage':
+        if (e.project === projectRef.current) loadCoverage(e.project)
+        break
     }
-  }), [loadTests, loadChanges])
+  }), [loadTests, loadChanges, loadCoverage])
 
   const accept = useCallback(async (key: string) => {
     if (!project) return
@@ -123,6 +134,7 @@ export function useHumanTest() {
   const statusOf = useCallback((t: TestRow): string => {
     if (t.fileHasProblems) return 'problem'
     if (live[t.key]) return live[t.key].state
+    if (t.draft) return 'draft'
     return history.last[t.key]?.status ?? 'never'
   }, [live, history])
 
@@ -147,7 +159,7 @@ export function useHumanTest() {
   }, [project, tests])
 
   return {
-    projects, project, setProject: changeProject, files, problems, history, tests, live, running, progress, logs, discovery, changes, accept,
+    projects, project, setProject: changeProject, files, problems, history, tests, live, running, progress, logs, discovery, changes, coverage, accept,
     statusOf, run, stop: stopRun,
   }
 }

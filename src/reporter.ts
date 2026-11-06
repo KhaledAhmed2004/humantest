@@ -43,6 +43,7 @@ function callsPerStep(traceFile: string | undefined, steps: TestStep[]): (TraceC
 export default class HumanReporter implements Reporter {
   private passed = 0;
   private failed = 0;
+  private drafts = 0;
   private warnings = 0;
 
   onBegin(_config: FullConfig, suite: Suite) {
@@ -88,7 +89,11 @@ export default class HumanReporter implements Reporter {
       })),
     });
 
-    if (result.status === 'passed') {
+    if (result.status === 'skipped') {
+      // A draft (`Draft: …`): listed, not run.
+      this.drafts++;
+      console.log(`${c.dim('○')} ${test.title}  ${c.dim(`draft, not run · ${source}`)}`);
+    } else if (result.status === 'passed') {
       this.passed++;
       console.log(`${c.green('✔')} ${test.title}  ${c.dim(`${secs}s · ${source}`)}`);
     } else {
@@ -111,6 +116,7 @@ export default class HumanReporter implements Reporter {
   onEnd(result: FullResult) {
     const parts = [c.green(`${this.passed} passed`)];
     if (this.failed) parts.push(c.red(`${this.failed} failed`));
+    if (this.drafts) parts.push(c.dim(`${this.drafts} draft(s) not run`));
     if (this.warnings) parts.push(c.yellow(`${this.warnings} watchdog warning(s)`));
     console.log(`\n${parts.join(' · ')}`);
     console.log(c.dim('Full report with traces: npx playwright show-report\n'));

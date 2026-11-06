@@ -96,3 +96,24 @@ Test: A route that already exists is refused
     backend should reply 409 Conflict
     should see "A route from Blowing Point, Anguilla to Marigot, Saint Martin already exists"
     "Add New Ferry Route" dialog should be open
+
+# Made from a draft (Coverage page). Only spaces get past the browser's own "required", so the
+# page's own check is what stops it.
+Test: The route form stops before sending when the description is only spaces
+
+  Start with: no test routes
+
+  As admin:
+    go to routes page
+    click "Add Route"
+    in "Add New Ferry Route" dialog, should not see "Loading ports..."
+    press Escape
+    click "Add Route"
+    in "Add New Ferry Route" dialog, choose "Blowing Point, Anguilla" for "From"
+    in "Add New Ferry Route" dialog, choose "Marigot, Saint Martin" for "To"
+    type "   " in "Route Description"
+    upload "cover.png" to "Route Cover Photo"
+    in "Add New Ferry Route" dialog, "Replace" button should be visible
+    click "Create Route"
+    should see "Route description is required."
+    backend should not receive any request

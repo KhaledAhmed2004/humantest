@@ -10,6 +10,6 @@ export function StatusIcon({ status, className }: { status: string; className?: 
   if (isFailure(status)) return <CircleXIcon aria-label={label} className={cn(cls, 'text-red-600 dark:text-red-400')} />
   if (status === 'running') return <LoaderCircleIcon aria-label={label} className={cn(cls, 'animate-spin text-violet-600 dark:text-violet-400')} />
   if (status === 'problem') return <CircleAlertIcon aria-label={label} className={cn(cls, 'text-amber-600 dark:text-amber-400')} />
-  if (status === 'skipped') return <MinusCircleIcon aria-label={label} className={cn(cls, 'text-muted-foreground')} />
+  if (status === 'skipped' || status === 'draft') return <MinusCircleIcon aria-label={label} className={cn(cls, 'text-muted-foreground')} />
   return <CircleDashedIcon aria-label={label} className={cn(cls, 'text-muted-foreground/70')} />
 }

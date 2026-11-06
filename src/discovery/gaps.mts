@@ -8,16 +8,30 @@ import type { Project } from '../compiler/project.mts';
 import { discover, readTraces, writeDiscovery, type Backend, type Frontend } from './index.mts';
 import type { Line } from './rules/present.mts';
 
-export interface ReachedBy { test: string; file: string; testLine: number; stepLine: number }
+/** A test that reaches a request; `status`: what the request answered in that test's last run. */
+export interface ReachedBy { test: string; file: string; testLine: number; stepLine: number; status?: number }
 
 export interface GapLine extends Line {
   /** The group it is shown in, e.g. "When the server says no". */
   group: string;
+  /** A draft test for it (see draftFor), when `withDrafts` added one. */
+  draft?: string;
+}
+
+/** A refusal or page stop with a message: a test can look for it, so a draft can be made. */
+export const draftable = (l: GapLine) => !l.checked && l.messages.length > 0 && /says no|On the page/.test(l.group);
+
+/** Adds a draft test to every unchecked line that can have one. */
+export function withDrafts(project: Project, report: GapReport): GapReport {
+  for (const q of report.reached) for (const l of q.lines) if (draftable(l)) l.draft = draftFor(project, q, l);
+  return report;
 }
 
 export interface GapRequest {
   /** "POST /api/v1/routes", or `CLICK "Save" on app/x/page.tsx` for the page's own rules. */
   request: string;
+  /** The part of the app it belongs to, as in GapArea. */
+  area: string;
   /** The code folder its rules are in, for the file paths. */
   root: string;
   reachedBy: ReachedBy[];
@@ -54,7 +68,7 @@ export function gaps(project: Project, backend: Backend, fe?: Frontend): GapRepo
   const frontRoot = fe ? path.basename(fe.ts.root) : '';
 
   // Every test's last run, with its rules marked checked or not.
-  const reached = new Map<string, GapRequest & { area: string }>();
+  const reached = new Map<string, GapRequest>();
   const add = (key: string, area: string, root: string, groups: { title: string; lines: Line[] }[], by: ReachedBy) => {
     let r = reached.get(key);
     if (!r) {
@@ -69,14 +83,15 @@ export function gaps(project: Project, backend: Backend, fe?: Frontend): GapRepo
   for (const t of readTraces(project)) {
     const d = writeDiscovery(project, backend, t, fe);
     const [file, testLine] = [t.trace.source.replace(/:\d+$/, ''), Number(t.trace.source.match(/:(\d+)$/)?.[1] ?? 0)];
-    for (const s of d.steps) {
-      const by = { test: d.test, file, testLine, stepLine: s.line };
+    d.steps.forEach((s, i) => {
+      const by: ReachedBy = { test: d.test, file, testLine, stepLine: s.line };
       if (s.page && fe) add(`${s.page.action === 'upload' ? 'UPLOAD' : 'CLICK'} "${s.page.label}" on ${s.page.page}`, 'page', frontRoot, s.page.groups, by);
       for (const c of s.calls) {
         if (!('route' in c)) continue;
-        add(`${c.route.method} ${c.route.path}`, areaOf(c.route.path), codeRoot, c.groups, by);
+        const status = t.trace.steps[i]?.calls.find((x) => `${x.method} ${x.path}` === c.request)?.status;
+        add(`${c.route.method} ${c.route.path}`, areaOf(c.route.path), codeRoot, c.groups, { ...by, ...(status !== undefined ? { status } : {}) });
       }
-    }
+    });
   }
 
   // Every request the backend has, reached or not.
@@ -120,7 +135,7 @@ export function gaps(project: Project, backend: Backend, fe?: Frontend): GapRepo
   for (const r of reached.values()) r.lines.sort((x, y) => groupRank(x.group) - groupRank(y.group));
   return {
     areas: [...areas.values()].sort((x, y) => (y.reached - x.reached) || x.name.localeCompare(y.name)),
-    reached: [...reached.values()].map(({ area: _a, ...r }) => r),
+    reached: [...reached.values()],
     unreached,
   };
 }
@@ -132,7 +147,10 @@ export function gaps(project: Project, backend: Backend, fe?: Frontend): GapRepo
  */
 export function draftFor(project: Project, req: GapRequest, line: GapLine): string | undefined {
   const message = line.messages[0];
-  const by = req.reachedBy[0];
+  // A test that got through (2xx), else one that at least got past who may (not 401/403): one turned
+  // away at the door never reaches the rules inside.
+  const rank = (b: ReachedBy) => (b.status === undefined ? 1 : b.status < 300 ? 0 : b.status === 401 || b.status === 403 ? 3 : 2);
+  const by = [...req.reachedBy].sort((a, b) => rank(a) - rank(b))[0];
   if (!message || !by) return undefined;
   const file = path.join(project.root, by.file);
   if (!fs.existsSync(file)) return undefined;
@@ -150,7 +168,8 @@ export function draftFor(project: Project, req: GapRequest, line: GapLine): stri
     `#   ${line.text}`,
     `#   ${req.root}/${line.source.file}:${line.source.line}`,
     `# Change the steps so that this is true before the last one: ${why}`,
-    `Test: ${name}`,
+    `# It is not run while it says "Draft:". When the steps are right, change that to "Test:".`,
+    `Draft: ${name}`,
     ...body,
     `${indent}should see "${seen}"`,
   ].join('\n');

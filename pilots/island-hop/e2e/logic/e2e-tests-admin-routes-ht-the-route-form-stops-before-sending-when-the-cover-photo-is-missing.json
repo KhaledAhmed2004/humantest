@@ -851,7 +851,7 @@
      "when": [
       {
        "code": "!formData.description || !formData.description.trim()",
-       "text": "description is empty"
+       "text": "description is empty or only spaces"
       }
      ],
      "message": "Route description is required.",
@@ -860,7 +860,7 @@
       "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
       "line": 97
      },
-     "text": "If description is empty, the page stops and shows \"Route description is required.\", before sending anything."
+     "text": "If description is empty or only spaces, the page stops and shows \"Route description is required.\", before sending anything."
     },
     {
      "kind": "ui-guard",
@@ -869,7 +869,7 @@
      "when": [
       {
        "code": "!formData.imageUrl || !formData.imageUrl.trim()",
-       "text": "image url is empty"
+       "text": "image url is empty or only spaces"
       }
      ],
      "message": "Route cover photo is required. Please upload an image.",
@@ -878,11 +878,11 @@
       "file": "src/app/dashboard/admin/routes/_components/RouteFormModal.tsx",
       "line": 102
      },
-     "text": "If image url is empty, the page stops and shows \"Route cover photo is required. Please upload an image.\", before sending anything."
+     "text": "If image url is empty or only spaces, the page stops and shows \"Route cover photo is required. Please upload an image.\", before sending anything."
     }
    ]
   }
  ],
  "frontend": true,
- "acceptedAt": "2026-11-06T21:50:35.478Z"
+ "acceptedAt": "2026-11-06T22:07:34.316Z"
 }
