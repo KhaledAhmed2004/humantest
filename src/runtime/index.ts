@@ -15,6 +15,8 @@ import {
 } from '@playwright/test';
 
 const DEMO = !!process.env.HUMANTEST_DEMO;
+// What "type …" and "choose …" can fill in. Radix's hidden native <select> only mirrors the real dropdown.
+const FIELD_CSS = 'input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]), textarea, select:not([aria-hidden=true]), [role=combobox]';
 
 interface Config {
   baseURL: string;
@@ -41,8 +43,18 @@ export interface StateContext {
   api: APIRequestContext;
   /** The "quoted" values from the Start with: line. */
   args: string[];
+  /**
+   * The login token of a user from the config (`login.tokenCookie.from` in the login reply),
+   * e.g. `headers: { Authorization: \`Bearer ${await token('admin')}\` }`. Shares the tests' login.
+   */
+  token: (user: string) => Promise<string>;
 }
 export type StateFn = (ctx: StateContext) => Promise<void>;
+
+interface Session { cookies: Awaited<ReturnType<BrowserContext['cookies']>>; token?: string; at: number }
+// One login per user per run (per Playwright worker). Access tokens usually live 15 minutes or more.
+const SESSIONS = new Map<string, Session>();
+const SESSION_REUSE_MS = 10 * 60_000;
 
 interface Options { browser: Browser; testInfo: TestInfo; configPath: string; source: string; line: number }
 
@@ -152,7 +164,14 @@ export class Scenario {
     await test.step(`line ${line} · start with: ${name}`, async () => {
       const api = await apiRequest.newContext({ baseURL: this.config.baseURL });
       try {
-        await fn({ api, args });
+        // A state may reset the data, sessions included: logins from before it may no longer work.
+        SESSIONS.clear();
+        const token = async (user: string) => {
+          const t = (await this.login(user)).token;
+          if (!t) throw new Error('token() needs "login.tokenCookie" in humantest.config.json, to know where the token is in the login reply.');
+          return t;
+        };
+        await fn({ api, args, token });
       } catch (e) {
         rec.status = 'failed';
         const err = this.humanError(line, 'setup', `Start with: ${name}`, e);
@@ -190,33 +209,60 @@ export class Scenario {
     await u.init();
     this.users.push(u);
 
-    const creds = this.config.users[name] ?? {};
-    if (creds.email) {
-      await test.step(`line ${line} · log in as ${name} (${creds.email})`, async () => {
-        const endpoint = this.config.login?.endpoint ?? '/api/login';
-        const url = new URL(endpoint, this.config.baseURL).toString();
-        if (!this.allowsHost(url)) throw this.humanError(line, name, `log in as ${name}`, new Error(this.blockedError(url, 'login')));
-        const res = await context.request.post(url, {
-          data: { email: creds.email, password: creds.password },
-        });
-        if (!res.ok()) {
-          throw this.humanError(line, name, `log in as ${name}`,
-            new Error(`${endpoint} replied ${res.status()}: ${short(await res.text())}\nCheck the email/password for "${name}" in humantest.config.json.`));
-        }
-        const tc = this.config.login?.tokenCookie;
-        if (tc) {
-          let token: unknown;
-          try { token = pick(await res.json(), tc.from); } catch { /* not JSON */ }
-          if (typeof token !== 'string' || !token) {
-            throw this.humanError(line, name, `log in as ${name}`,
-              new Error(`${endpoint} replied ${res.status()}, but there is no token at "${tc.from}" in the reply.\n` +
-                `Check "login.tokenCookie.from" in humantest.config.json. The reply was: ${short(await res.text())}`));
-          }
-          await context.addCookies([{ name: tc.name, value: token, url: this.config.baseURL }]);
+    if (this.config.users[name]?.email) {
+      await test.step(`line ${line} · log in as ${name} (${this.config.users[name].email})`, async () => {
+        try {
+          await context.addCookies((await this.login(name)).cookies);
+        } catch (e) {
+          throw this.humanError(line, name, `log in as ${name}`, e);
         }
       }, { box: true });
     }
     return u;
+  }
+
+  /**
+   * Log a user in, once per run: later tests (and states) reuse the session, because backends
+   * often allow only a few logins a minute. Kept in memory only, never written to disk.
+   */
+  async login(name: string): Promise<Session> {
+    const creds = this.config.users[name] ?? {};
+    if (!creds.email) throw new Error(`The user "${name}" has no email/password in humantest.config.json, so HumanTest can't log them in.`);
+    const endpoint = this.config.login?.endpoint ?? '/api/login';
+    const url = new URL(endpoint, this.config.baseURL).toString();
+    const key = `${url}|${creds.email}|${creds.password}`;
+    const cached = SESSIONS.get(key);
+    if (cached && Date.now() - cached.at < SESSION_REUSE_MS) return cached;
+    if (!this.allowsHost(url)) throw new Error(this.blockedError(url, 'login'));
+
+    const api = await apiRequest.newContext();
+    try {
+      const res = await api.post(url, { data: { email: creds.email, password: creds.password } });
+      if (!res.ok()) {
+        const why = res.status() === 429
+          ? 'The backend refuses more logins for now (too many in a short time). Wait a minute and run again.'
+          : `Check the email/password for "${name}" in humantest.config.json.`;
+        throw new Error(`${endpoint} replied ${res.status()}: ${short(await res.text())}\n${why}`);
+      }
+      const cookies = (await api.storageState()).cookies;
+      let token: string | undefined;
+      const tc = this.config.login?.tokenCookie;
+      if (tc) {
+        let t: unknown;
+        try { t = pick(await res.json(), tc.from); } catch { /* not JSON */ }
+        if (typeof t !== 'string' || !t) {
+          throw new Error(`${endpoint} replied ${res.status()}, but there is no token at "${tc.from}" in the reply.\n` +
+            `Check "login.tokenCookie.from" in humantest.config.json. The reply was: ${short(await res.text())}`);
+        }
+        token = t;
+        cookies.push({ name: tc.name, value: t, domain: new URL(this.config.baseURL).hostname, path: '/', expires: -1, httpOnly: false, secure: false, sameSite: 'Lax' });
+      }
+      const session: Session = { cookies, token, at: Date.now() };
+      SESSIONS.set(key, session);
+      return session;
+    } finally {
+      await api.dispose();
+    }
   }
 
   humanError(line: number, user: string, text: string, err: unknown, u?: User): Error {
@@ -637,7 +683,19 @@ export class User {
       r.getByLabel(name),
       r.getByPlaceholder(name),
       r.getByRole('combobox', { name }),
+      this.near(name, FIELD_CSS),
     ];
+  }
+
+  /**
+   * The `css` element inside the smallest block that also shows a text starting with `name`:
+   * for a label that isn't linked to its input (`<Label>From *</Label>` next to a dropdown).
+   */
+  private near(name: string, css: string): Locator {
+    const text = this.page.getByText(new RegExp(`^\\s*${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'));
+    return this.root.locator('div, section, fieldset, form, label, li')
+      .filter({ has: text }).filter({ has: this.page.locator(css) })
+      .last().locator(css).first();
   }
 
   /** Wait until one of the candidates is visible, then use the best one. */
@@ -713,6 +771,34 @@ export class User {
     await expect(opt, `The "${field}" dropdown opened, but it has no option called "${option}".`).toBeVisible();
     if (DEMO) await this.highlight(opt);
     await opt.click();
+  }
+
+  /**
+   * Choose a file in a file input. Upload widgets often hide the input and don't label it,
+   * so after the label, the input inside the smallest block that also shows `field` is used.
+   */
+  async upload(file: string, field?: string) {
+    const full = [path.join(process.cwd(), 'e2e', 'files', file), path.resolve(process.cwd(), file)].find((f) => fs.existsSync(f));
+    if (!full) throw new Error(`There is no file "${file}". Put it in e2e/files/ (looked for ${path.join('e2e', 'files', file)}).`);
+    const r = this.root;
+    const inputs = r.locator('input[type=file]');
+    const where = this.scope ? ` inside "${this.scope.name}"` : '';
+    let loc: Locator | undefined = field ? this.mapped(field) : undefined;
+    if (!loc && field) {
+      const labelled = r.getByLabel(field).and(inputs);
+      const near = this.near(field, 'input[type=file]');
+      await expect(labelled.or(near).first(), `I can't find a file input for "${field}"${where}.`).toBeAttached();
+      loc = (await labelled.count()) ? labelled.first() : near.first();
+    }
+    if (!loc) {
+      await expect(inputs.first(), `I can't find a file input${where}.`).toBeAttached();
+      const n = await inputs.count();
+      if (n > 1) throw new Error(`There are ${n} file inputs${where}. Say which one: upload "${file}" to "<the text next to it>".`);
+      loc = inputs.first();
+    }
+    if (DEMO) await this.highlight(loc).catch(() => {});
+    this.mark = this.log.length;
+    await loc.setInputFiles(full);
   }
 
   async press(key: string) {
@@ -813,7 +899,13 @@ export class User {
   async backendReceives(method: string, pathname: string, timeoutMs = 5000) {
     const deadline = Date.now() + timeoutMs;
     let entry: LogEntry | undefined;
-    while (!(entry = this.log.slice(this.mark).find((e) => e.method === method && e.path === pathname)) && Date.now() < deadline) {
+    // ":id" (or any ":name") stands for one part of the path that changes from run to run.
+    const parts = pathname.split('/');
+    const matches = (p: string) => {
+      const q = p.split('/');
+      return q.length === parts.length && parts.every((x, i) => (x.startsWith(':') ? q[i] !== '' : x === q[i]));
+    };
+    while (!(entry = this.log.slice(this.mark).find((e) => e.method === method && matches(e.path))) && Date.now() < deadline) {
       await sleep(50);
     }
     if (!entry) {

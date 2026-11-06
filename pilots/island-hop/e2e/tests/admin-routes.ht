@@ -1,6 +1,5 @@
 # The admin's route form, in Island Hop.
-# This test only reads data. Saving a new route needs a cover photo, and HumanTest
-# has no upload step yet, so creating a route comes later.
+# The photos come from e2e/files/.
 # Don't check whether "Create Route" is enabled here: the form picks the first two ports only
 # when they have loaded before it opens, so the answer depends on timing.
 
@@ -32,3 +31,44 @@ Test: The route form stops before sending when the cover photo is missing
     should see "Route cover photo is required. Please upload an image."
     backend should not receive any request
     "Add New Ferry Route" dialog should be open
+
+
+Test: The route form refuses a file that isn't a photo
+
+  As admin:
+    go to routes page
+    click "Add Route"
+    upload "notes.txt" to "Route Cover Photo"
+    should see "Invalid file format. Please upload a PNG, JPG, or WEBP image."
+    backend should not receive any request
+    in "Add New Ferry Route" dialog, should see "Click to upload route photo"
+
+
+Test: Admin saves a new route and deletes it again
+
+  # A run that fails half way leaves its route behind; this removes it first.
+  # Only routes described exactly "HumanTest test route" are removed (see e2e/states/no-test-routes.ts).
+  Start with: no test routes
+
+  As admin:
+    go to routes page
+    click "Add Route"
+    in "Add New Ferry Route" dialog, should not see "Loading ports..."
+    press Escape
+    click "Add Route"
+    in "Add New Ferry Route" dialog, choose "Blowing Point, Anguilla" for "From"
+    in "Add New Ferry Route" dialog, choose "Fort Bay Harbor, Saba" for "To"
+    type "HumanTest test route" in "Route Description"
+    upload "cover.png" to "Route Cover Photo"
+    in "Add New Ferry Route" dialog, "Replace" button should be visible
+    click "Create Route"
+    backend should receive POST /api/v1/routes
+    backend should reply 201 Created
+    should see "Route created successfully"
+    "Add New Ferry Route" dialog should be closed
+    in "Blowing Point, Anguilla to Fort Bay Harbor, Saba" row, click "Open menu"
+    click "Delete route"
+    in "Delete Ferry Route" dialog, click "Delete Route"
+    backend should receive DELETE /api/v1/routes/:id
+    backend should reply 200 OK
+    should see "Route deleted successfully"
