@@ -1,0 +1,9 @@
+{
+  "name": "Mongoose shop (fixture)",
+  "baseURL": "http://localhost:3999",
+  "apiPrefix": "/api/v1",
+  "testsDir": "e2e/tests",
+  "outDir": "e2e/.generated",
+  "users": {},
+  "source": { "backend": "backend" }
+}

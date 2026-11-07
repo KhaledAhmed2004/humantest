@@ -10,7 +10,8 @@
 
   "login": {
     "endpoint": "http://localhost:5000/api/v1/auth/login",
-    "tokenCookie": { "name": "accessToken", "from": "data.accessToken" }
+    "tokenCookie": { "name": "accessToken", "from": "data.accessToken" },
+    "keepBetweenRuns": true
   },
 
   "users": {

@@ -11,8 +11,8 @@ Test: Operator schedules a trip and deletes it again
     go to schedules page
     click "Add Schedule"
     "Add Ferry Schedule" dialog should be open
-    choose "Blowing Point, Anguilla ➔ Marigot, Saint Martin • 25 mins trip" for "Ferry Route"
-    choose "Royal Alpha • 112 Seats (CATAMARAN)" for "Assign Ferry"
+    choose "Blowing Point, Anguilla ➔ Marigot, Saint Martin" for "Ferry Route"
+    choose "Royal Alpha" for "Assign Ferry"
     type "{in 300 days}T10:00" in "Departure Time"
     type "77" in "Adult Ticket Price"
     click "Schedule Departure"
@@ -36,8 +36,8 @@ Test: A ferry can't be scheduled for two trips at the same time
   As operator:
     go to schedules page
     click "Add Schedule"
-    choose "Blowing Point, Anguilla ➔ Marigot, Saint Martin • 25 mins trip" for "Ferry Route"
-    choose "Royal Alpha • 112 Seats (CATAMARAN)" for "Assign Ferry"
+    choose "Blowing Point, Anguilla ➔ Marigot, Saint Martin" for "Ferry Route"
+    choose "Royal Alpha" for "Assign Ferry"
     type "{in 300 days}T10:10" in "Departure Time"
     type "77" in "Adult Ticket Price"
     click "Schedule Departure"
@@ -59,8 +59,8 @@ Test: The trip form stops a trip that arrives before it leaves
   As operator:
     go to schedules page
     click "Add Schedule"
-    choose "Blowing Point, Anguilla ➔ Marigot, Saint Martin • 25 mins trip" for "Ferry Route"
-    choose "Royal Alpha • 112 Seats (CATAMARAN)" for "Assign Ferry"
+    choose "Blowing Point, Anguilla ➔ Marigot, Saint Martin" for "Ferry Route"
+    choose "Royal Alpha" for "Assign Ferry"
     type "{in 300 days}T10:00" in "Departure Time"
     type "{in 300 days}T09:30" in "Arrival Time"
     type "77" in "Adult Ticket Price"

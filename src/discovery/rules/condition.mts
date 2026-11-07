@@ -265,6 +265,10 @@ class Humanizer {
     if (e.kind === ts.SyntaxKind.TrueKeyword) return 'true';
     if (e.kind === ts.SyntaxKind.FalseKeyword) return 'false';
     if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.MinusToken && ts.isNumericLiteral(e.operand)) return `-${e.operand.text}`;
+    // `(product.stock ?? 0) < quantity`: the default only fills in a missing value; the value is what's compared.
+    if (ts.isBinaryExpression(e) && e.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken && this.value(e.right) !== undefined && /^(-?\d+|""|false)$/.test(this.value(e.right)!)) {
+      return this.value(e.left);
+    }
     // 10 * 1024 * 1024: a fixed number written as a sum.
     const n = arithmetic(e);
     if (n !== undefined) return String(n);

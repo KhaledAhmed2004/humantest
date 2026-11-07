@@ -9,10 +9,38 @@ import { translate, translateEquals, type Words } from './condition.mts';
 import type { Condition } from './types.mts';
 
 /** Where a transaction is: its `$transaction(…)` call and the function it is in. */
+/** A transaction: `prisma.$transaction(async (tx) => …)`, `session.withTransaction(…)`, `session.startTransaction()`. */
 export interface Tx { call: ts.CallExpression; in: string }
 
-/** `prisma.$transaction(async (tx) => …)` or `prisma.$transaction([…])`. */
-const isTxCall = (n: ts.Node): n is ts.CallExpression => ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === '$transaction';
+/**
+ * Mongoose's other way: `session.startTransaction()`, then writes given `{ session }`, then
+ * `commitTransaction()`. The write's transaction is the `startTransaction()` in its function.
+ */
+export function sessionTx(write: ts.CallExpression, it: { decl: ts.Node; name: string }): Tx | undefined {
+  const opts = write.arguments.at(-1);
+  const strip = (e: ts.Expression) => (ts.isAwaitExpression(e) || ts.isParenthesizedExpression(e) ? e.expression : e);
+  if (!opts || !ts.isObjectLiteralExpression(strip(opts))) return undefined;
+  const props = (strip(opts) as ts.ObjectLiteralExpression).properties;
+  if (!props.some((pr) => pr.name?.getText() === 'session')) return undefined;
+  let start: ts.CallExpression | undefined;
+  const visit = (n: ts.Node) => {
+    if (start) return;
+    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === 'startTransaction') start = n;
+    else ts.forEachChild(n, visit);
+  };
+  visit(it.decl);
+  return start ? { call: start, in: it.name } : undefined;
+}
+
+/**
+ * A call whose callback (or list) is one transaction: Prisma's `prisma.$transaction(…)`, Mongoose's
+ * `session.withTransaction(async () => …)` and `mongoose.connection.transaction(…)`.
+ */
+const isTxCall = (n: ts.Node): n is ts.CallExpression => {
+  if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(n.expression)) return false;
+  const name = n.expression.name.text;
+  return name === '$transaction' || name === 'withTransaction' || (name === 'transaction' && /(^|\.)connection$/.test(n.expression.expression.getText()));
+};
 
 /**
  * The conditions on the way from the route to a called function: at each call site up the chain

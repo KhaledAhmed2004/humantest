@@ -1,5 +1,6 @@
 // What a request changes and sends, and what it answers when nothing stops it:
 //   prisma.route.create({ data })                    → "A new route is saved."
+//   Campaign.create(payload), campaign.save()        → the same, for Mongoose models
 //   tx.schedule.updateMany({ data: { availableSeats: { decrement: seats } } })
 //                                                    → "Matching schedules are changed: available seats goes down by seats."
 //   EmailService.sendEmail({ subject: 'Verify …' })  → 'An email "Verify …" is sent.'
@@ -10,7 +11,7 @@ import ts from 'typescript';
 import type { SliceItem } from '../backend/slice.mts';
 import { declarationOf, where, type TsProject } from '../ts-project.mts';
 import { translate, words, type Words } from './condition.mts';
-import { context, pathTo, type Tx } from './paths.mts';
+import { context, pathTo, sessionTx, type Tx } from './paths.mts';
 import { messageTexts } from './messages.mts';
 import { statusOf } from './throws.mts';
 import type { Condition, EffectRule, Rule, RulePath, TogetherRule, WrittenField } from './types.mts';
@@ -22,6 +23,119 @@ const WRITES: Record<string, { effect: 'create' | 'update' | 'delete'; many?: bo
   update: { effect: 'update' }, updateMany: { effect: 'update', many: true }, updateManyAndReturn: { effect: 'update', many: true },
   upsert: { effect: 'update' }, delete: { effect: 'delete' }, deleteMany: { effect: 'delete', many: true },
 };
+
+/** Mongoose model calls that write, and which argument says what is written. */
+const MONGOOSE: Record<string, { effect: 'create' | 'update' | 'delete'; many?: boolean; data?: number }> = {
+  create: { effect: 'create', data: 0 }, insertMany: { effect: 'create', many: true, data: 0 },
+  findByIdAndUpdate: { effect: 'update', data: 1 }, findOneAndUpdate: { effect: 'update', data: 1 },
+  updateOne: { effect: 'update', data: 1 }, updateMany: { effect: 'update', many: true, data: 1 },
+  replaceOne: { effect: 'update', data: 1 }, findOneAndReplace: { effect: 'update', data: 1 },
+  findByIdAndDelete: { effect: 'delete' }, findByIdAndRemove: { effect: 'delete' },
+  findOneAndDelete: { effect: 'delete' }, findOneAndRemove: { effect: 'delete' },
+  deleteOne: { effect: 'delete' }, deleteMany: { effect: 'delete', many: true },
+};
+/** Mongoose reads that give one record, which `doc.save()` can write back. */
+const MONGOOSE_READS = /^(findById|findOne|findByIdAndUpdate|findOneAndUpdate)$/;
+
+/**
+ * The model's name when `e` is a Mongoose model: declared as `model<…>('Campaign', schema)` (or
+ * `mongoose.model(…)`), or typed as Mongoose's `Model`.
+ */
+function mongooseModel(p: TsProject, e: ts.Expression, w: Words): string | undefined {
+  e = strip(e);
+  if (!ts.isIdentifier(e)) return undefined;
+  const lower = (s: string) => words(s.replace(/Model$/, '').replace(/^./, (c) => c.toLowerCase()), w);
+  const d = declarationOf(p, e);
+  if (d && ts.isVariableDeclaration(d) && d.initializer) {
+    const init = strip(d.initializer);
+    if (ts.isCallExpression(init) && /(^|\.)model$/.test(init.expression.getText())) {
+      const named = init.arguments[0];
+      return lower(named && ts.isStringLiteral(named) ? named.text : d.name.getText());
+    }
+  }
+  const type = p.checker.getTypeAtLocation(e).getSymbol()?.name;
+  return type === 'Model' ? lower(e.text) : undefined;
+}
+
+/**
+ * The model `doc` was read from or made with, for `doc.save()`: `const doc = await X.findById(…)`
+ * (also with `.select(…)`, `.populate(…)` after it) or `const doc = new X({ … })`.
+ */
+function documentOf(p: TsProject, doc: ts.Expression, w: Words): { model: string; made?: ts.Expression } | undefined {
+  doc = strip(doc);
+  if (!ts.isIdentifier(doc)) return undefined;
+  const d = declarationOf(p, doc);
+  if (!d || !ts.isVariableDeclaration(d) || !d.initializer) return undefined;
+  let init = strip(d.initializer);
+  if (ts.isNewExpression(init)) {
+    const model = mongooseModel(p, init.expression, w);
+    return model ? { model, made: init.arguments?.[0] ?? ts.factory.createObjectLiteralExpression() } : undefined;
+  }
+  // Down the chain: X.findById(id).select('+password').populate('owner')
+  while (ts.isCallExpression(init) && ts.isPropertyAccessExpression(init.expression)) {
+    const target = init.expression;
+    if (MONGOOSE_READS.test(target.name.text)) {
+      const model = mongooseModel(p, target.expression, w);
+      if (model) return { model };
+    }
+    init = strip(target.expression);
+  }
+  return undefined;
+}
+
+/** `doc.status = 'ACTIVE'` and `Object.assign(doc, { … })` in the function, before `doc.save()`. */
+function assignedBefore(p: TsProject, it: SliceItem, doc: ts.Identifier, save: ts.Node, w: Words): WrittenField[] {
+  const out: WrittenField[] = [];
+  const visit = (n: ts.Node) => {
+    if (n.pos >= save.pos) return;
+    if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isPropertyAccessExpression(n.left) &&
+      ts.isIdentifier(n.left.expression) && n.left.expression.text === doc.text) {
+      const value = fixedValue(n.right);
+      out.push({ name: words(n.left.name.text, w), how: 'set', ...(value !== undefined ? { value } : {}) });
+    } else if (ts.isCallExpression(n) && n.expression.getText() === 'Object.assign' && n.arguments[0]?.getText() === doc.text) {
+      for (const a of n.arguments.slice(1)) out.push(...(writtenFields(a, w, false, p) ?? []));
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(it.decl);
+  const seen = new Set<string>();
+  return out.filter((f) => !seen.has(f.name) && seen.add(f.name));
+}
+
+/** What a Mongoose update writes: `{ $set: { … }, $inc: { views: 1 }, $push: { tags: tag } }`, or plain fields. */
+function mongoUpdateFields(update: ts.Expression | undefined, w: Words, p: TsProject): WrittenField[] | undefined {
+  if (!update) return undefined;
+  update = strip(update);
+  if (ts.isIdentifier(update)) {
+    const d = declarationOf(p, update);
+    if (d && ts.isVariableDeclaration(d) && d.initializer) update = strip(d.initializer);
+  }
+  if (!ts.isObjectLiteralExpression(update)) return undefined;
+  const out: WrittenField[] = [];
+  const plain: ts.ObjectLiteralElementLike[] = [];
+  for (const pr of update.properties) {
+    const key = ts.isPropertyAssignment(pr) ? pr.name.getText().replace(/['"]/g, '') : '';
+    if (!key.startsWith('$') || !ts.isPropertyAssignment(pr)) { plain.push(pr); continue; }
+    const inner = strip(pr.initializer);
+    if (key === '$set' || key === '$setOnInsert') { out.push(...(writtenFields(inner, w, false, p) ?? [])); continue; }
+    if (!ts.isObjectLiteralExpression(inner)) continue;
+    for (const f of inner.properties) {
+      if (!ts.isPropertyAssignment(f) && !ts.isShorthandPropertyAssignment(f)) continue;
+      const name = words(f.name.getText().replace(/['"]/g, ''), w);
+      const v = ts.isPropertyAssignment(f) ? strip(f.initializer) : f.name;
+      const say = (e: ts.Expression) => fixedValue(e) ?? (prop(e, '$each') ? undefined : words(e.getText().replace(/^.*\./, ''), w));
+      if (key === '$inc') {
+        // { $inc: { stock: -quantity } }: goes down.
+        const down = ts.isPrefixUnaryExpression(v) && v.operator === ts.SyntaxKind.MinusToken;
+        out.push({ name, how: down ? 'decrement' : 'increment', value: say(down ? (v as ts.PrefixUnaryExpression).operand : v) });
+      } else if (key === '$push' || key === '$addToSet') out.push({ name, how: 'add', value: say(v) });
+      else if (key === '$pull') out.push({ name, how: 'remove', value: say(v) });
+      else if (key === '$unset') out.push({ name, how: 'set', value: 'empty' });
+    }
+  }
+  if (plain.length) out.push(...(writtenFields(ts.factory.createObjectLiteralExpression(plain as ts.ObjectLiteralElementLike[]), w, false, p) ?? []));
+  return out;
+}
 
 /** A Prisma client or transaction: `prisma`, `tx`, `this.prisma`, or anything typed as one. */
 function isDbClient(p: TsProject, e: ts.Expression): boolean {
@@ -66,7 +180,7 @@ export function effectRules(p: TsProject, items: SliceItem[], w: Words = {}): Ru
         }
         if (r) out.push(r);
         // Inside a transaction here, or called from inside one: the outermost one is what counts.
-        const tx = path?.tx ?? (r ? context(p, n, it, w).tx : undefined);
+        const tx = path?.tx ?? (r ? context(p, n, it, w).tx ?? sessionTx(n, it) : undefined);
         if (r && r.kind === 'effect' && tx && !r.onError && (r.effect === 'create' || r.effect === 'update' || r.effect === 'delete')) {
           if (!txs.has(tx.call)) txs.set(tx.call, { tx, changes: [] });
           txs.get(tx.call)!.changes.push({ effect: r.effect, model: r.model ?? 'record', ...(r.many ? { many: true } : {}) });
@@ -195,6 +309,30 @@ function effectOf(p: TsProject, call: ts.CallExpression, it: SliceItem, w: Words
       effect: op.effect, model: words(callee.expression.name.text, w),
       ...(op.many ? { many: true } : {}), ...(fields?.length ? { fields } : {}),
     });
+  }
+  // Mongoose: Campaign.create(…), User.findByIdAndUpdate(id, { $set: … }), Post.deleteMany(…)
+  if (ts.isPropertyAccessExpression(callee) && Object.hasOwn(MONGOOSE, callee.name.text)) {
+    const model = mongooseModel(p, callee.expression, w);
+    if (model) {
+      const op = MONGOOSE[callee.name.text];
+      const arg = op.data === undefined ? undefined : call.arguments[op.data];
+      const list = !!arg && ts.isArrayLiteralExpression(strip(arg)) ? (strip(arg) as ts.ArrayLiteralExpression).elements.length : undefined;
+      const many = op.many || (op.effect === 'create' && list !== undefined && list !== 1);
+      // `X.create([{ … }])`: one record written as a list says what each one gets.
+      const one = arg && ts.isArrayLiteralExpression(strip(arg)) && (strip(arg) as ts.ArrayLiteralExpression).elements.length === 1
+        ? (strip(arg) as ts.ArrayLiteralExpression).elements[0] : arg;
+      const fields = op.effect === 'create' ? writtenFields(one, w, false, p) : op.effect === 'update' ? mongoUpdateFields(arg, w, p) : undefined;
+      return base({ effect: op.effect, model, ...(many ? { many: true } : {}), ...(fields?.length ? { fields } : {}) });
+    }
+  }
+  // doc.save() on a record read before (an update) or made with `new X(…)` (a new one); doc.deleteOne().
+  if (ts.isPropertyAccessExpression(callee) && /^(save|deleteOne|remove)$/.test(callee.name.text) && ts.isIdentifier(strip(callee.expression))) {
+    const doc = documentOf(p, callee.expression, w);
+    if (doc) {
+      if (callee.name.text !== 'save') return base({ effect: 'delete', model: doc.model });
+      const fields = doc.made ? writtenFields(doc.made, w, false, p) : assignedBefore(p, it, strip(callee.expression) as ts.Identifier, call, w);
+      return base({ effect: doc.made ? 'create' : 'update', model: doc.model, ...(fields?.length ? { fields } : {}) });
+    }
   }
   if (EMAIL.test(text) && !EMAIL.test(own)) {
     const subject = prop(call.arguments[0], 'subject');
