@@ -117,3 +117,31 @@ Test: The route form stops before sending when the description is only spaces
     click "Create Route"
     should see "Route description is required."
     backend should not receive any request
+
+
+# The state adds an open test route from Blowing Point to Fort Bay Harbor (Saba), a pair no real
+# route uses, so pausing it changes nothing a traveller can book.
+Test: Admin pauses a route and opens it again
+
+  Start with: one test route
+
+  As admin:
+    go to routes page
+    in "Blowing Point, Anguilla to Fort Bay Harbor, Saba" row, click "Open menu"
+    click "Pause route"
+    backend should receive PATCH /api/v1/routes/:id
+    backend should reply 200 OK
+    should see "Route updated successfully"
+    click "Paused"
+    in "Blowing Point, Anguilla to Fort Bay Harbor, Saba" row, click "Open menu"
+    click "Activate route"
+    backend should receive PATCH /api/v1/routes/:id
+    backend should reply 200 OK
+    # Open again, it leaves the "Paused" list.
+    should not see "Blowing Point, Anguilla to Fort Bay Harbor, Saba"
+    click "All"
+    in "Blowing Point, Anguilla to Fort Bay Harbor, Saba" row, click "Open menu"
+    click "Delete route"
+    in "Delete Ferry Route" dialog, click "Delete Route"
+    backend should receive DELETE /api/v1/routes/:id
+    backend should reply 200 OK

@@ -19,3 +19,35 @@ Test: A traveller books two seats and cancels the booking
     backend should receive PATCH /api/v1/bookings/:id/cancel
     backend should reply 200 OK
     should see "Booking cancelled successfully"
+
+
+# Two people at once: the traveller gets as far as paying, then the operator cancels the trip.
+# The trip is the test trip in 300 days (e2e/states/one-test-trip.ts); the operator deletes it at the end.
+Test: A trip cancelled while the traveller is paying can't be booked
+
+  Start with: one test trip
+
+  As traveller:
+    go to "/ferries?from=Blowing Point, Anguilla&to=Marigot, Saint Martin&departureDate={in 300 days}&adults=2&passengers=2 Passengers"
+    click "Select Trip"
+    click "Continue to Passenger Details"
+    click "Continue to Payment"
+
+  As operator:
+    go to schedules page
+    type "{in 300 days}" in "Filter by date"
+    in "Royal Alpha" row, choose "Cancelled" for "Change status"
+    backend should receive PATCH /api/v1/operator/schedules/:id/status
+    backend should reply 200 OK
+
+  As traveller:
+    click "Continue to pay"
+    backend should receive POST /api/v1/bookings
+    backend should reply 400 Bad Request
+    should see "Cannot book tickets on a departed or cancelled trip"
+
+  As operator:
+    in "Royal Alpha" row, click "Delete Schedule"
+    in "Delete Departure Schedule" dialog, click "Delete Schedule"
+    backend should receive DELETE /api/v1/operator/schedules/:id
+    backend should reply 200 OK

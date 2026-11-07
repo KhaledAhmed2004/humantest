@@ -1,0 +1,1099 @@
+{
+ "version": 1,
+ "key": "e2e/tests/admin-ports.ht::Admin adds a port and deletes it again",
+ "test": "Admin adds a port and deletes it again",
+ "source": "e2e/tests/admin-ports.ht:5",
+ "steps": [
+  {
+   "title": "line 7 · start with: no test ports",
+   "line": 7,
+   "text": "start with: no test ports",
+   "requests": []
+  },
+  {
+   "title": "line 10 · admin · go to ports page",
+   "line": 10,
+   "text": "go to ports page",
+   "requests": []
+  },
+  {
+   "title": "line 11 · admin · click \"Add Port\"",
+   "line": 11,
+   "text": "click \"Add Port\"",
+   "requests": [
+    "CLICK \"Add Port\" on src/app/dashboard/admin/ports/page.tsx",
+    "GET /api/v1/user/profile",
+    "GET /api/v1/ports"
+   ]
+  },
+  {
+   "title": "line 12 · admin · \"Add New Port\" dialog should be open",
+   "line": 12,
+   "text": "\"Add New Port\" dialog should be open",
+   "requests": []
+  },
+  {
+   "title": "line 13 · admin · type \"HumanTest test port\" in \"Port Name\"",
+   "line": 13,
+   "text": "type \"HumanTest test port\" in \"Port Name\"",
+   "requests": []
+  },
+  {
+   "title": "line 14 · admin · choose \"America/Anguilla\" for \"Time Zone\"",
+   "line": 14,
+   "text": "choose \"America/Anguilla\" for \"Time Zone\"",
+   "requests": []
+  },
+  {
+   "title": "line 15 · admin · click \"Create Port\"",
+   "line": 15,
+   "text": "click \"Create Port\"",
+   "requests": [
+    "CLICK \"Create Port\" on src/app/dashboard/admin/ports/page.tsx",
+    "POST /api/v1/ports",
+    "GET /api/v1/ports"
+   ]
+  },
+  {
+   "title": "line 16 · admin · backend should receive POST /api/v1/ports",
+   "line": 16,
+   "text": "backend should receive POST /api/v1/ports",
+   "requests": []
+  },
+  {
+   "title": "line 17 · admin · backend should reply 201 Created",
+   "line": 17,
+   "text": "backend should reply 201 Created",
+   "requests": []
+  },
+  {
+   "title": "line 18 · admin · should see \"Port created successfully\"",
+   "line": 18,
+   "text": "should see \"Port created successfully\"",
+   "requests": []
+  },
+  {
+   "title": "line 19 · admin · \"Add New Port\" dialog should be closed",
+   "line": 19,
+   "text": "\"Add New Port\" dialog should be closed",
+   "requests": []
+  },
+  {
+   "title": "line 20 · admin · in \"HumanTest test port\" row, click \"Open menu\"",
+   "line": 20,
+   "text": "in \"HumanTest test port\" row, click \"Open menu\"",
+   "requests": []
+  },
+  {
+   "title": "line 21 · admin · click \"Delete port\"",
+   "line": 21,
+   "text": "click \"Delete port\"",
+   "requests": [
+    "CLICK \"Delete port\" on src/app/dashboard/admin/ports/page.tsx"
+   ]
+  },
+  {
+   "title": "line 22 · admin · in \"Delete Port\" dialog, click \"Delete\"",
+   "line": 22,
+   "text": "in \"Delete Port\" dialog, click \"Delete\"",
+   "requests": [
+    "CLICK \"Delete\" on src/app/dashboard/admin/ports/page.tsx",
+    "DELETE /api/v1/ports/:id",
+    "GET /api/v1/ports"
+   ]
+  },
+  {
+   "title": "line 23 · admin · backend should receive DELETE /api/v1/ports/:id",
+   "line": 23,
+   "text": "backend should receive DELETE /api/v1/ports/:id",
+   "requests": []
+  },
+  {
+   "title": "line 24 · admin · backend should reply 200 OK",
+   "line": 24,
+   "text": "backend should reply 200 OK",
+   "requests": []
+  },
+  {
+   "title": "line 25 · admin · should see \"Port permanently deleted\"",
+   "line": 25,
+   "text": "should see \"Port permanently deleted\"",
+   "requests": []
+  }
+ ],
+ "requests": [
+  {
+   "request": "CLICK \"Add Port\" on src/app/dashboard/admin/ports/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/ports",
+    "label": "Add Port"
+   },
+   "functions": [
+    {
+     "name": "AdminPortsView",
+     "file": "src/app/dashboard/admin/ports/page.tsx",
+     "line": 61,
+     "role": "helper",
+     "hash": "de64a5660a86"
+    },
+    {
+     "name": "handleOpenAdd",
+     "file": "src/app/dashboard/admin/ports/page.tsx",
+     "line": 310,
+     "role": "helper",
+     "hash": "b7ef4709d9d3"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "GET /api/v1/user/profile",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/user/profile",
+    "file": "src/app/modules/user/user.route.ts",
+    "line": 62
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "ALL_ROLES",
+     "file": "src/app/modules/user/user.route.ts",
+     "line": 12,
+     "role": "route",
+     "hash": "913c02cd2251"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.controller.ts",
+     "line": 22,
+     "role": "controller",
+     "hash": "1b11bbc47fa4"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 52,
+     "role": "service",
+     "hash": "82c23bb34c74"
+    },
+    {
+     "name": "findById",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 28,
+     "role": "service",
+     "hash": "96ee5e8a404f"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "USER",
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(...ALL_ROLES)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/user/user.route.ts",
+      "line": 62
+     },
+     "text": "Only USER, OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:getProfile:404:!user || user.deletedAt",
+     "source": {
+      "file": "src/app/modules/user/user.service.ts",
+      "line": 55
+     },
+     "in": "getProfile",
+     "when": [
+      {
+       "code": "!user || user.deletedAt",
+       "text": "user is not found, or user is deleted"
+      }
+     ],
+     "status": 404,
+     "message": "User not found",
+     "text": "If user is not found, or user is deleted, the server answers 404 Not Found: \"User not found\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getProfile",
+     "status": 200,
+     "message": "Profile retrieved successfully",
+     "id": "reply:getProfile:200:",
+     "source": {
+      "file": "src/app/modules/user/user.controller.ts",
+      "line": 27
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Profile retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/ports",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/ports",
+    "file": "src/app/modules/port/port.route.ts",
+    "line": 17
+   },
+   "functions": [
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listPortsQueryZodSchema",
+     "file": "src/app/modules/port/port.validation.ts",
+     "line": 35,
+     "role": "validation",
+     "hash": "d27ec35b5ac6"
+    },
+    {
+     "name": "listPorts",
+     "file": "src/app/modules/port/port.controller.ts",
+     "line": 18,
+     "role": "controller",
+     "hash": "31318e3a29ee"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listPorts",
+     "file": "src/app/modules/port/port.service.ts",
+     "line": 22,
+     "role": "service",
+     "hash": "9c308046b51a"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.search:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 37
+     },
+     "text": "search: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.search:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 37
+     },
+     "text": "search: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "isActive",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.isActive:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 38
+     },
+     "text": "isActive: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "isActive",
+     "facet": "oneOf",
+     "values": [
+      "true",
+      "false"
+     ],
+     "id": "field:query.isActive:oneOf",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 38
+     },
+     "text": "isActive: one of true or false."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "20",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: optional (default 20)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listPorts",
+     "status": 200,
+     "message": "Ports retrieved successfully",
+     "id": "reply:listPorts:200:",
+     "source": {
+      "file": "src/app/modules/port/port.controller.ts",
+      "line": 21
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Ports retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Create Port\" on src/app/dashboard/admin/ports/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/ports",
+    "label": "Create Port"
+   },
+   "functions": [
+    {
+     "name": "AdminPortsView",
+     "file": "src/app/dashboard/admin/ports/page.tsx",
+     "line": 61,
+     "role": "helper",
+     "hash": "de64a5660a86"
+    },
+    {
+     "name": "handleSubmit",
+     "file": "src/app/dashboard/admin/ports/page.tsx",
+     "line": 330,
+     "role": "helper",
+     "hash": "3294bf36826f"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Create Port",
+     "when": {
+      "code": "isSubmitting",
+      "text": "a request is in progress"
+     },
+     "id": "ui-block:Create Port",
+     "source": {
+      "file": "src/app/dashboard/admin/ports/page.tsx",
+      "line": 709
+     },
+     "text": "\"Create Port\" can't be used while a request is in progress."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "!formName.trim()",
+       "text": "form name is empty or only spaces"
+      }
+     ],
+     "id": "ui-guard:handleSubmit:!formName.trim()",
+     "source": {
+      "file": "src/app/dashboard/admin/ports/page.tsx",
+      "line": 332
+     },
+     "text": "If form name is empty or only spaces, the page stops, before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "!formTimeZone",
+       "text": "form time zone is empty"
+      }
+     ],
+     "id": "ui-guard:handleSubmit:!formTimeZone",
+     "source": {
+      "file": "src/app/dashboard/admin/ports/page.tsx",
+      "line": 336
+     },
+     "text": "If form time zone is empty, the page stops, before sending anything."
+    }
+   ]
+  },
+  {
+   "request": "POST /api/v1/ports",
+   "route": {
+    "method": "POST",
+    "path": "/api/v1/ports",
+    "file": "src/app/modules/port/port.route.ts",
+    "line": 10
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "createPortZodSchema",
+     "file": "src/app/modules/port/port.validation.ts",
+     "line": 10,
+     "role": "validation",
+     "hash": "f064e3157a20"
+    },
+    {
+     "name": "timeZoneSchema",
+     "file": "src/app/modules/port/port.validation.ts",
+     "line": 5,
+     "role": "validation",
+     "hash": "b38ec3f42ad9"
+    },
+    {
+     "name": "isValidTimeZone",
+     "file": "src/shared/portTime.ts",
+     "line": 19,
+     "role": "shared",
+     "hash": "f5b5d0d38c61"
+    },
+    {
+     "name": "createPort",
+     "file": "src/app/modules/port/port.controller.ts",
+     "line": 7,
+     "role": "controller",
+     "hash": "1f1cab1ea33c"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "createPort",
+     "file": "src/app/modules/port/port.service.ts",
+     "line": 12,
+     "role": "service",
+     "hash": "b83eca1c8bae"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "assertValidTimeZone",
+     "file": "src/shared/portTime.ts",
+     "line": 29,
+     "role": "shared",
+     "hash": "4e88b433e669"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/port/port.route.ts",
+      "line": 10
+     },
+     "text": "Only ADMIN can do this."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "name",
+     "facet": "required",
+     "required": true,
+     "message": "Port name is required",
+     "id": "field:body.name:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 12
+     },
+     "text": "name: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "name",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.name:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 12
+     },
+     "text": "name: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "name",
+     "facet": "min",
+     "value": 2,
+     "unit": "characters",
+     "message": "Port name must be at least 2 characters",
+     "id": "field:body.name:min",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 12
+     },
+     "text": "name: at least 2 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "name",
+     "facet": "max",
+     "value": 100,
+     "unit": "characters",
+     "message": "Port name cannot exceed 100 characters",
+     "id": "field:body.name:max",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 12
+     },
+     "text": "name: at most 100 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "timeZone",
+     "facet": "required",
+     "required": true,
+     "message": "Time zone is required",
+     "id": "field:body.timeZone:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 17
+     },
+     "text": "timeZone: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "timeZone",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.timeZone:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 17
+     },
+     "text": "timeZone: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "isActive",
+     "facet": "required",
+     "required": false,
+     "default": "true",
+     "id": "field:body.isActive:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 18
+     },
+     "text": "isActive: optional (default true)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "isActive",
+     "facet": "type",
+     "type": "true or false",
+     "id": "field:body.isActive:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 18
+     },
+     "text": "isActive: must be true or false."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:assertValidTimeZone:400:!isValidTimeZone(timeZone)",
+     "source": {
+      "file": "src/shared/portTime.ts",
+      "line": 31
+     },
+     "in": "assertValidTimeZone",
+     "when": [
+      {
+       "code": "!isValidTimeZone(timeZone)"
+      }
+     ],
+     "status": 400,
+     "message": "Invalid time zone: {…}",
+     "text": "If `!isValidTimeZone(timeZone)`, the server answers 400 Bad Request: \"Invalid time zone: {…}\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "createPort",
+     "status": 201,
+     "message": "Port created successfully",
+     "id": "reply:createPort:201:",
+     "source": {
+      "file": "src/app/modules/port/port.controller.ts",
+      "line": 10
+     },
+     "text": "When nothing stops it, the server answers 201 Created: \"Port created successfully\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "port",
+     "fields": [
+      {
+       "name": "name",
+       "how": "set"
+      },
+      {
+       "name": "time zone",
+       "how": "set"
+      },
+      {
+       "name": "is active",
+       "how": "set",
+       "value": "true",
+       "fallback": true
+      }
+     ],
+     "when": [],
+     "in": "createPort",
+     "id": "effect:createPort:create:port:",
+     "source": {
+      "file": "src/app/modules/port/port.service.ts",
+      "line": 13
+     },
+     "text": "A new port is saved (is active: true unless given)."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Delete port\" on src/app/dashboard/admin/ports/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/ports",
+    "label": "Delete port"
+   },
+   "functions": [
+    {
+     "name": "AdminPortsView",
+     "file": "src/app/dashboard/admin/ports/page.tsx",
+     "line": 61,
+     "role": "helper",
+     "hash": "de64a5660a86"
+    },
+    {
+     "name": "the onSelect function written there",
+     "file": "src/app/dashboard/admin/ports/page.tsx",
+     "line": 435,
+     "role": "helper",
+     "hash": "8aed490c1e71"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "CLICK \"Delete\" on src/app/dashboard/admin/ports/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/ports",
+    "label": "Delete"
+   },
+   "functions": [
+    {
+     "name": "AdminPortsView",
+     "file": "src/app/dashboard/admin/ports/page.tsx",
+     "line": 61,
+     "role": "helper",
+     "hash": "de64a5660a86"
+    },
+    {
+     "name": "handleDelete",
+     "file": "src/app/dashboard/admin/ports/page.tsx",
+     "line": 364,
+     "role": "helper",
+     "hash": "e6af55cd79d4"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Delete",
+     "when": {
+      "code": "deleteMutation.isPending",
+      "text": "a request is in progress"
+     },
+     "id": "ui-block:Delete",
+     "source": {
+      "file": "src/app/dashboard/admin/ports/page.tsx",
+      "line": 764
+     },
+     "text": "\"Delete\" can't be used while a request is in progress."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleDelete",
+     "when": [
+      {
+       "code": "!deletingPort",
+       "text": "deleting port is not found"
+      }
+     ],
+     "id": "ui-guard:handleDelete:!deletingPort",
+     "source": {
+      "file": "src/app/dashboard/admin/ports/page.tsx",
+      "line": 365
+     },
+     "text": "If deleting port is not found, the page stops, before sending anything."
+    }
+   ]
+  },
+  {
+   "request": "DELETE /api/v1/ports/:id",
+   "route": {
+    "method": "DELETE",
+    "path": "/api/v1/ports/:id",
+    "file": "src/app/modules/port/port.route.ts",
+    "line": 32
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "deletePort",
+     "file": "src/app/modules/port/port.controller.ts",
+     "line": 51,
+     "role": "controller",
+     "hash": "ffa34ded9131"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "deletePort",
+     "file": "src/app/modules/port/port.service.ts",
+     "line": 113,
+     "role": "service",
+     "hash": "78a68a941110"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/port/port.route.ts",
+      "line": 32
+     },
+     "text": "Only ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:deletePort:404:!existingPort",
+     "source": {
+      "file": "src/app/modules/port/port.service.ts",
+      "line": 127
+     },
+     "in": "deletePort",
+     "when": [
+      {
+       "code": "!existingPort",
+       "text": "no matching port is found"
+      }
+     ],
+     "status": 404,
+     "message": "Port not found",
+     "text": "If no matching port is found, the server answers 404 Not Found: \"Port not found\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "deletePort",
+     "status": 200,
+     "message": "Port is referenced by existing routes and has been deactivated instead of deleted",
+     "otherMessages": [
+      "Port permanently deleted"
+     ],
+     "id": "reply:deletePort:200:",
+     "source": {
+      "file": "src/app/modules/port/port.controller.ts",
+      "line": 54
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Port is referenced by existing routes and has been deactivated instead of deleted\" (or \"Port permanently deleted\")."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "port",
+     "fields": [
+      {
+       "name": "is active",
+       "how": "set",
+       "value": "false"
+      }
+     ],
+     "when": [
+      {
+       "code": "totalConnectedRoutes > 0",
+       "text": "total connected routes is more than 0"
+      }
+     ],
+     "in": "deletePort",
+     "id": "effect:deletePort:update:port:totalConnectedRoutes > 0",
+     "source": {
+      "file": "src/app/modules/port/port.service.ts",
+      "line": 134
+     },
+     "text": "If total connected routes is more than 0, the port is changed: is active becomes false."
+    },
+    {
+     "kind": "effect",
+     "effect": "delete",
+     "model": "port",
+     "when": [
+      {
+       "code": "!(totalConnectedRoutes > 0)",
+       "text": "total connected routes is at most 0"
+      }
+     ],
+     "in": "deletePort",
+     "id": "effect:deletePort:delete:port:!(totalConnectedRoutes > 0)",
+     "source": {
+      "file": "src/app/modules/port/port.service.ts",
+      "line": 147
+     },
+     "text": "If total connected routes is at most 0, the port is deleted."
+    }
+   ]
+  }
+ ],
+ "frontend": true,
+ "acceptedAt": "2026-11-07T12:03:04.975Z"
+}

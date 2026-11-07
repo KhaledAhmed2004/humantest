@@ -16,11 +16,15 @@
   "users": {
     "admin": { "email": "admin@example.com", "password": "strong_password_here" },
     "visitor": {},
-    "traveller": { "email": "user001@testmail.com", "password": "Password123!" }
+    "traveller": { "email": "user001@testmail.com", "password": "Password123!" },
+    "operator": { "email": "khaledahmednayeem.dev@gmail.com", "password": "Test@123" }
   },
 
   "pages": {
     "routes page": "/dashboard/admin/routes",
+    "fleet page": "/dashboard/operator/ferries",
+    "schedules page": "/dashboard/operator/schedules",
+    "ports page": "/dashboard/admin/ports",
     "login page": "/login"
   },
 
