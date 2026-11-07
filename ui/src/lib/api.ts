@@ -10,12 +10,17 @@ export interface TestInfo {
   line: number
   users: string[]
   state?: string
+  /** Written `Draft:`: listed, not run until it says `Test:`. */
+  draft?: boolean
   steps: PlannedStep[]
 }
 
 export interface TestFile { file: string; spec: string; diagnostics: Diagnostic[]; tests: TestInfo[] }
 
-export interface StepResult { title: string; status: 'passed' | 'failed'; duration: number; error?: string }
+/** An API call a step caused. Only the names of query and body fields are kept, never their values. */
+export interface StepCall { method: string; path: string; query: string[]; bodyKeys: string[]; status?: number; simulated?: boolean; pageUrl?: string }
+
+export interface StepResult { title: string; status: 'passed' | 'failed'; duration: number; error?: string; calls?: StepCall[] }
 
 export interface TestResult {
   key: string
@@ -37,6 +42,76 @@ export interface History {
 
 export interface Project { id: string; name: string }
 
+/** One business rule, grouped and written out by src/discovery/rules/present.mts. */
+export interface RuleLine {
+  text: string
+  source: { file: string; line: number }
+  translated: boolean
+  messages: string[]
+  status?: number
+  ids: string[]
+  checked?: boolean
+}
+export interface RuleGroup { title: string; lines: RuleLine[] }
+export type DiscoveredCall =
+  | { request: string; route: { method: string; path: string; file: string; line: number }; groups: RuleGroup[] }
+  | { request: string; problem: string }
+/** What the page's own code does for a click step. */
+export interface PageRules { label: string; page: string; element: { file: string; line: number; tag: string }; component: string; groups: RuleGroup[] }
+export interface DiscoveryResult {
+  test: string
+  source: string
+  codeRoot?: string
+  frontRoot?: string
+  steps: { title: string; line: number; text: string; calls: DiscoveredCall[]; page?: PageRules }[]
+}
+export interface DiscoveryResponse { configured: boolean; running?: boolean; at?: string; result?: DiscoveryResult }
+
+/** What changed in a test's business logic since it was accepted (src/discovery/baseline.mts). */
+export interface RuleChange { change: 'added' | 'removed' | 'changed'; before?: string; after?: string; source: { file: string; line: number } }
+export interface FunctionChange { change: 'added' | 'removed' | 'changed'; name: string; file: string; line: number; lastCommit?: string }
+export interface RequestChange { request: string; change: 'added' | 'removed' | 'changed' | 'same'; problem?: string; ruleCount?: number; functions: FunctionChange[]; rules: RuleChange[] }
+export interface TestChange { key: string; test: string; source: string; acceptedAt?: string; status: 'same' | 'changed' | 'code-only' | 'new' | 'gone'; requests: RequestChange[] }
+export interface ChangesResponse { computing: boolean; at?: string; tests: TestChange[]; error?: string }
+
+/** What the tests cover (src/discovery/gaps.mts): per part of the app, and each rule no test checks. */
+export interface GapLine extends RuleLine { group: string; draft?: string }
+export interface GapRequest {
+  request: string
+  area: string
+  /** What it does, from its handler's name: "Create route". */
+  title?: string
+  root: string
+  reachedBy: { test: string; file: string; testLine: number; stepLine: number }[]
+  lines: GapLine[]
+}
+export interface GapArea { name: string; requests: number; reached: number; rules: number; reachedRules: number; checked: number }
+export interface GapReport { areas: GapArea[]; reached: GapRequest[]; unreached: { request: string; area: string; title?: string; root: string; rules: number; lines: GapLine[] }[] }
+export interface CoverageResponse { computing: boolean; at?: string; report?: GapReport; error?: string }
+
+export async function getCoverage(project: string): Promise<CoverageResponse> {
+  return (await fetch(`/api/coverage?project=${encodeURIComponent(project)}`)).json()
+}
+
+/** Saves a draft test as a new .ht file in the tests folder. */
+export async function saveDraft(project: string, text: string): Promise<{ file?: string; path?: string; diagnostics?: Diagnostic[]; error?: string }> {
+  const r = await fetch('/api/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project, text }) })
+  return r.json()
+}
+
+export async function getChanges(project: string): Promise<ChangesResponse> {
+  return (await fetch(`/api/changes?project=${encodeURIComponent(project)}`)).json()
+}
+
+export async function acceptChanges(project: string, key?: string): Promise<{ ok?: boolean; error?: string }> {
+  const r = await fetch('/api/accept', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project, key }) })
+  return r.json()
+}
+
+export async function getDiscovery(project: string, key: string): Promise<DiscoveryResponse> {
+  return (await fetch(`/api/discovery?project=${encodeURIComponent(project)}&key=${encodeURIComponent(key)}`)).json()
+}
+
 export interface TestsResponse { files: TestFile[]; problems: Diagnostic[]; history: History }
 
 export type ServerEvent =
@@ -48,6 +123,9 @@ export type ServerEvent =
   | { type: 'log'; line: string }
   | { type: 'run-end'; code: number | null }
   | { type: 'tests-changed'; project: string }
+  | { type: 'discovery'; project: string; state: 'running' | 'done' }
+  | { type: 'changes'; project: string }
+  | { type: 'coverage'; project: string }
 
 export async function getProjects(): Promise<{ projects: Project[]; running: { project: string; done: number; total: number } | null }> {
   return (await fetch('/api/projects')).json()

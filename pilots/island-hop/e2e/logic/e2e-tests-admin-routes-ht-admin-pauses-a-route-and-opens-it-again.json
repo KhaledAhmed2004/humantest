@@ -1,0 +1,1489 @@
+{
+ "version": 1,
+ "key": "e2e/tests/admin-routes.ht::Admin pauses a route and opens it again",
+ "test": "Admin pauses a route and opens it again",
+ "source": "e2e/tests/admin-routes.ht:124",
+ "steps": [
+  {
+   "title": "line 126 · start with: one test route",
+   "line": 126,
+   "text": "start with: one test route",
+   "requests": []
+  },
+  {
+   "title": "line 129 · admin · go to routes page",
+   "line": 129,
+   "text": "go to routes page",
+   "requests": []
+  },
+  {
+   "title": "line 130 · admin · in \"Blowing Point, Anguilla to Fort Bay Harbor, Saba\" row, click \"Open menu\"",
+   "line": 130,
+   "text": "in \"Blowing Point, Anguilla to Fort Bay Harbor, Saba\" row, click \"Open menu\"",
+   "requests": [
+    "GET /api/v1/user/profile",
+    "GET /api/v1/routes",
+    "GET /api/v1/ports"
+   ]
+  },
+  {
+   "title": "line 131 · admin · click \"Pause route\"",
+   "line": 131,
+   "text": "click \"Pause route\"",
+   "requests": [
+    "CLICK \"Pause route\" on src/app/dashboard/admin/routes/page.tsx",
+    "PATCH /api/v1/routes/:id",
+    "GET /api/v1/routes"
+   ]
+  },
+  {
+   "title": "line 132 · admin · backend should receive PATCH /api/v1/routes/:id",
+   "line": 132,
+   "text": "backend should receive PATCH /api/v1/routes/:id",
+   "requests": []
+  },
+  {
+   "title": "line 133 · admin · backend should reply 200 OK",
+   "line": 133,
+   "text": "backend should reply 200 OK",
+   "requests": []
+  },
+  {
+   "title": "line 134 · admin · should see \"Route updated successfully\"",
+   "line": 134,
+   "text": "should see \"Route updated successfully\"",
+   "requests": []
+  },
+  {
+   "title": "line 135 · admin · click \"Paused\"",
+   "line": 135,
+   "text": "click \"Paused\"",
+   "requests": []
+  },
+  {
+   "title": "line 136 · admin · in \"Blowing Point, Anguilla to Fort Bay Harbor, Saba\" row, click \"Open menu\"",
+   "line": 136,
+   "text": "in \"Blowing Point, Anguilla to Fort Bay Harbor, Saba\" row, click \"Open menu\"",
+   "requests": []
+  },
+  {
+   "title": "line 137 · admin · click \"Activate route\"",
+   "line": 137,
+   "text": "click \"Activate route\"",
+   "requests": [
+    "CLICK \"Activate route\" on src/app/dashboard/admin/routes/page.tsx",
+    "PATCH /api/v1/routes/:id",
+    "GET /api/v1/routes"
+   ]
+  },
+  {
+   "title": "line 138 · admin · backend should receive PATCH /api/v1/routes/:id",
+   "line": 138,
+   "text": "backend should receive PATCH /api/v1/routes/:id",
+   "requests": []
+  },
+  {
+   "title": "line 139 · admin · backend should reply 200 OK",
+   "line": 139,
+   "text": "backend should reply 200 OK",
+   "requests": []
+  },
+  {
+   "title": "line 141 · admin · should not see \"Blowing Point, Anguilla to Fort Bay Harbor, Saba\"",
+   "line": 141,
+   "text": "should not see \"Blowing Point, Anguilla to Fort Bay Harbor, Saba\"",
+   "requests": []
+  },
+  {
+   "title": "line 142 · admin · click \"All\"",
+   "line": 142,
+   "text": "click \"All\"",
+   "requests": [
+    "CLICK \"All\" on src/app/dashboard/admin/routes/page.tsx",
+    "GET /api/v1/routes"
+   ]
+  },
+  {
+   "title": "line 143 · admin · in \"Blowing Point, Anguilla to Fort Bay Harbor, Saba\" row, click \"Open menu\"",
+   "line": 143,
+   "text": "in \"Blowing Point, Anguilla to Fort Bay Harbor, Saba\" row, click \"Open menu\"",
+   "requests": []
+  },
+  {
+   "title": "line 144 · admin · click \"Delete route\"",
+   "line": 144,
+   "text": "click \"Delete route\"",
+   "requests": [
+    "CLICK \"Delete route\" on src/app/dashboard/admin/routes/page.tsx"
+   ]
+  },
+  {
+   "title": "line 145 · admin · in \"Delete Ferry Route\" dialog, click \"Delete Route\"",
+   "line": 145,
+   "text": "in \"Delete Ferry Route\" dialog, click \"Delete Route\"",
+   "requests": [
+    "CLICK \"Delete Route\" on src/app/dashboard/admin/routes/page.tsx",
+    "DELETE /api/v1/routes/:id",
+    "GET /api/v1/routes"
+   ]
+  },
+  {
+   "title": "line 146 · admin · backend should receive DELETE /api/v1/routes/:id",
+   "line": 146,
+   "text": "backend should receive DELETE /api/v1/routes/:id",
+   "requests": []
+  },
+  {
+   "title": "line 147 · admin · backend should reply 200 OK",
+   "line": 147,
+   "text": "backend should reply 200 OK",
+   "requests": []
+  }
+ ],
+ "requests": [
+  {
+   "request": "GET /api/v1/user/profile",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/user/profile",
+    "file": "src/app/modules/user/user.route.ts",
+    "line": 62
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "ALL_ROLES",
+     "file": "src/app/modules/user/user.route.ts",
+     "line": 12,
+     "role": "route",
+     "hash": "913c02cd2251"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.controller.ts",
+     "line": 22,
+     "role": "controller",
+     "hash": "1b11bbc47fa4"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 52,
+     "role": "service",
+     "hash": "82c23bb34c74"
+    },
+    {
+     "name": "findById",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 28,
+     "role": "service",
+     "hash": "96ee5e8a404f"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "USER",
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(...ALL_ROLES)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/user/user.route.ts",
+      "line": 62
+     },
+     "text": "Only USER, OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:getProfile:404:!user || user.deletedAt",
+     "source": {
+      "file": "src/app/modules/user/user.service.ts",
+      "line": 55
+     },
+     "in": "getProfile",
+     "when": [
+      {
+       "code": "!user || user.deletedAt",
+       "text": "user is not found, or user is deleted"
+      }
+     ],
+     "status": 404,
+     "message": "User not found",
+     "text": "If user is not found, or user is deleted, the server answers 404 Not Found: \"User not found\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getProfile",
+     "status": 200,
+     "message": "Profile retrieved successfully",
+     "id": "reply:getProfile:200:",
+     "source": {
+      "file": "src/app/modules/user/user.controller.ts",
+      "line": 27
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Profile retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/routes",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/routes",
+    "file": "src/app/modules/route/route.route.ts",
+    "line": 33
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listRoutesQueryZodSchema",
+     "file": "src/app/modules/route/route.validation.ts",
+     "line": 74,
+     "role": "validation",
+     "hash": "0b79c222436d"
+    },
+    {
+     "name": "listRoutes",
+     "file": "src/app/modules/route/route.controller.ts",
+     "line": 20,
+     "role": "controller",
+     "hash": "7bb8d08c7723"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listRoutes",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 96,
+     "role": "service",
+     "hash": "c61d9d1beea6"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "PORT_SELECT",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 13,
+     "role": "service",
+     "hash": "970698444a30"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/route/route.route.ts",
+      "line": 33
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "message": "page must be a number",
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "page must be at least 1",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "10",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: optional (default 10)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "message": "limit must be a number",
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "limit must be at least 1",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "message": "limit cannot exceed 100",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.status:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 89
+     },
+     "text": "status: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "oneOf",
+     "values": [
+      "ACTIVE",
+      "INACTIVE"
+     ],
+     "message": "status must be ACTIVE or INACTIVE",
+     "id": "field:query.status:oneOf",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 89
+     },
+     "text": "status: one of ACTIVE or INACTIVE."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listRoutes",
+     "status": 200,
+     "message": "Routes retrieved successfully",
+     "id": "reply:listRoutes:200:",
+     "source": {
+      "file": "src/app/modules/route/route.controller.ts",
+      "line": 24
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Routes retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/ports",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/ports",
+    "file": "src/app/modules/port/port.route.ts",
+    "line": 17
+   },
+   "functions": [
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listPortsQueryZodSchema",
+     "file": "src/app/modules/port/port.validation.ts",
+     "line": 35,
+     "role": "validation",
+     "hash": "d27ec35b5ac6"
+    },
+    {
+     "name": "listPorts",
+     "file": "src/app/modules/port/port.controller.ts",
+     "line": 18,
+     "role": "controller",
+     "hash": "31318e3a29ee"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listPorts",
+     "file": "src/app/modules/port/port.service.ts",
+     "line": 22,
+     "role": "service",
+     "hash": "9c308046b51a"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.search:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 37
+     },
+     "text": "search: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.search:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 37
+     },
+     "text": "search: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "isActive",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.isActive:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 38
+     },
+     "text": "isActive: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "isActive",
+     "facet": "oneOf",
+     "values": [
+      "true",
+      "false"
+     ],
+     "id": "field:query.isActive:oneOf",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 38
+     },
+     "text": "isActive: one of true or false."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "20",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: optional (default 20)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listPorts",
+     "status": 200,
+     "message": "Ports retrieved successfully",
+     "id": "reply:listPorts:200:",
+     "source": {
+      "file": "src/app/modules/port/port.controller.ts",
+      "line": 21
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Ports retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Pause route\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "Pause route"
+   },
+   "functions": [
+    {
+     "name": "getRouteColumns",
+     "file": "src/app/dashboard/admin/routes/_components/routes-columns.tsx",
+     "line": 28,
+     "role": "helper",
+     "hash": "f172619ad4a3"
+    },
+    {
+     "name": "the onSelect function written there",
+     "file": "src/app/dashboard/admin/routes/_components/routes-columns.tsx",
+     "line": 154,
+     "role": "helper",
+     "hash": "a51e1ed1468d"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "PATCH /api/v1/routes/:id",
+   "route": {
+    "method": "PATCH",
+    "path": "/api/v1/routes/:id",
+    "file": "src/app/modules/route/route.route.ts",
+    "line": 64
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "updateRouteZodSchema",
+     "file": "src/app/modules/route/route.validation.ts",
+     "line": 48,
+     "role": "validation",
+     "hash": "f35350f5a8e7"
+    },
+    {
+     "name": "updateRoute",
+     "file": "src/app/modules/route/route.controller.ts",
+     "line": 44,
+     "role": "controller",
+     "hash": "ea35697a1661"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "updateRoute",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 165,
+     "role": "service",
+     "hash": "9dc992d16874"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/route/route.route.ts",
+      "line": 64
+     },
+     "text": "Only ADMIN can do this."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.durationMinutes:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 50
+     },
+     "text": "durationMinutes: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "type",
+     "type": "a whole number",
+     "message": "durationMinutes must be a number",
+     "id": "field:body.durationMinutes:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 50
+     },
+     "text": "durationMinutes: must be a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "durationMinutes must be at least 1 minute",
+     "id": "field:body.durationMinutes:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 50
+     },
+     "text": "durationMinutes: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "max",
+     "value": 1440,
+     "unit": "number",
+     "message": "durationMinutes cannot exceed 1440 minutes (24 hours)",
+     "id": "field:body.durationMinutes:max",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 50
+     },
+     "text": "durationMinutes: at most 1440."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "basePrice",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.basePrice:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 56
+     },
+     "text": "basePrice: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "basePrice",
+     "facet": "type",
+     "type": "a number",
+     "id": "field:body.basePrice:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 56
+     },
+     "text": "basePrice: must be a number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "basePrice",
+     "facet": "min",
+     "value": 0,
+     "unit": "number",
+     "id": "field:body.basePrice:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 56
+     },
+     "text": "basePrice: at least 0."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.description:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 57
+     },
+     "text": "description: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.description:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 57
+     },
+     "text": "description: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "message": "description cannot be empty",
+     "id": "field:body.description:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 57
+     },
+     "text": "description: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "max",
+     "value": 1000,
+     "unit": "characters",
+     "message": "description cannot exceed 1000 characters",
+     "id": "field:body.description:max",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 57
+     },
+     "text": "description: at most 1000 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "amenities",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.amenities:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 63
+     },
+     "text": "amenities: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "amenities",
+     "facet": "type",
+     "type": "a list of text",
+     "id": "field:body.amenities:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 63
+     },
+     "text": "amenities: must be a list of text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "imageUrl",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.imageUrl:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 64
+     },
+     "text": "imageUrl: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "imageUrl",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.imageUrl:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 64
+     },
+     "text": "imageUrl: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "imageUrl",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "message": "imageUrl cannot be empty",
+     "id": "field:body.imageUrl:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 64
+     },
+     "text": "imageUrl: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "isBorderCrossing",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.isBorderCrossing:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 65
+     },
+     "text": "isBorderCrossing: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "isBorderCrossing",
+     "facet": "type",
+     "type": "true or false",
+     "id": "field:body.isBorderCrossing:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 65
+     },
+     "text": "isBorderCrossing: must be true or false."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "status",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.status:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 66
+     },
+     "text": "status: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "status",
+     "facet": "oneOf",
+     "values": [
+      "ACTIVE",
+      "INACTIVE"
+     ],
+     "message": "status must be ACTIVE or INACTIVE",
+     "id": "field:body.status:oneOf",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 66
+     },
+     "text": "status: one of ACTIVE or INACTIVE."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:updateRoute:404:!existing",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 169
+     },
+     "in": "updateRoute",
+     "when": [
+      {
+       "code": "!existing",
+       "text": "no matching route is found"
+      }
+     ],
+     "status": 404,
+     "message": "Route not found with ID: {id}",
+     "text": "If no matching route is found, the server answers 404 Not Found: \"Route not found with ID: {id}\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "updateRoute",
+     "status": 200,
+     "message": "Route updated successfully",
+     "id": "reply:updateRoute:200:",
+     "source": {
+      "file": "src/app/modules/route/route.controller.ts",
+      "line": 48
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Route updated successfully\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "route",
+     "fields": [
+      {
+       "name": "base price",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "description",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "amenities",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "image url",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "duration minutes",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "is border crossing",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "status",
+       "how": "set",
+       "optional": true
+      }
+     ],
+     "when": [],
+     "in": "updateRoute",
+     "id": "effect:updateRoute:update:route:",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 172
+     },
+     "text": "The route is changed: base price is set, description is set, amenities is set, image url is set, duration minutes is set, is border crossing is set, status is set (each only when given)."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Activate route\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "Activate route"
+   },
+   "functions": [
+    {
+     "name": "getRouteColumns",
+     "file": "src/app/dashboard/admin/routes/_components/routes-columns.tsx",
+     "line": 28,
+     "role": "helper",
+     "hash": "f172619ad4a3"
+    },
+    {
+     "name": "the onSelect function written there",
+     "file": "src/app/dashboard/admin/routes/_components/routes-columns.tsx",
+     "line": 154,
+     "role": "helper",
+     "hash": "a51e1ed1468d"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "CLICK \"All\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "All"
+   },
+   "functions": [
+    {
+     "name": "getRouteColumns",
+     "file": "src/app/dashboard/admin/routes/_components/routes-columns.tsx",
+     "line": 28,
+     "role": "helper",
+     "hash": "f172619ad4a3"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "CLICK \"Delete route\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "Delete route"
+   },
+   "functions": [
+    {
+     "name": "getRouteColumns",
+     "file": "src/app/dashboard/admin/routes/_components/routes-columns.tsx",
+     "line": 28,
+     "role": "helper",
+     "hash": "f172619ad4a3"
+    },
+    {
+     "name": "the onSelect function written there",
+     "file": "src/app/dashboard/admin/routes/_components/routes-columns.tsx",
+     "line": 161,
+     "role": "helper",
+     "hash": "3f5eb0d5a40a"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "CLICK \"Delete Route\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "Delete Route"
+   },
+   "functions": [
+    {
+     "name": "RouteDeleteDialogs",
+     "file": "src/app/dashboard/admin/routes/_components/RouteDeleteDialogs.tsx",
+     "line": 29,
+     "role": "helper",
+     "hash": "d68b3a619337"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Delete Route",
+     "when": {
+      "code": "isSingleDeleting",
+      "text": "a request is in progress"
+     },
+     "id": "ui-block:Delete Route",
+     "source": {
+      "file": "src/app/dashboard/admin/routes/_components/RouteDeleteDialogs.tsx",
+      "line": 85
+     },
+     "text": "\"Delete Route\" can't be used while a request is in progress."
+    }
+   ]
+  },
+  {
+   "request": "DELETE /api/v1/routes/:id",
+   "route": {
+    "method": "DELETE",
+    "path": "/api/v1/routes/:id",
+    "file": "src/app/modules/route/route.route.ts",
+    "line": 72
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "deleteRoute",
+     "file": "src/app/modules/route/route.controller.ts",
+     "line": 56,
+     "role": "controller",
+     "hash": "b2209aacb38f"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "deleteRoute",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 208,
+     "role": "service",
+     "hash": "df1925df8f80"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/route/route.route.ts",
+      "line": 72
+     },
+     "text": "Only ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:deleteRoute:404:!existing",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 228
+     },
+     "in": "deleteRoute",
+     "when": [
+      {
+       "code": "!existing",
+       "text": "no matching route is found"
+      }
+     ],
+     "status": 404,
+     "message": "Route not found with ID: {id}",
+     "text": "If no matching route is found, the server answers 404 Not Found: \"Route not found with ID: {id}\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:deleteRoute:409:existing.schedules && existing.schedules.length > 0",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 235
+     },
+     "in": "deleteRoute",
+     "when": [
+      {
+       "code": "existing.schedules && existing.schedules.length > 0",
+       "text": "existing schedules is found, and the number of existing schedules is more than 0"
+      }
+     ],
+     "status": 409,
+     "message": "Cannot delete route \"{route name}\" because it has existing passenger bookings on scheduled trips. Please deactivate (pause) the route instead.",
+     "text": "If existing schedules is found, and the number of existing schedules is more than 0, the server answers 409 Conflict: \"Cannot delete route \"{route name}\" because it has existing passenger bookings on scheduled trips. Please deactivate (pause) the route instead.\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:deleteRoute:409:error?.code === 'P2003' || error?.code === '23001' || error?.message?.includes('violates RESTRICT') || error?.message?.includes('foreign key constraint'):catch",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 252
+     },
+     "in": "deleteRoute",
+     "when": [
+      {
+       "code": "error?.code === 'P2003' || error?.code === '23001' || error?.message?.includes('violates RESTRICT') || error?.message?.includes('foreign key constraint')",
+       "text": "error code is \"P2003\", or error code is \"23001\", or error message contains \"violates RESTRICT\", or error message contains \"foreign key constraint\""
+      }
+     ],
+     "status": 409,
+     "message": "Cannot delete route because there are active passenger bookings referencing scheduled trips on this route. Please deactivate the route instead.",
+     "onError": true,
+     "text": "If the work before it fails, and (error code is \"P2003\", or error code is \"23001\", or error message contains \"violates RESTRICT\", or error message contains \"foreign key constraint\"), the server answers 409 Conflict: \"Cannot delete route because there are active passenger bookings referencing scheduled trips on this route. Please deactivate the route instead.\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "deleteRoute",
+     "status": 200,
+     "message": "Route deleted successfully",
+     "id": "reply:deleteRoute:200:",
+     "source": {
+      "file": "src/app/modules/route/route.controller.ts",
+      "line": 60
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Route deleted successfully\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "delete",
+     "model": "route",
+     "when": [],
+     "in": "deleteRoute",
+     "id": "effect:deleteRoute:delete:route:",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 242
+     },
+     "text": "The route is deleted."
+    }
+   ]
+  }
+ ],
+ "frontend": true,
+ "acceptedAt": "2026-11-07T12:04:49.354Z"
+}

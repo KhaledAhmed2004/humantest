@@ -1,0 +1,50 @@
+# The admin's ports, in Island Hop.
+# Every port these tests add is named "HumanTest test port"; "Start with: no test ports"
+# removes any that a failed run left behind (see e2e/states/no-test-ports.ts).
+
+Test: Admin adds a port and deletes it again
+
+  Start with: no test ports
+
+  As admin:
+    go to ports page
+    click "Add Port"
+    "Add New Port" dialog should be open
+    type "HumanTest test port" in "Port Name"
+    choose "America/Anguilla" for "Time Zone"
+    click "Create Port"
+    backend should receive POST /api/v1/ports
+    backend should reply 201 Created
+    should see "Port created successfully"
+    "Add New Port" dialog should be closed
+    in "HumanTest test port" row, click "Open menu"
+    click "Delete port"
+    in "Delete Port" dialog, click "Delete"
+    backend should receive DELETE /api/v1/ports/:id
+    backend should reply 200 OK
+    should see "Port permanently deleted"
+
+
+# The name field has no "required", so the page's own check is what stops it.
+Test: The port form stops before sending when the name is empty
+
+  As admin:
+    go to ports page
+    click "Add Port"
+    choose "America/Anguilla" for "Time Zone"
+    click "Create Port"
+    should see "Port name is required"
+    backend should not receive any request
+    "Add New Port" dialog should be open
+
+
+Test: The port form stops before sending when no time zone is chosen
+
+  As admin:
+    go to ports page
+    click "Add Port"
+    type "HumanTest test port" in "Port Name"
+    click "Create Port"
+    should see "Time zone is required"
+    backend should not receive any request
+    "Add New Port" dialog should be open

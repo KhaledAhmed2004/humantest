@@ -19,7 +19,8 @@ export interface StoryRef { line: number; text: string }
 export interface StepNode { line: number; text: string; user: string; def: StepDef; args: StepArgs; story?: StoryRef }
 export interface StateRef { line: number; text: string; name: string; args: string[]; file: string; story?: StoryRef }
 export interface UserRef { name: string; line: number }
-export interface TestCase { name: string; line: number; state?: StateRef; users: UserRef[]; steps: StepNode[] }
+/** `draft`: written `Draft: <name>`, a test that is not run yet (a draft from `discover --gaps`). */
+export interface TestCase { name: string; line: number; state?: StateRef; users: UserRef[]; steps: StepNode[]; draft?: boolean }
 export interface ParsedFile { file: string; relFile: string; tests: TestCase[]; diagnostics: Diagnostic[] }
 
 export const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -211,9 +212,9 @@ export function parseFile(project: Project, file: string, loaded = loadPhrases(p
     if (!text) return;
     let m: RegExpMatchArray | null;
 
-    // Test: <name>   or   TEST "<name>"
-    if ((m = text.match(/^test\s*(?::\s*|\s+(?="))(.+)$/i))) {
-      test = { name: m[1].trim().replace(/^"|"$/g, ''), line: at.line, users: [], steps: [] };
+    // Test: <name>   or   TEST "<name>"   (Draft: <name> is a test that is not run yet)
+    if ((m = text.match(/^(test|draft)\s*(?::\s*|\s+(?="))(.+)$/i))) {
+      test = { name: m[2].trim().replace(/^"|"$/g, ''), line: at.line, users: [], steps: [], ...(/^draft$/i.test(m[1]) ? { draft: true } : {}) };
       tests.push(test);
       currentUser = undefined;
       return;

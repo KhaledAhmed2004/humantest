@@ -1,0 +1,1 @@
+Not a photo. Used by admin-routes.ht to check that the route form refuses it.

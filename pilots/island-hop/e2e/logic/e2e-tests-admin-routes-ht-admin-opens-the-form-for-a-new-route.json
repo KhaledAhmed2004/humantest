@@ -1,0 +1,692 @@
+{
+ "version": 1,
+ "key": "e2e/tests/admin-routes.ht::Admin opens the form for a new route",
+ "test": "Admin opens the form for a new route",
+ "source": "e2e/tests/admin-routes.ht:6",
+ "steps": [
+  {
+   "title": "line 9 · admin · go to routes page",
+   "line": 9,
+   "text": "go to routes page",
+   "requests": [
+    "GET /api/v1/user/profile",
+    "GET /api/v1/routes",
+    "GET /api/v1/ports"
+   ]
+  },
+  {
+   "title": "line 10 · admin · should see \"Routes Management\"",
+   "line": 10,
+   "text": "should see \"Routes Management\"",
+   "requests": []
+  },
+  {
+   "title": "line 11 · admin · click \"Add Route\"",
+   "line": 11,
+   "text": "click \"Add Route\"",
+   "requests": [
+    "CLICK \"Add Route\" on src/app/dashboard/admin/routes/page.tsx"
+   ]
+  },
+  {
+   "title": "line 12 · admin · \"Add New Ferry Route\" dialog should be open",
+   "line": 12,
+   "text": "\"Add New Ferry Route\" dialog should be open",
+   "requests": []
+  },
+  {
+   "title": "line 13 · admin · in \"Add New Ferry Route\" dialog, should see \"Estimated Travel Time\"",
+   "line": 13,
+   "text": "in \"Add New Ferry Route\" dialog, should see \"Estimated Travel Time\"",
+   "requests": []
+  },
+  {
+   "title": "line 14 · admin · in \"Add New Ferry Route\" dialog, should see \"Route Cover Photo\"",
+   "line": 14,
+   "text": "in \"Add New Ferry Route\" dialog, should see \"Route Cover Photo\"",
+   "requests": []
+  },
+  {
+   "title": "line 15 · admin · press Escape",
+   "line": 15,
+   "text": "press Escape",
+   "requests": []
+  },
+  {
+   "title": "line 16 · admin · \"Add New Ferry Route\" dialog should be closed",
+   "line": 16,
+   "text": "\"Add New Ferry Route\" dialog should be closed",
+   "requests": []
+  }
+ ],
+ "requests": [
+  {
+   "request": "GET /api/v1/user/profile",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/user/profile",
+    "file": "src/app/modules/user/user.route.ts",
+    "line": 62
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "ALL_ROLES",
+     "file": "src/app/modules/user/user.route.ts",
+     "line": 12,
+     "role": "route",
+     "hash": "913c02cd2251"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.controller.ts",
+     "line": 22,
+     "role": "controller",
+     "hash": "1b11bbc47fa4"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 52,
+     "role": "service",
+     "hash": "82c23bb34c74"
+    },
+    {
+     "name": "findById",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 28,
+     "role": "service",
+     "hash": "96ee5e8a404f"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "USER",
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(...ALL_ROLES)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/user/user.route.ts",
+      "line": 62
+     },
+     "text": "Only USER, OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:getProfile:404:!user || user.deletedAt",
+     "source": {
+      "file": "src/app/modules/user/user.service.ts",
+      "line": 55
+     },
+     "in": "getProfile",
+     "when": [
+      {
+       "code": "!user || user.deletedAt",
+       "text": "user is not found, or user is deleted"
+      }
+     ],
+     "status": 404,
+     "message": "User not found",
+     "text": "If user is not found, or user is deleted, the server answers 404 Not Found: \"User not found\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getProfile",
+     "status": 200,
+     "message": "Profile retrieved successfully",
+     "id": "reply:getProfile:200:",
+     "source": {
+      "file": "src/app/modules/user/user.controller.ts",
+      "line": 27
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Profile retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/routes",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/routes",
+    "file": "src/app/modules/route/route.route.ts",
+    "line": 33
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listRoutesQueryZodSchema",
+     "file": "src/app/modules/route/route.validation.ts",
+     "line": 74,
+     "role": "validation",
+     "hash": "0b79c222436d"
+    },
+    {
+     "name": "listRoutes",
+     "file": "src/app/modules/route/route.controller.ts",
+     "line": 20,
+     "role": "controller",
+     "hash": "7bb8d08c7723"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listRoutes",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 96,
+     "role": "service",
+     "hash": "c61d9d1beea6"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "PORT_SELECT",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 13,
+     "role": "service",
+     "hash": "970698444a30"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/route/route.route.ts",
+      "line": 33
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "message": "page must be a number",
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "page must be at least 1",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "10",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: optional (default 10)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "message": "limit must be a number",
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "limit must be at least 1",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "message": "limit cannot exceed 100",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.status:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 89
+     },
+     "text": "status: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "oneOf",
+     "values": [
+      "ACTIVE",
+      "INACTIVE"
+     ],
+     "message": "status must be ACTIVE or INACTIVE",
+     "id": "field:query.status:oneOf",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 89
+     },
+     "text": "status: one of ACTIVE or INACTIVE."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listRoutes",
+     "status": 200,
+     "message": "Routes retrieved successfully",
+     "id": "reply:listRoutes:200:",
+     "source": {
+      "file": "src/app/modules/route/route.controller.ts",
+      "line": 24
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Routes retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/ports",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/ports",
+    "file": "src/app/modules/port/port.route.ts",
+    "line": 17
+   },
+   "functions": [
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listPortsQueryZodSchema",
+     "file": "src/app/modules/port/port.validation.ts",
+     "line": 35,
+     "role": "validation",
+     "hash": "d27ec35b5ac6"
+    },
+    {
+     "name": "listPorts",
+     "file": "src/app/modules/port/port.controller.ts",
+     "line": 18,
+     "role": "controller",
+     "hash": "31318e3a29ee"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listPorts",
+     "file": "src/app/modules/port/port.service.ts",
+     "line": 22,
+     "role": "service",
+     "hash": "9c308046b51a"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.search:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 37
+     },
+     "text": "search: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.search:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 37
+     },
+     "text": "search: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "isActive",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.isActive:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 38
+     },
+     "text": "isActive: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "isActive",
+     "facet": "oneOf",
+     "values": [
+      "true",
+      "false"
+     ],
+     "id": "field:query.isActive:oneOf",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 38
+     },
+     "text": "isActive: one of true or false."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 42
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "20",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: optional (default 20)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/port/port.validation.ts",
+      "line": 43
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listPorts",
+     "status": 200,
+     "message": "Ports retrieved successfully",
+     "id": "reply:listPorts:200:",
+     "source": {
+      "file": "src/app/modules/port/port.controller.ts",
+      "line": 21
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Ports retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Add Route\" on src/app/dashboard/admin/routes/page.tsx",
+   "ui": {
+    "url": "/dashboard/admin/routes",
+    "label": "Add Route"
+   },
+   "functions": [
+    {
+     "name": "AdminRoutesPage",
+     "file": "src/app/dashboard/admin/routes/page.tsx",
+     "line": 38,
+     "role": "helper",
+     "hash": "2c1d4d894fa7"
+    },
+    {
+     "name": "handleOpenAdd",
+     "file": "src/app/dashboard/admin/routes/page.tsx",
+     "line": 116,
+     "role": "helper",
+     "hash": "cbf7488e9925"
+    }
+   ],
+   "rules": []
+  }
+ ],
+ "frontend": true,
+ "acceptedAt": "2026-11-06T22:07:34.150Z"
+}

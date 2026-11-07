@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileTextIcon, PlayIcon, SearchIcon, TriangleAlertIcon } from 'lucide-react'
+import { FileTextIcon, GitCompareArrowsIcon, PencilLineIcon, PlayIcon, SearchIcon, TriangleAlertIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -91,7 +91,19 @@ export function TestList({ ht, selected, onSelect, demo }: {
                       )}
                     >
                       <StatusIcon status={status} className="mt-0.5" />
-                      <span className="break-words">{t.name}</span>
+                      <span className="break-words">
+                        {t.name}
+                        {t.draft && (
+                          <span className="mt-1 flex w-fit items-center gap-1 rounded-md bg-muted px-1.5 py-px text-xs font-medium text-muted-foreground">
+                            <PencilLineIcon className="size-3" aria-hidden="true" /> Draft, not run
+                          </span>
+                        )}
+                        {ht.changes[t.key]?.status === 'changed' && (
+                          <span className="mt-1 flex w-fit items-center gap-1 rounded-md bg-amber-100 px-1.5 py-px text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                            <GitCompareArrowsIcon className="size-3" aria-hidden="true" /> Logic changed
+                          </span>
+                        )}
+                      </span>
                       {/* On the tinted selected row, muted grey is too faint (WCAG contrast), so it gets darker there. */}
                       <span className={cn('text-right text-xs text-muted-foreground', t.key === selected && 'text-foreground/75')}>
                         <span className="block whitespace-nowrap">

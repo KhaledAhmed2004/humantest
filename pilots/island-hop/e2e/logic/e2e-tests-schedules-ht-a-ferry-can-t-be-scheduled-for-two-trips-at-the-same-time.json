@@ -1,0 +1,2774 @@
+{
+ "version": 1,
+ "key": "e2e/tests/schedules.ht::A ferry can't be scheduled for two trips at the same time",
+ "test": "A ferry can't be scheduled for two trips at the same time",
+ "source": "e2e/tests/schedules.ht:32",
+ "steps": [
+  {
+   "title": "line 34 · start with: one test trip",
+   "line": 34,
+   "text": "start with: one test trip",
+   "requests": []
+  },
+  {
+   "title": "line 37 · operator · go to schedules page",
+   "line": 37,
+   "text": "go to schedules page",
+   "requests": []
+  },
+  {
+   "title": "line 38 · operator · click \"Add Schedule\"",
+   "line": 38,
+   "text": "click \"Add Schedule\"",
+   "requests": [
+    "CLICK \"Add Schedule\" on src/app/dashboard/operator/schedules/page.tsx",
+    "GET /api/v1/user/profile",
+    "GET /api/v1/operator/settings",
+    "GET /api/v1/operator/schedules",
+    "GET /api/v1/routes",
+    "GET /api/v1/ferries"
+   ]
+  },
+  {
+   "title": "line 39 · operator · choose \"Blowing Point, Anguilla ➔ Marigot, Saint Martin • 25 mins trip\" for \"Ferry Route\"",
+   "line": 39,
+   "text": "choose \"Blowing Point, Anguilla ➔ Marigot, Saint Martin • 25 mins trip\" for \"Ferry Route\"",
+   "requests": []
+  },
+  {
+   "title": "line 40 · operator · choose \"Royal Alpha • 112 Seats (CATAMARAN)\" for \"Assign Ferry\"",
+   "line": 40,
+   "text": "choose \"Royal Alpha • 112 Seats (CATAMARAN)\" for \"Assign Ferry\"",
+   "requests": []
+  },
+  {
+   "title": "line 41 · operator · type \"{in 300 days}T10:10\" in \"Departure Time\"",
+   "line": 41,
+   "text": "type \"{in 300 days}T10:10\" in \"Departure Time\"",
+   "requests": []
+  },
+  {
+   "title": "line 42 · operator · type \"77\" in \"Adult Ticket Price\"",
+   "line": 42,
+   "text": "type \"77\" in \"Adult Ticket Price\"",
+   "requests": []
+  },
+  {
+   "title": "line 43 · operator · click \"Schedule Departure\"",
+   "line": 43,
+   "text": "click \"Schedule Departure\"",
+   "requests": [
+    "CLICK \"Schedule Departure\" on src/app/dashboard/operator/schedules/page.tsx",
+    "POST /api/v1/operator/schedules"
+   ]
+  },
+  {
+   "title": "line 44 · operator · backend should receive POST /api/v1/operator/schedules",
+   "line": 44,
+   "text": "backend should receive POST /api/v1/operator/schedules",
+   "requests": []
+  },
+  {
+   "title": "line 45 · operator · backend should reply 400 Bad Request",
+   "line": 45,
+   "text": "backend should reply 400 Bad Request",
+   "requests": []
+  },
+  {
+   "title": "line 46 · operator · should see \"This vessel is already scheduled for another voyage during this time window\"",
+   "line": 46,
+   "text": "should see \"This vessel is already scheduled for another voyage during this time window\"",
+   "requests": []
+  },
+  {
+   "title": "line 47 · operator · \"Add Ferry Schedule\" dialog should be open",
+   "line": 47,
+   "text": "\"Add Ferry Schedule\" dialog should be open",
+   "requests": []
+  },
+  {
+   "title": "line 48 · operator · press Escape",
+   "line": 48,
+   "text": "press Escape",
+   "requests": []
+  },
+  {
+   "title": "line 49 · operator · type \"{in 300 days}\" in \"Filter by date\"",
+   "line": 49,
+   "text": "type \"{in 300 days}\" in \"Filter by date\"",
+   "requests": [
+    "GET /api/v1/operator/schedules"
+   ]
+  },
+  {
+   "title": "line 50 · operator · in \"Royal Alpha\" row, click \"Delete Schedule\"",
+   "line": 50,
+   "text": "in \"Royal Alpha\" row, click \"Delete Schedule\"",
+   "requests": [
+    "CLICK \"Delete Schedule\" on src/app/dashboard/operator/schedules/page.tsx"
+   ]
+  },
+  {
+   "title": "line 51 · operator · in \"Delete Departure Schedule\" dialog, click \"Delete Schedule\"",
+   "line": 51,
+   "text": "in \"Delete Departure Schedule\" dialog, click \"Delete Schedule\"",
+   "requests": [
+    "CLICK \"Delete Schedule\" on src/app/dashboard/operator/schedules/page.tsx",
+    "DELETE /api/v1/operator/schedules/:id",
+    "GET /api/v1/operator/schedules"
+   ]
+  },
+  {
+   "title": "line 52 · operator · backend should receive DELETE /api/v1/operator/schedules/:id",
+   "line": 52,
+   "text": "backend should receive DELETE /api/v1/operator/schedules/:id",
+   "requests": []
+  },
+  {
+   "title": "line 53 · operator · backend should reply 200 OK",
+   "line": 53,
+   "text": "backend should reply 200 OK",
+   "requests": []
+  },
+  {
+   "title": "line 54 · operator · should see \"Schedule slot deleted successfully\"",
+   "line": 54,
+   "text": "should see \"Schedule slot deleted successfully\"",
+   "requests": []
+  }
+ ],
+ "requests": [
+  {
+   "request": "CLICK \"Add Schedule\" on src/app/dashboard/operator/schedules/page.tsx",
+   "ui": {
+    "url": "/dashboard/operator/schedules",
+    "label": "Add Schedule"
+   },
+   "functions": [
+    {
+     "name": "OperatorSchedulesPage",
+     "file": "src/app/dashboard/operator/schedules/page.tsx",
+     "line": 60,
+     "role": "helper",
+     "hash": "65b0ed41681c"
+    },
+    {
+     "name": "handleOpenAddModal",
+     "file": "src/app/dashboard/operator/schedules/page.tsx",
+     "line": 158,
+     "role": "helper",
+     "hash": "f46f60efaa61"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "GET /api/v1/user/profile",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/user/profile",
+    "file": "src/app/modules/user/user.route.ts",
+    "line": 62
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "ALL_ROLES",
+     "file": "src/app/modules/user/user.route.ts",
+     "line": 12,
+     "role": "route",
+     "hash": "913c02cd2251"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.controller.ts",
+     "line": 22,
+     "role": "controller",
+     "hash": "1b11bbc47fa4"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 52,
+     "role": "service",
+     "hash": "82c23bb34c74"
+    },
+    {
+     "name": "findById",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 28,
+     "role": "service",
+     "hash": "96ee5e8a404f"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "USER",
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(...ALL_ROLES)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/user/user.route.ts",
+      "line": 62
+     },
+     "text": "Only USER, OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:getProfile:404:!user || user.deletedAt",
+     "source": {
+      "file": "src/app/modules/user/user.service.ts",
+      "line": 55
+     },
+     "in": "getProfile",
+     "when": [
+      {
+       "code": "!user || user.deletedAt",
+       "text": "user is not found, or user is deleted"
+      }
+     ],
+     "status": 404,
+     "message": "User not found",
+     "text": "If user is not found, or user is deleted, the server answers 404 Not Found: \"User not found\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getProfile",
+     "status": 200,
+     "message": "Profile retrieved successfully",
+     "id": "reply:getProfile:200:",
+     "source": {
+      "file": "src/app/modules/user/user.controller.ts",
+      "line": 27
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Profile retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/operator/settings",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/operator/settings",
+    "file": "src/app/modules/operator/operator.route.ts",
+    "line": 25
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "getOperatorSettings",
+     "file": "src/app/modules/provider/provider.controller.ts",
+     "line": 49,
+     "role": "controller",
+     "hash": "bc1babedcf6e"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getOperatorSettings",
+     "file": "src/app/modules/provider/provider.service.ts",
+     "line": 267,
+     "role": "service",
+     "hash": "e8c1c0fd9264"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/operator/operator.route.ts",
+      "line": 25
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:getOperatorSettings:404:!operatorProfile",
+     "source": {
+      "file": "src/app/modules/provider/provider.service.ts",
+      "line": 283
+     },
+     "in": "getOperatorSettings",
+     "when": [
+      {
+       "code": "!operatorProfile",
+       "text": "operator profile is not found"
+      }
+     ],
+     "status": 404,
+     "message": "Operator company profile not found for authenticated user",
+     "text": "If operator profile is not found, the server answers 404 Not Found: \"Operator company profile not found for authenticated user\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getOperatorSettings",
+     "status": 200,
+     "message": "Operator settings retrieved successfully",
+     "id": "reply:getOperatorSettings:200:",
+     "source": {
+      "file": "src/app/modules/provider/provider.controller.ts",
+      "line": 52
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Operator settings retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/operator/schedules",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/operator/schedules",
+    "file": "src/app/modules/schedule/schedule.route.ts",
+    "line": 33
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listSchedulesQueryZodSchema",
+     "file": "src/app/modules/schedule/schedule.validation.ts",
+     "line": 75,
+     "role": "validation",
+     "hash": "0a53e9fa2be8"
+    },
+    {
+     "name": "listSchedules",
+     "file": "src/app/modules/schedule/schedule.controller.ts",
+     "line": 20,
+     "role": "controller",
+     "hash": "4122fec707bf"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listOperatorSchedules",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 252,
+     "role": "service",
+     "hash": "246dcee8bd79"
+    },
+    {
+     "name": "resolveOperatorProfile",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 29,
+     "role": "service",
+     "hash": "90f050cd05f6"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "localDayBounds",
+     "file": "src/shared/portTime.ts",
+     "line": 136,
+     "role": "shared",
+     "hash": "cc64f799500b"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.route.ts",
+      "line": 33
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "routeId",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.routeId:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 77
+     },
+     "text": "routeId: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "routeId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.routeId:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 77
+     },
+     "text": "routeId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "routeId",
+     "facet": "format",
+     "format": "uuid",
+     "id": "field:query.routeId:format:uuid",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 77
+     },
+     "text": "routeId: must be a valid UUID."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "ferryId",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.ferryId:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 78
+     },
+     "text": "ferryId: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "ferryId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.ferryId:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 78
+     },
+     "text": "ferryId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "ferryId",
+     "facet": "format",
+     "format": "uuid",
+     "id": "field:query.ferryId:format:uuid",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 78
+     },
+     "text": "ferryId: must be a valid UUID."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "date",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.date:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 79
+     },
+     "text": "date: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "date",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.date:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 79
+     },
+     "text": "date: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "date",
+     "facet": "format",
+     "format": "regex",
+     "message": "date must follow YYYY-MM-DD",
+     "id": "field:query.date:format:regex",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 79
+     },
+     "text": "date: must match a set pattern."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.status:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 83
+     },
+     "text": "status: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "oneOf",
+     "values": [
+      "ON_TIME",
+      "PREPARING",
+      "BOARDING",
+      "DEPARTED",
+      "DELAYED",
+      "ARRIVED",
+      "CANCELLED"
+     ],
+     "id": "field:query.status:oneOf",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 83
+     },
+     "text": "status: one of ON_TIME, PREPARING, BOARDING, DEPARTED, DELAYED, ARRIVED or CANCELLED."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 84
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 84
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 84
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "20",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 85
+     },
+     "text": "limit: optional (default 20)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 85
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 85
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 85
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:!operator",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 36
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "!operator",
+       "text": "no matching operator profile is found"
+      }
+     ],
+     "status": 403,
+     "message": "Operator profile not found for this user",
+     "text": "If no matching operator profile is found, the server answers 403 Forbidden: \"Operator profile not found for this user\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:operator.user && operator.user.status === AccountStatus.SUSPENDED",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 43
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "operator.user && operator.user.status === AccountStatus.SUSPENDED",
+       "text": "operator user is found, and operator user status is SUSPENDED"
+      }
+     ],
+     "status": 403,
+     "message": "Suspended operators cannot perform this operation",
+     "text": "If operator user is found, and operator user status is SUSPENDED, the server answers 403 Forbidden: \"Suspended operators cannot perform this operation\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:localDayBounds:400:!m|via:options.date",
+     "source": {
+      "file": "src/shared/portTime.ts",
+      "line": 141
+     },
+     "in": "localDayBounds",
+     "when": [
+      {
+       "code": "!m",
+       "text": "m is not found"
+      }
+     ],
+     "status": 400,
+     "message": "Invalid date: {ymd}",
+     "path": {
+      "through": "localDayBounds",
+      "when": [
+       {
+        "code": "options.date",
+        "text": "date is set"
+       }
+      ]
+     },
+     "text": "If date is set, and m is not found, the server answers 400 Bad Request: \"Invalid date: {ymd}\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listSchedules",
+     "status": 200,
+     "message": "Schedules retrieved successfully",
+     "id": "reply:listSchedules:200:",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.controller.ts",
+      "line": 27
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Schedules retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/routes",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/routes",
+    "file": "src/app/modules/route/route.route.ts",
+    "line": 33
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listRoutesQueryZodSchema",
+     "file": "src/app/modules/route/route.validation.ts",
+     "line": 74,
+     "role": "validation",
+     "hash": "0b79c222436d"
+    },
+    {
+     "name": "listRoutes",
+     "file": "src/app/modules/route/route.controller.ts",
+     "line": 20,
+     "role": "controller",
+     "hash": "7bb8d08c7723"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listRoutes",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 96,
+     "role": "service",
+     "hash": "c61d9d1beea6"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "PORT_SELECT",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 13,
+     "role": "service",
+     "hash": "970698444a30"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/route/route.route.ts",
+      "line": 33
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "message": "page must be a number",
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "page must be at least 1",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "10",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: optional (default 10)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "message": "limit must be a number",
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "limit must be at least 1",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "message": "limit cannot exceed 100",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.status:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 89
+     },
+     "text": "status: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "oneOf",
+     "values": [
+      "ACTIVE",
+      "INACTIVE"
+     ],
+     "message": "status must be ACTIVE or INACTIVE",
+     "id": "field:query.status:oneOf",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 89
+     },
+     "text": "status: one of ACTIVE or INACTIVE."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listRoutes",
+     "status": 200,
+     "message": "Routes retrieved successfully",
+     "id": "reply:listRoutes:200:",
+     "source": {
+      "file": "src/app/modules/route/route.controller.ts",
+      "line": 24
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Routes retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/ferries",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/ferries",
+    "file": "src/app/modules/ferry/ferry.route.ts",
+    "line": 19
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listFerriesQueryZodSchema",
+     "file": "src/app/modules/ferry/ferry.validation.ts",
+     "line": 59,
+     "role": "validation",
+     "hash": "bb425c6de5e5"
+    },
+    {
+     "name": "validateQuery",
+     "file": "src/helpers/zodHelper.ts",
+     "line": 20,
+     "role": "helper",
+     "hash": "b4a8571e3873"
+    },
+    {
+     "name": "listFerries",
+     "file": "src/app/modules/ferry/ferry.controller.ts",
+     "line": 19,
+     "role": "controller",
+     "hash": "c2cd62b23f40"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listOperatorFerries",
+     "file": "src/app/modules/ferry/ferry.service.ts",
+     "line": 46,
+     "role": "service",
+     "hash": "02422fac7f41"
+    },
+    {
+     "name": "resolveOperatorProfile",
+     "file": "src/app/modules/ferry/ferry.service.ts",
+     "line": 11,
+     "role": "service",
+     "hash": "d3e7f5aadd55"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.route.ts",
+      "line": 19
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.search:required",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 60
+     },
+     "text": "search: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.search:type",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 60
+     },
+     "text": "search: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.status:required",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 61
+     },
+     "text": "status: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "oneOf",
+     "values": [
+      "IN_SERVICE",
+      "MAINTENANCE",
+      "OUT_OF_SERVICE"
+     ],
+     "id": "field:query.status:oneOf",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 61
+     },
+     "text": "status: one of IN_SERVICE, MAINTENANCE or OUT_OF_SERVICE."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "type",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.type:required",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 62
+     },
+     "text": "type: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "type",
+     "facet": "oneOf",
+     "values": [
+      "CATAMARAN",
+      "SPEEDBOAT",
+      "TRADITIONAL_FERRY"
+     ],
+     "id": "field:query.type:oneOf",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 62
+     },
+     "text": "type: one of CATAMARAN, SPEEDBOAT or TRADITIONAL_FERRY."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 63
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 63
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 63
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "20",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 64
+     },
+     "text": "limit: optional (default 20)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 64
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 64
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 64
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:!operator",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.service.ts",
+      "line": 18
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "!operator",
+       "text": "no matching operator profile is found"
+      }
+     ],
+     "status": 403,
+     "message": "Operator profile not found for this user",
+     "text": "If no matching operator profile is found, the server answers 403 Forbidden: \"Operator profile not found for this user\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:operator.user && operator.user.status === 'SUSPENDED'",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.service.ts",
+      "line": 25
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "operator.user && operator.user.status === 'SUSPENDED'",
+       "text": "operator user is found, and operator user status is \"SUSPENDED\""
+      }
+     ],
+     "status": 403,
+     "message": "Suspended operators cannot perform this operation",
+     "text": "If operator user is found, and operator user status is \"SUSPENDED\", the server answers 403 Forbidden: \"Suspended operators cannot perform this operation\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listFerries",
+     "status": 200,
+     "message": "Ferries retrieved successfully",
+     "id": "reply:listFerries:200:",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.controller.ts",
+      "line": 26
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Ferries retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Schedule Departure\" on src/app/dashboard/operator/schedules/page.tsx",
+   "ui": {
+    "url": "/dashboard/operator/schedules",
+    "label": "Schedule Departure"
+   },
+   "functions": [
+    {
+     "name": "ScheduleFormModal",
+     "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+     "line": 91,
+     "role": "helper",
+     "hash": "01acbdc3400f"
+    },
+    {
+     "name": "handleSubmit",
+     "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+     "line": 237,
+     "role": "helper",
+     "hash": "a861ee43e600"
+    },
+    {
+     "name": "wallTimeToDate",
+     "file": "src/lib/port-time.ts",
+     "line": 80,
+     "role": "shared",
+     "hash": "0dd59c263e1f"
+    },
+    {
+     "name": "bundleFarePayload",
+     "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+     "line": 147,
+     "role": "helper",
+     "hash": "597af278e9f8"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Schedule Departure",
+     "when": {
+      "code": "isSubmitting",
+      "text": "a request is in progress"
+     },
+     "id": "ui-block:Schedule Departure",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 594
+     },
+     "text": "\"Schedule Departure\" can't be used while a request is in progress."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "Departure Time",
+     "side": "frontend",
+     "facet": "required",
+     "required": true,
+     "id": "fe:html:Departure Time:required",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 452
+     },
+     "text": "Departure Time: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "arr-datetime",
+     "side": "frontend",
+     "facet": "required",
+     "required": true,
+     "id": "fe:html:arr-datetime:required",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 478
+     },
+     "text": "arr-datetime: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "Adult Ticket Price ($)",
+     "side": "frontend",
+     "facet": "required",
+     "required": true,
+     "id": "fe:html:Adult Ticket Price ($):required",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 523
+     },
+     "text": "Adult Ticket Price ($): required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "Adult Ticket Price ($)",
+     "side": "frontend",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "fe:html:Adult Ticket Price ($):min:min",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 523
+     },
+     "text": "Adult Ticket Price ($): at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "Child Ticket Price ($)",
+     "side": "frontend",
+     "facet": "min",
+     "value": 0,
+     "unit": "number",
+     "id": "fe:html:Child Ticket Price ($):min:min",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 540
+     },
+     "text": "Child Ticket Price ($): at least 0."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "Not offered",
+     "side": "frontend",
+     "facet": "min",
+     "value": 0,
+     "unit": "number",
+     "id": "fe:html:Not offered:min:min",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 568
+     },
+     "text": "Not offered: at least 0."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "!departureDateTime || !arrivalDateTime",
+       "text": "departure date time is empty, or arrival date time is empty"
+      }
+     ],
+     "message": "Please select departure and arrival times.",
+     "id": "ui-guard:handleSubmit:!departureDateTime || !arrivalDateTime",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 240
+     },
+     "text": "If departure date time is empty, or arrival date time is empty, the page stops and shows \"Please select departure and arrival times.\", before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "depDate && arrDate && arrDate <= depDate",
+       "text": "dep date is set, and arr date is set, and arr date is not after dep date"
+      }
+     ],
+     "message": "Arrival time must be later than departure time.",
+     "id": "ui-guard:handleSubmit:depDate && arrDate && arrDate <= depDate",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 248
+     },
+     "text": "If dep date is set, and arr date is set, and arr date is not after dep date, the page stops and shows \"Arrival time must be later than departure time.\", before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "invalidFare",
+       "text": "invalid fare is found"
+      }
+     ],
+     "message": "{invalid fare label} must be a positive amount, or empty if not offered.",
+     "id": "ui-guard:handleSubmit:invalidFare",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 257
+     },
+     "text": "If invalid fare is found, the page stops and shows \"{invalid fare label} must be a positive amount, or empty if not offered.\", before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "!isEditing",
+       "text": "editing is false"
+      },
+      {
+       "code": "!routeId",
+       "text": "route id is empty"
+      }
+     ],
+     "message": "Please select a ferry route.",
+     "id": "ui-guard:handleSubmit:!isEditing && !routeId",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 263
+     },
+     "text": "If editing is false, and route id is empty, the page stops and shows \"Please select a ferry route.\", before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleSubmit",
+     "when": [
+      {
+       "code": "!isEditing",
+       "text": "editing is false"
+      },
+      {
+       "code": "!ferryId",
+       "text": "ferry id is empty"
+      }
+     ],
+     "message": "Please select an in-service ferry.",
+     "id": "ui-guard:handleSubmit:!isEditing && !ferryId",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleFormModal.tsx",
+      "line": 267
+     },
+     "text": "If editing is false, and ferry id is empty, the page stops and shows \"Please select an in-service ferry.\", before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "wallTimeToDate",
+     "when": [
+      {
+       "code": "!m",
+       "text": "m is not found"
+      }
+     ],
+     "id": "ui-guard:wallTimeToDate:!m",
+     "source": {
+      "file": "src/lib/port-time.ts",
+      "line": 82
+     },
+     "text": "If m is not found, the page stops, before sending anything."
+    }
+   ]
+  },
+  {
+   "request": "POST /api/v1/operator/schedules",
+   "route": {
+    "method": "POST",
+    "path": "/api/v1/operator/schedules",
+    "file": "src/app/modules/schedule/schedule.route.ts",
+    "line": 26
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "createScheduleZodSchema",
+     "file": "src/app/modules/schedule/schedule.validation.ts",
+     "line": 26,
+     "role": "validation",
+     "hash": "977371e98660"
+    },
+    {
+     "name": "scheduleTimeSchema",
+     "file": "src/app/modules/schedule/schedule.validation.ts",
+     "line": 11,
+     "role": "validation",
+     "hash": "c6333b843843"
+    },
+    {
+     "name": "SCHEDULE_TIME",
+     "file": "src/app/modules/schedule/schedule.validation.ts",
+     "line": 9,
+     "role": "validation",
+     "hash": "6b9b111c26ad"
+    },
+    {
+     "name": "createSchedule",
+     "file": "src/app/modules/schedule/schedule.controller.ts",
+     "line": 8,
+     "role": "controller",
+     "hash": "7c1325bae924"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "createSchedule",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 157,
+     "role": "service",
+     "hash": "25a79eac5b71"
+    },
+    {
+     "name": "resolveOperatorProfile",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 29,
+     "role": "service",
+     "hash": "90f050cd05f6"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "parseScheduleTime",
+     "file": "src/shared/portTime.ts",
+     "line": 153,
+     "role": "shared",
+     "hash": "2f190ce90b13"
+    },
+    {
+     "name": "assertArrivalAfterDeparture",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 151,
+     "role": "service",
+     "hash": "b7fb7882510e"
+    },
+    {
+     "name": "assertWithinCapacity",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 94,
+     "role": "service",
+     "hash": "64986e12be98"
+    },
+    {
+     "name": "withVesselLock",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 58,
+     "role": "service",
+     "hash": "36047458bdc0"
+    },
+    {
+     "name": "assertNotBlackout",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 71,
+     "role": "service",
+     "hash": "71e133a33674"
+    },
+    {
+     "name": "offDayDateFor",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 68,
+     "role": "service",
+     "hash": "968439ec6e29"
+    },
+    {
+     "name": "localDate",
+     "file": "src/shared/portTime.ts",
+     "line": 76,
+     "role": "shared",
+     "hash": "0adaf6f5aae7"
+    },
+    {
+     "name": "verifyVesselAvailability",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 103,
+     "role": "service",
+     "hash": "a77b46c7ad1c"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.route.ts",
+      "line": 26
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "routeId",
+     "facet": "required",
+     "required": true,
+     "message": "routeId is required",
+     "id": "field:body.routeId:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 29
+     },
+     "text": "routeId: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "routeId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.routeId:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 29
+     },
+     "text": "routeId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "routeId",
+     "facet": "format",
+     "format": "uuid",
+     "message": "routeId must be a valid UUID",
+     "id": "field:body.routeId:format:uuid",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 29
+     },
+     "text": "routeId: must be a valid UUID."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "ferryId",
+     "facet": "required",
+     "required": true,
+     "message": "ferryId is required",
+     "id": "field:body.ferryId:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 32
+     },
+     "text": "ferryId: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "ferryId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.ferryId:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 32
+     },
+     "text": "ferryId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "ferryId",
+     "facet": "format",
+     "format": "uuid",
+     "message": "ferryId must be a valid UUID",
+     "id": "field:body.ferryId:format:uuid",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 32
+     },
+     "text": "ferryId: must be a valid UUID."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "departureTime",
+     "facet": "required",
+     "required": true,
+     "id": "field:body.departureTime:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 35
+     },
+     "text": "departureTime: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "arrivalTime",
+     "facet": "required",
+     "required": true,
+     "id": "field:body.arrivalTime:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 36
+     },
+     "text": "arrivalTime: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "gate",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.gate:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 37
+     },
+     "text": "gate: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "gate",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.gate:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 37
+     },
+     "text": "gate: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "gate",
+     "facet": "max",
+     "value": 50,
+     "unit": "characters",
+     "id": "field:body.gate:max",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 37
+     },
+     "text": "gate: at most 50 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "captain",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.captain:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 38
+     },
+     "text": "captain: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "captain",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.captain:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 38
+     },
+     "text": "captain: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "captain",
+     "facet": "max",
+     "value": 100,
+     "unit": "characters",
+     "id": "field:body.captain:max",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 38
+     },
+     "text": "captain: at most 100 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "adultFare",
+     "facet": "required",
+     "required": true,
+     "message": "adultFare is required",
+     "id": "field:body.adultFare:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 39
+     },
+     "text": "adultFare: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "adultFare",
+     "facet": "type",
+     "type": "a number",
+     "id": "field:body.adultFare:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 39
+     },
+     "text": "adultFare: must be a number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "adultFare",
+     "facet": "min",
+     "value": 0,
+     "unit": "number",
+     "message": "adultFare cannot be negative",
+     "id": "field:body.adultFare:min",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 39
+     },
+     "text": "adultFare: at least 0."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "childFare",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.childFare:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 42
+     },
+     "text": "childFare: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "childFare",
+     "facet": "type",
+     "type": "a number",
+     "id": "field:body.childFare:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 42
+     },
+     "text": "childFare: must be a number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "childFare",
+     "facet": "min",
+     "value": 0,
+     "unit": "number",
+     "message": "childFare cannot be negative",
+     "id": "field:body.childFare:min",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 42
+     },
+     "text": "childFare: at least 0."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "availableSeats",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.availableSeats:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 44
+     },
+     "text": "availableSeats: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "availableSeats",
+     "facet": "type",
+     "type": "a whole number",
+     "id": "field:body.availableSeats:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 44
+     },
+     "text": "availableSeats: must be a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "availableSeats",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "availableSeats must be at least 1",
+     "id": "field:body.availableSeats:min",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 44
+     },
+     "text": "availableSeats: at least 1."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createSchedule:404:!route",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 175
+     },
+     "in": "createSchedule",
+     "when": [
+      {
+       "code": "!route",
+       "text": "route is not found"
+      }
+     ],
+     "status": 404,
+     "message": "Route not found",
+     "text": "If route is not found, the server answers 404 Not Found: \"Route not found\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createSchedule:400:route.status !== RouteStatus.ACTIVE",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 179
+     },
+     "in": "createSchedule",
+     "when": [
+      {
+       "code": "route.status !== RouteStatus.ACTIVE",
+       "text": "route status is not ACTIVE"
+      }
+     ],
+     "status": 400,
+     "message": "Cannot schedule trips on an inactive route",
+     "text": "If route status is not ACTIVE, the server answers 400 Bad Request: \"Cannot schedule trips on an inactive route\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createSchedule:404:!ferry || ferry.operatorId !== operator.id",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 186
+     },
+     "in": "createSchedule",
+     "when": [
+      {
+       "code": "!ferry || ferry.operatorId !== operator.id",
+       "text": "ferry is not found, or ferry operator id is different from operator id"
+      }
+     ],
+     "status": 404,
+     "message": "Vessel not found for this operator",
+     "text": "If ferry is not found, or ferry operator id is different from operator id, the server answers 404 Not Found: \"Vessel not found for this operator\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createSchedule:400:ferry.status !== VesselStatus.IN_SERVICE",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 193
+     },
+     "in": "createSchedule",
+     "when": [
+      {
+       "code": "ferry.status !== VesselStatus.IN_SERVICE",
+       "text": "ferry status is not IN_SERVICE"
+      }
+     ],
+     "status": 400,
+     "message": "Vessel is currently not IN_SERVICE",
+     "text": "If ferry status is not IN_SERVICE, the server answers 400 Bad Request: \"Vessel is currently not IN_SERVICE\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:!operator",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 36
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "!operator",
+       "text": "no matching operator profile is found"
+      }
+     ],
+     "status": 403,
+     "message": "Operator profile not found for this user",
+     "text": "If no matching operator profile is found, the server answers 403 Forbidden: \"Operator profile not found for this user\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:operator.user && operator.user.status === AccountStatus.SUSPENDED",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 43
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "operator.user && operator.user.status === AccountStatus.SUSPENDED",
+       "text": "operator user is found, and operator user status is SUSPENDED"
+      }
+     ],
+     "status": 403,
+     "message": "Suspended operators cannot perform this operation",
+     "text": "If operator user is found, and operator user status is SUSPENDED, the server answers 403 Forbidden: \"Suspended operators cannot perform this operation\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:parseScheduleTime:400:input instanceof Date && Number.isNaN(input.getTime())",
+     "source": {
+      "file": "src/shared/portTime.ts",
+      "line": 156
+     },
+     "in": "parseScheduleTime",
+     "when": [
+      {
+       "code": "input instanceof Date",
+       "text": "input is a date"
+      },
+      {
+       "code": "Number.isNaN(input.getTime())"
+      }
+     ],
+     "status": 400,
+     "message": "Invalid date time",
+     "text": "If input is a date, and `Number.isNaN(input.getTime())`, the server answers 400 Bad Request: \"Invalid date time\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:parseScheduleTime:400:HAS_ZONE.test(value) && Number.isNaN(instant.getTime()) || !value.includes('T')",
+     "source": {
+      "file": "src/shared/portTime.ts",
+      "line": 164
+     },
+     "in": "parseScheduleTime",
+     "when": [
+      {
+       "code": "HAS_ZONE.test(value)"
+      },
+      {
+       "code": "Number.isNaN(instant.getTime()) || !value.includes('T')"
+      }
+     ],
+     "status": 400,
+     "message": "Invalid date time: {value}",
+     "text": "If `HAS_ZONE.test(value)`, and `Number.isNaN(instant.getTime()) || !value.includes('T')`, the server answers 400 Bad Request: \"Invalid date time: {value}\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:assertArrivalAfterDeparture:400:departure.getTime() >= arrival.getTime()",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 153
+     },
+     "in": "assertArrivalAfterDeparture",
+     "when": [
+      {
+       "code": "departure.getTime() >= arrival.getTime()",
+       "text": "departure is not before arrival"
+      }
+     ],
+     "status": 400,
+     "message": "arrivalTime must be after departureTime",
+     "text": "If departure is not before arrival, the server answers 400 Bad Request: \"arrivalTime must be after departureTime\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:assertWithinCapacity:400:seats !== undefined && seats > capacity",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 96
+     },
+     "in": "assertWithinCapacity",
+     "when": [
+      {
+       "code": "seats !== undefined && seats > capacity",
+       "text": "seats is set, and seats is more than capacity"
+      }
+     ],
+     "status": 400,
+     "message": "availableSeats ({seats}) cannot exceed the vessel capacity ({capacity})",
+     "text": "If seats is set, and seats is more than capacity, the server answers 400 Bad Request: \"availableSeats ({seats}) cannot exceed the vessel capacity ({capacity})\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:assertNotBlackout:400:activeOffDay",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 87
+     },
+     "in": "assertNotBlackout",
+     "when": [
+      {
+       "code": "activeOffDay",
+       "text": "a matching off day is found"
+      }
+     ],
+     "status": 400,
+     "message": "Cannot schedule trips on a blackout date: {active off day reason}",
+     "text": "If a matching off day is found, the server answers 400 Bad Request: \"Cannot schedule trips on a blackout date: {active off day reason}\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:verifyVesselAvailability:400:conflictingSchedule",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 127
+     },
+     "in": "verifyVesselAvailability",
+     "when": [
+      {
+       "code": "conflictingSchedule",
+       "text": "a matching schedule is found"
+      }
+     ],
+     "status": 400,
+     "message": "Vessel schedule conflict: This vessel is already scheduled for another voyage during this time window",
+     "text": "If a matching schedule is found, the server answers 400 Bad Request: \"Vessel schedule conflict: This vessel is already scheduled for another voyage during this time window\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "createSchedule",
+     "status": 201,
+     "message": "Departure schedule slot created successfully",
+     "id": "reply:createSchedule:201:",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.controller.ts",
+      "line": 12
+     },
+     "text": "When nothing stops it, the server answers 201 Created: \"Departure schedule slot created successfully\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "schedule",
+     "fields": [
+      {
+       "name": "route id",
+       "how": "set"
+      },
+      {
+       "name": "ferry id",
+       "how": "set"
+      },
+      {
+       "name": "departure time",
+       "how": "set"
+      },
+      {
+       "name": "arrival time",
+       "how": "set"
+      },
+      {
+       "name": "gate",
+       "how": "set"
+      },
+      {
+       "name": "captain",
+       "how": "set"
+      },
+      {
+       "name": "adult fare",
+       "how": "set"
+      },
+      {
+       "name": "child fare",
+       "how": "set",
+       "value": "0",
+       "fallback": true
+      },
+      {
+       "name": "adult round trip fare",
+       "how": "set",
+       "value": "empty",
+       "fallback": true
+      },
+      {
+       "name": "child round trip fare",
+       "how": "set",
+       "value": "empty",
+       "fallback": true
+      },
+      {
+       "name": "adult same day fare",
+       "how": "set",
+       "value": "empty",
+       "fallback": true
+      },
+      {
+       "name": "child same day fare",
+       "how": "set",
+       "value": "empty",
+       "fallback": true
+      },
+      {
+       "name": "available seats",
+       "how": "set"
+      },
+      {
+       "name": "status",
+       "how": "set",
+       "value": "ON_TIME"
+      }
+     ],
+     "when": [],
+     "in": "createSchedule",
+     "id": "effect:createSchedule:create:schedule:",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 222
+     },
+     "text": "A new schedule is saved (child fare: 0 unless given; adult round trip fare: empty unless given; child round trip fare: empty unless given; adult same day fare: empty unless given; child same day fare: empty unless given; status becomes ON_TIME)."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Delete Schedule\" on src/app/dashboard/operator/schedules/page.tsx",
+   "ui": {
+    "url": "/dashboard/operator/schedules",
+    "label": "Delete Schedule"
+   },
+   "functions": [
+    {
+     "name": "ScheduleDeleteDialogs",
+     "file": "src/app/dashboard/operator/schedules/_components/ScheduleDeleteDialogs.tsx",
+     "line": 28,
+     "role": "helper",
+     "hash": "c576a1f19374"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Delete Schedule",
+     "when": {
+      "code": "isDeletingSingle",
+      "text": "deleting single is true"
+     },
+     "id": "ui-block:Delete Schedule",
+     "source": {
+      "file": "src/app/dashboard/operator/schedules/_components/ScheduleDeleteDialogs.tsx",
+      "line": 98
+     },
+     "text": "\"Delete Schedule\" can't be used while deleting single is true."
+    }
+   ]
+  },
+  {
+   "request": "DELETE /api/v1/operator/schedules/:id",
+   "route": {
+    "method": "DELETE",
+    "path": "/api/v1/operator/schedules/:id",
+    "file": "src/app/modules/schedule/schedule.route.ts",
+    "line": 90
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "deleteSchedule",
+     "file": "src/app/modules/schedule/schedule.controller.ts",
+     "line": 79,
+     "role": "controller",
+     "hash": "b3c7aef48129"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "deleteSchedule",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 458,
+     "role": "service",
+     "hash": "a4f3b2f32c91"
+    },
+    {
+     "name": "resolveOperatorProfile",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 29,
+     "role": "service",
+     "hash": "90f050cd05f6"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.route.ts",
+      "line": 90
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:deleteSchedule:404:!existingSchedule || existingSchedule.ferry.operatorId !== operator.id",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 478
+     },
+     "in": "deleteSchedule",
+     "when": [
+      {
+       "code": "!existingSchedule || existingSchedule.ferry.operatorId !== operator.id",
+       "text": "no matching schedule is found, or existing schedule ferry operator id is different from operator id"
+      }
+     ],
+     "status": 404,
+     "message": "Schedule slot not found",
+     "text": "If no matching schedule is found, or existing schedule ferry operator id is different from operator id, the server answers 404 Not Found: \"Schedule slot not found\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:deleteSchedule:400:(existingSchedule._count.bookings ?? 0) + (existingSchedule._count.returnBookings ?? 0) > 0",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 485
+     },
+     "in": "deleteSchedule",
+     "when": [
+      {
+       "code": "(existingSchedule._count.bookings ?? 0) + (existingSchedule._count.returnBookings ?? 0) > 0"
+      }
+     ],
+     "status": 400,
+     "message": "Cannot delete schedule with existing customer bookings",
+     "text": "If `(existingSchedule._count.bookings ?? 0) + (existingSchedule._count.returnBookings ?? 0) > 0`, the server answers 400 Bad Request: \"Cannot delete schedule with existing customer bookings\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:deleteSchedule:409:error?.code === 'P2003' || error?.code === '23001' || error?.message?.includes('violates RESTRICT') || error?.message?.includes('foreign key constraint'):catch",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 502
+     },
+     "in": "deleteSchedule",
+     "when": [
+      {
+       "code": "error?.code === 'P2003' || error?.code === '23001' || error?.message?.includes('violates RESTRICT') || error?.message?.includes('foreign key constraint')",
+       "text": "error code is \"P2003\", or error code is \"23001\", or error message contains \"violates RESTRICT\", or error message contains \"foreign key constraint\""
+      }
+     ],
+     "status": 409,
+     "message": "Cannot delete schedule because active customer bookings are referencing it.",
+     "onError": true,
+     "text": "If the work before it fails, and (error code is \"P2003\", or error code is \"23001\", or error message contains \"violates RESTRICT\", or error message contains \"foreign key constraint\"), the server answers 409 Conflict: \"Cannot delete schedule because active customer bookings are referencing it.\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:!operator",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 36
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "!operator",
+       "text": "no matching operator profile is found"
+      }
+     ],
+     "status": 403,
+     "message": "Operator profile not found for this user",
+     "text": "If no matching operator profile is found, the server answers 403 Forbidden: \"Operator profile not found for this user\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:operator.user && operator.user.status === AccountStatus.SUSPENDED",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 43
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "operator.user && operator.user.status === AccountStatus.SUSPENDED",
+       "text": "operator user is found, and operator user status is SUSPENDED"
+      }
+     ],
+     "status": 403,
+     "message": "Suspended operators cannot perform this operation",
+     "text": "If operator user is found, and operator user status is SUSPENDED, the server answers 403 Forbidden: \"Suspended operators cannot perform this operation\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "deleteSchedule",
+     "status": 200,
+     "message": "Schedule slot deleted successfully",
+     "id": "reply:deleteSchedule:200:",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.controller.ts",
+      "line": 83
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Schedule slot deleted successfully\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "delete",
+     "model": "schedule",
+     "when": [],
+     "in": "deleteSchedule",
+     "id": "effect:deleteSchedule:delete:schedule:",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 492
+     },
+     "text": "The schedule is deleted."
+    }
+   ]
+  }
+ ],
+ "frontend": true,
+ "acceptedAt": "2026-11-07T11:02:56.061Z"
+}

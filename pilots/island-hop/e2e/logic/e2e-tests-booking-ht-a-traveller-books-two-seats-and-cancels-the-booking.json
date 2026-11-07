@@ -1,0 +1,4656 @@
+{
+ "version": 1,
+ "key": "e2e/tests/booking.ht::A traveller books two seats and cancels the booking",
+ "test": "A traveller books two seats and cancels the booking",
+ "source": "e2e/tests/booking.ht:6",
+ "steps": [
+  {
+   "title": "line 9 · traveller · go to \"/ferries?from=Blowing Point, Anguilla&to=Marigot, Saint Martin&departureDate={tomorrow}&adults=2&passengers=2 Passengers\"",
+   "line": 9,
+   "text": "go to \"/ferries?from=Blowing Point, Anguilla&to=Marigot, Saint Martin&departureDate={tomorrow}&adults=2&passengers=2 Passengers\"",
+   "requests": []
+  },
+  {
+   "title": "line 10 · traveller · click \"Select Trip\"",
+   "line": 10,
+   "text": "click \"Select Trip\"",
+   "requests": [
+    "CLICK \"Select Trip\" on src/app/(marketing-and-booking)/ferries/page.tsx",
+    "GET /api/v1/user/profile",
+    "GET /api/v1/routes/ports",
+    "GET /api/v1/trips/search"
+   ]
+  },
+  {
+   "title": "line 11 · traveller · click \"Continue to Passenger Details\"",
+   "line": 11,
+   "text": "click \"Continue to Passenger Details\"",
+   "requests": [
+    "CLICK \"Continue to Passenger Details\" on src/app/(marketing-and-booking)/book/[tripId]/review/page.tsx",
+    "GET /api/v1/trips/:id"
+   ]
+  },
+  {
+   "title": "line 12 · traveller · click \"Continue to Payment\"",
+   "line": 12,
+   "text": "click \"Continue to Payment\"",
+   "requests": [
+    "CLICK \"Continue to Payment\" on src/app/(marketing-and-booking)/book/[tripId]/passengers/page.tsx"
+   ]
+  },
+  {
+   "title": "line 13 · traveller · click \"Continue to pay\"",
+   "line": 13,
+   "text": "click \"Continue to pay\"",
+   "requests": [
+    "CLICK \"Continue to pay\" on src/app/(marketing-and-booking)/book/[tripId]/payment/page.tsx",
+    "POST /api/v1/bookings",
+    "GET /api/v1/trips/:id"
+   ]
+  },
+  {
+   "title": "line 14 · traveller · backend should receive POST /api/v1/bookings",
+   "line": 14,
+   "text": "backend should receive POST /api/v1/bookings",
+   "requests": []
+  },
+  {
+   "title": "line 15 · traveller · backend should reply 201 Created",
+   "line": 15,
+   "text": "backend should reply 201 Created",
+   "requests": []
+  },
+  {
+   "title": "line 16 · traveller · click \"Manage booking\"",
+   "line": 16,
+   "text": "click \"Manage booking\"",
+   "requests": [
+    "CLICK \"Manage booking\" on src/app/(marketing-and-booking)/book/[tripId]/confirmation/page.tsx",
+    "GET /api/v1/bookings/manage/:reference"
+   ]
+  },
+  {
+   "title": "line 17 · traveller · click \"Cancel Booking\"",
+   "line": 17,
+   "text": "click \"Cancel Booking\"",
+   "requests": [
+    "CLICK \"Cancel Booking\" on src/app/(marketing-and-booking)/(private)/manage-booking/page.tsx",
+    "GET /api/v1/bookings/my"
+   ]
+  },
+  {
+   "title": "line 18 · traveller · in \"Cancel Booking\" dialog, click \"Confirm Cancellation\"",
+   "line": 18,
+   "text": "in \"Cancel Booking\" dialog, click \"Confirm Cancellation\"",
+   "requests": [
+    "CLICK \"Confirm Cancellation\" on src/app/(marketing-and-booking)/(private)/manage-booking/page.tsx",
+    "PATCH /api/v1/bookings/:id/cancel",
+    "GET /api/v1/bookings/my"
+   ]
+  },
+  {
+   "title": "line 19 · traveller · backend should receive PATCH /api/v1/bookings/:id/cancel",
+   "line": 19,
+   "text": "backend should receive PATCH /api/v1/bookings/:id/cancel",
+   "requests": []
+  },
+  {
+   "title": "line 20 · traveller · backend should reply 200 OK",
+   "line": 20,
+   "text": "backend should reply 200 OK",
+   "requests": []
+  },
+  {
+   "title": "line 21 · traveller · should see \"Booking cancelled successfully\"",
+   "line": 21,
+   "text": "should see \"Booking cancelled successfully\"",
+   "requests": []
+  }
+ ],
+ "requests": [
+  {
+   "request": "CLICK \"Select Trip\" on src/app/(marketing-and-booking)/ferries/page.tsx",
+   "ui": {
+    "url": "/ferries",
+    "label": "Select Trip"
+   },
+   "functions": [
+    {
+     "name": "FerryCard",
+     "file": "src/components/widgets/booking/FerryCard.tsx",
+     "line": 37,
+     "role": "helper",
+     "hash": "b4cf20392e06"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "GET /api/v1/user/profile",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/user/profile",
+    "file": "src/app/modules/user/user.route.ts",
+    "line": 62
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "ALL_ROLES",
+     "file": "src/app/modules/user/user.route.ts",
+     "line": 12,
+     "role": "route",
+     "hash": "913c02cd2251"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.controller.ts",
+     "line": 22,
+     "role": "controller",
+     "hash": "1b11bbc47fa4"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 52,
+     "role": "service",
+     "hash": "82c23bb34c74"
+    },
+    {
+     "name": "findById",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 28,
+     "role": "service",
+     "hash": "96ee5e8a404f"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "USER",
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(...ALL_ROLES)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/user/user.route.ts",
+      "line": 62
+     },
+     "text": "Only USER, OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:getProfile:404:!user || user.deletedAt",
+     "source": {
+      "file": "src/app/modules/user/user.service.ts",
+      "line": 55
+     },
+     "in": "getProfile",
+     "when": [
+      {
+       "code": "!user || user.deletedAt",
+       "text": "user is not found, or user is deleted"
+      }
+     ],
+     "status": 404,
+     "message": "User not found",
+     "text": "If user is not found, or user is deleted, the server answers 404 Not Found: \"User not found\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getProfile",
+     "status": 200,
+     "message": "Profile retrieved successfully",
+     "id": "reply:getProfile:200:",
+     "source": {
+      "file": "src/app/modules/user/user.controller.ts",
+      "line": 27
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Profile retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/routes/ports",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/routes/ports",
+    "file": "src/app/modules/route/route.route.ts",
+    "line": 12
+   },
+   "functions": [
+    {
+     "name": "getConnectedPorts",
+     "file": "src/app/modules/route/route.controller.ts",
+     "line": 94,
+     "role": "controller",
+     "hash": "e2c5587738c3"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getPublicConnectedPorts",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 362,
+     "role": "service",
+     "hash": "b42683771d0c"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getConnectedPorts",
+     "status": 200,
+     "message": "Connected ports retrieved successfully",
+     "id": "reply:getConnectedPorts:200:",
+     "source": {
+      "file": "src/app/modules/route/route.controller.ts",
+      "line": 97
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Connected ports retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/trips/search",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/trips/search",
+    "file": "src/app/modules/schedule/schedule.route.ts",
+    "line": 10
+   },
+   "functions": [
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "tripSearchQueryZodSchema",
+     "file": "src/app/modules/schedule/schedule.validation.ts",
+     "line": 89,
+     "role": "validation",
+     "hash": "e7273cb1596a"
+    },
+    {
+     "name": "searchTrips",
+     "file": "src/app/modules/schedule/schedule.controller.ts",
+     "line": 91,
+     "role": "controller",
+     "hash": "f630b5b452c3"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "searchTrips",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 745,
+     "role": "service",
+     "hash": "948f25b132d5"
+    },
+    {
+     "name": "resolvePortIdentifier",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 619,
+     "role": "service",
+     "hash": "adc48c463c03"
+    },
+    {
+     "name": "UUID_REGEX",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 616,
+     "role": "service",
+     "hash": "28320d4a6122"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "SEARCH_TRIP_TYPE_TO_ENUM",
+     "file": "src/app/modules/booking/booking.fare.ts",
+     "line": 32,
+     "role": "helper",
+     "hash": "341dd38e636b"
+    },
+    {
+     "name": "findTripsForPortPair",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 641,
+     "role": "service",
+     "hash": "a0d69f1d8e01"
+    },
+    {
+     "name": "localDayBounds",
+     "file": "src/shared/portTime.ts",
+     "line": 136,
+     "role": "shared",
+     "hash": "cc64f799500b"
+    },
+    {
+     "name": "getFarePerPassenger",
+     "file": "src/app/modules/booking/booking.fare.ts",
+     "line": 39,
+     "role": "helper",
+     "hash": "884de4c472b6"
+    },
+    {
+     "name": "getDynamicVesselImage",
+     "file": "src/shared/mediaCatalog.ts",
+     "line": 109,
+     "role": "shared",
+     "hash": "cfe7b5874aff"
+    },
+    {
+     "name": "formatLocalTime",
+     "file": "src/shared/portTime.ts",
+     "line": 172,
+     "role": "shared",
+     "hash": "49d6bfc0c345"
+    },
+    {
+     "name": "calculateDurationMinutes",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 134,
+     "role": "service",
+     "hash": "5d66887943b6"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "check",
+     "section": "query",
+     "field": "to",
+     "message": "Departure port and destination port cannot be the same",
+     "when": {
+      "code": "data.from === data.to",
+      "text": "from is the same as to"
+     },
+     "id": "check:query.to:Departure port and destination port cannot be the same",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 111
+     },
+     "text": "If from is the same as to, the request is refused (on to): \"Departure port and destination port cannot be the same\"."
+    },
+    {
+     "kind": "check",
+     "section": "query",
+     "field": "returnDate",
+     "message": "returnDate is required for round-trip journeys",
+     "when": {
+      "code": "data.tripType === 'round-trip' && !data.returnDate",
+      "text": "trip type is \"round-trip\", and return date is empty"
+     },
+     "id": "check:query.returnDate:returnDate is required for round-trip journeys",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 120
+     },
+     "text": "If trip type is \"round-trip\", and return date is empty, the request is refused (on returnDate): \"returnDate is required for round-trip journeys\"."
+    },
+    {
+     "kind": "check",
+     "section": "query",
+     "field": "returnDate",
+     "message": "returnDate must be on or after departureDate",
+     "when": {
+      "code": "data.tripType === 'round-trip' && !(!data.returnDate) && data.returnDate < data.departureDate",
+      "text": "trip type is \"round-trip\", and return date is set, and return date is less than departure date"
+     },
+     "id": "check:query.returnDate:returnDate must be on or after departureDate",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 126
+     },
+     "text": "If trip type is \"round-trip\", and return date is set, and return date is less than departure date, the request is refused (on returnDate): \"returnDate must be on or after departureDate\"."
+    },
+    {
+     "kind": "check",
+     "section": "query",
+     "field": "returnDate",
+     "message": "A same day return must come back on the departure date",
+     "when": {
+      "code": "data.tripType === 'same-day-return' && data.returnDate && data.returnDate !== data.departureDate",
+      "text": "trip type is \"same-day-return\", and return date is set, and return date is different from departure date"
+     },
+     "id": "check:query.returnDate:A same day return must come back on the departure date",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 140
+     },
+     "text": "If trip type is \"same-day-return\", and return date is set, and return date is different from departure date, the request is refused (on returnDate): \"A same day return must come back on the departure date\"."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "tripType",
+     "facet": "required",
+     "required": false,
+     "default": "one-way",
+     "id": "field:query.tripType:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 92
+     },
+     "text": "tripType: optional (default one-way)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "tripType",
+     "facet": "oneOf",
+     "values": [
+      "one-way",
+      "round-trip",
+      "same-day-return"
+     ],
+     "id": "field:query.tripType:oneOf",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 92
+     },
+     "text": "tripType: one of one-way, round-trip or same-day-return."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "from",
+     "facet": "required",
+     "required": true,
+     "message": "from port is required",
+     "id": "field:query.from:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 95
+     },
+     "text": "from: required."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "from",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.from:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 95
+     },
+     "text": "from: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "from",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "id": "field:query.from:min",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 95
+     },
+     "text": "from: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "to",
+     "facet": "required",
+     "required": true,
+     "message": "to port is required",
+     "id": "field:query.to:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 96
+     },
+     "text": "to: required."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "to",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.to:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 96
+     },
+     "text": "to: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "to",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "id": "field:query.to:min",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 96
+     },
+     "text": "to: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "departureDate",
+     "facet": "required",
+     "required": true,
+     "message": "departureDate is required",
+     "id": "field:query.departureDate:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 97
+     },
+     "text": "departureDate: required."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "departureDate",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.departureDate:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 97
+     },
+     "text": "departureDate: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "departureDate",
+     "facet": "format",
+     "format": "regex",
+     "message": "departureDate must follow YYYY-MM-DD",
+     "id": "field:query.departureDate:format:regex",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 97
+     },
+     "text": "departureDate: must match a set pattern."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "returnDate",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.returnDate:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 100
+     },
+     "text": "returnDate: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "returnDate",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.returnDate:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 100
+     },
+     "text": "returnDate: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "returnDate",
+     "facet": "format",
+     "format": "regex",
+     "message": "returnDate must follow YYYY-MM-DD",
+     "id": "field:query.returnDate:format:regex",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 100
+     },
+     "text": "returnDate: must match a set pattern."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "adults",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.adults:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 104
+     },
+     "text": "adults: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "adults",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.adults:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 104
+     },
+     "text": "adults: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "adults",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.adults:min",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 104
+     },
+     "text": "adults: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "children",
+     "facet": "required",
+     "required": false,
+     "default": "0",
+     "id": "field:query.children:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 105
+     },
+     "text": "children: optional (default 0)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "children",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.children:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 105
+     },
+     "text": "children: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "children",
+     "facet": "min",
+     "value": 0,
+     "unit": "number",
+     "id": "field:query.children:min",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 105
+     },
+     "text": "children: at least 0."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "10",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 106
+     },
+     "text": "limit: optional (default 10)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 106
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 106
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 50,
+     "unit": "number",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 106
+     },
+     "text": "limit: at most 50."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "cursor",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.cursor:required",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 107
+     },
+     "text": "cursor: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "cursor",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.cursor:type",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.validation.ts",
+      "line": 107
+     },
+     "text": "cursor: must be text."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:localDayBounds:400:!m",
+     "source": {
+      "file": "src/shared/portTime.ts",
+      "line": 141
+     },
+     "in": "localDayBounds",
+     "when": [
+      {
+       "code": "!m",
+       "text": "m is not found"
+      }
+     ],
+     "status": 400,
+     "message": "Invalid date: {ymd}",
+     "text": "If m is not found, the server answers 400 Bad Request: \"Invalid date: {ymd}\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "searchTrips",
+     "status": 200,
+     "id": "reply:searchTrips:200:",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.controller.ts",
+      "line": 94
+     },
+     "text": "When nothing stops it, the server answers 200 OK."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Continue to Passenger Details\" on src/app/(marketing-and-booking)/book/[tripId]/review/page.tsx",
+   "ui": {
+    "url": "/book/b77329c2-3f0d-4b53-b3b1-0108ce37ef9a/review",
+    "label": "Continue to Passenger Details"
+   },
+   "functions": [
+    {
+     "name": "Step1ReviewPage",
+     "file": "src/app/(marketing-and-booking)/book/[tripId]/review/page.tsx",
+     "line": 28,
+     "role": "helper",
+     "hash": "97b346d6573d"
+    },
+    {
+     "name": "handleContinue",
+     "file": "src/app/(marketing-and-booking)/book/[tripId]/review/page.tsx",
+     "line": 63,
+     "role": "helper",
+     "hash": "8dd7f4a66e9a"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Continue to Passenger Details",
+     "when": {
+      "code": "!isTripTypeOffered",
+      "text": "trip type offered is false"
+     },
+     "id": "ui-block:Continue to Passenger Details",
+     "source": {
+      "file": "src/app/(marketing-and-booking)/book/[tripId]/review/page.tsx",
+      "line": 336
+     },
+     "text": "\"Continue to Passenger Details\" can't be used while trip type offered is false."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/trips/:id",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/trips/:id",
+    "file": "src/app/modules/schedule/schedule.route.ts",
+    "line": 54
+   },
+   "functions": [
+    {
+     "name": "function written in the route",
+     "file": "src/app/modules/schedule/schedule.route.ts",
+     "line": 56,
+     "role": "route",
+     "hash": "443e2f2b56fc"
+    },
+    {
+     "name": "getPublicTripById",
+     "file": "src/app/modules/schedule/schedule.controller.ts",
+     "line": 102,
+     "role": "controller",
+     "hash": "df7d89c13277"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getPublicTripById",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 824,
+     "role": "service",
+     "hash": "8b6dee0de2ff"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "getDynamicVesselImage",
+     "file": "src/shared/mediaCatalog.ts",
+     "line": 109,
+     "role": "shared",
+     "hash": "cfe7b5874aff"
+    },
+    {
+     "name": "calculateDurationMinutes",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 134,
+     "role": "service",
+     "hash": "5d66887943b6"
+    },
+    {
+     "name": "getFarePerPassenger",
+     "file": "src/app/modules/booking/booking.fare.ts",
+     "line": 39,
+     "role": "helper",
+     "hash": "884de4c472b6"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    },
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "getScheduleById",
+     "file": "src/app/modules/schedule/schedule.controller.ts",
+     "line": 35,
+     "role": "controller",
+     "hash": "2286f4f6eaec"
+    },
+    {
+     "name": "getScheduleById",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 332,
+     "role": "service",
+     "hash": "efccac022c04"
+    },
+    {
+     "name": "resolveOperatorProfile",
+     "file": "src/app/modules/schedule/schedule.service.ts",
+     "line": 29,
+     "role": "service",
+     "hash": "90f050cd05f6"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "reject",
+     "id": "reject:getPublicTripById:404:!schedule || schedule.route.status !== RouteStatus.ACTIVE",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.service.ts",
+      "line": 839
+     },
+     "in": "getPublicTripById",
+     "when": [
+      {
+       "code": "!schedule || schedule.route.status !== RouteStatus.ACTIVE",
+       "text": "schedule is not found, or schedule route status is not ACTIVE"
+      }
+     ],
+     "status": 404,
+     "message": "Trip not found or unavailable",
+     "text": "If schedule is not found, or schedule route status is not ACTIVE, the server answers 404 Not Found: \"Trip not found or unavailable\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getPublicTripById",
+     "status": 200,
+     "message": "Trip details retrieved successfully",
+     "id": "reply:getPublicTripById:200:",
+     "source": {
+      "file": "src/app/modules/schedule/schedule.controller.ts",
+      "line": 105
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Trip details retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Continue to Payment\" on src/app/(marketing-and-booking)/book/[tripId]/passengers/page.tsx",
+   "ui": {
+    "url": "/book/b77329c2-3f0d-4b53-b3b1-0108ce37ef9a/passengers",
+    "label": "Continue to Payment"
+   },
+   "functions": [
+    {
+     "name": "Step2PassengersPage",
+     "file": "src/app/(marketing-and-booking)/book/[tripId]/passengers/page.tsx",
+     "line": 25,
+     "role": "helper",
+     "hash": "7555b3f6f9eb"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "CLICK \"Continue to pay\" on src/app/(marketing-and-booking)/book/[tripId]/payment/page.tsx",
+   "ui": {
+    "url": "/book/b77329c2-3f0d-4b53-b3b1-0108ce37ef9a/payment",
+    "label": "Continue to pay"
+   },
+   "functions": [
+    {
+     "name": "Step3PaymentPage",
+     "file": "src/app/(marketing-and-booking)/book/[tripId]/payment/page.tsx",
+     "line": 93,
+     "role": "helper",
+     "hash": "8ed5e73e1669"
+    },
+    {
+     "name": "handleContinueToPay",
+     "file": "src/app/(marketing-and-booking)/book/[tripId]/payment/page.tsx",
+     "line": 251,
+     "role": "helper",
+     "hash": "1f8af05832b1"
+    },
+    {
+     "name": "readStoredPassengers",
+     "file": "src/app/(marketing-and-booking)/book/[tripId]/payment/page.tsx",
+     "line": 77,
+     "role": "helper",
+     "hash": "769acee34e54"
+    },
+    {
+     "name": "forgetPendingCheckout",
+     "file": "src/hooks/use-payments.ts",
+     "line": 51,
+     "role": "helper",
+     "hash": "c1c3800dfa02"
+    },
+    {
+     "name": "goToConfirmation",
+     "file": "src/app/(marketing-and-booking)/book/[tripId]/payment/page.tsx",
+     "line": 120,
+     "role": "helper",
+     "hash": "b33ef87dc775"
+    },
+    {
+     "name": "passengersKeyFor",
+     "file": "src/app/(marketing-and-booking)/book/[tripId]/payment/page.tsx",
+     "line": 48,
+     "role": "helper",
+     "hash": "b450f5ec7c85"
+    },
+    {
+     "name": "rememberPendingCheckout",
+     "file": "src/hooks/use-payments.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b745195c37da"
+    },
+    {
+     "name": "loadIntent",
+     "file": "src/app/(marketing-and-booking)/book/[tripId]/payment/page.tsx",
+     "line": 130,
+     "role": "helper",
+     "hash": "3654bd93edae"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleContinueToPay",
+     "when": [
+      {
+       "code": "!stored?.leadEmail || !stored.leadName || !stored.passengers?.length",
+       "text": "stored lead email is empty, or stored lead name is empty, or the number of stored passengers is empty"
+      }
+     ],
+     "id": "ui-guard:handleContinueToPay:!stored?.leadEmail || !stored.leadName || !stored.passengers?.length",
+     "source": {
+      "file": "src/app/(marketing-and-booking)/book/[tripId]/payment/page.tsx",
+      "line": 254
+     },
+     "text": "If stored lead email is empty, or stored lead name is empty, or the number of stored passengers is empty, the page stops, before sending anything."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleContinueToPay",
+     "when": [
+      {
+       "code": "!booking",
+       "text": "booking is not found"
+      }
+     ],
+     "id": "ui-guard:handleContinueToPay:!booking",
+     "source": {
+      "file": "src/app/(marketing-and-booking)/book/[tripId]/payment/page.tsx",
+      "line": 289
+     },
+     "text": "If booking is not found, the page stops, before sending anything."
+    }
+   ]
+  },
+  {
+   "request": "POST /api/v1/bookings",
+   "route": {
+    "method": "POST",
+    "path": "/api/v1/bookings",
+    "file": "src/app/modules/booking/booking.route.ts",
+    "line": 12
+   },
+   "functions": [
+    {
+     "name": "optionalAuth",
+     "file": "src/app/middlewares/optionalAuth.ts",
+     "line": 9,
+     "role": "middleware",
+     "hash": "6015130aa928"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "createBookingZodSchema",
+     "file": "src/app/modules/booking/booking.validation.ts",
+     "line": 37,
+     "role": "validation",
+     "hash": "38930416c78b"
+    },
+    {
+     "name": "passengerInputZodSchema",
+     "file": "src/app/modules/booking/booking.validation.ts",
+     "line": 4,
+     "role": "validation",
+     "hash": "7fdf8145fbff"
+    },
+    {
+     "name": "createBooking",
+     "file": "src/app/modules/booking/booking.controller.ts",
+     "line": 21,
+     "role": "controller",
+     "hash": "b36f1dcea153"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "createBooking",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 118,
+     "role": "service",
+     "hash": "ed120a716613"
+    },
+    {
+     "name": "getOrCreatePlatformSettings",
+     "file": "src/app/modules/admin/admin.service.ts",
+     "line": 35,
+     "role": "service",
+     "hash": "aebb6739fe3e"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "isTripOpenForBooking",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 47,
+     "role": "service",
+     "hash": "f5a0ca466c8b"
+    },
+    {
+     "name": "OPEN_TRIP_STATUSES",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 41,
+     "role": "service",
+     "hash": "1c028784fe8f"
+    },
+    {
+     "name": "assertValidReturnLeg",
+     "file": "src/app/modules/booking/booking.fare.ts",
+     "line": 61,
+     "role": "helper",
+     "hash": "d902cc864a65"
+    },
+    {
+     "name": "legLocalDate",
+     "file": "src/app/modules/booking/booking.fare.ts",
+     "line": 57,
+     "role": "helper",
+     "hash": "99bb0ec60d6a"
+    },
+    {
+     "name": "localDate",
+     "file": "src/shared/portTime.ts",
+     "line": 76,
+     "role": "shared",
+     "hash": "0adaf6f5aae7"
+    },
+    {
+     "name": "resolveTripFare",
+     "file": "src/app/modules/booking/booking.fare.ts",
+     "line": 113,
+     "role": "helper",
+     "hash": "e72c07c42208"
+    },
+    {
+     "name": "getFarePerPassenger",
+     "file": "src/app/modules/booking/booking.fare.ts",
+     "line": 39,
+     "role": "helper",
+     "hash": "884de4c472b6"
+    },
+    {
+     "name": "takeSeats",
+     "file": "src/app/modules/booking/booking.seats.ts",
+     "line": 29,
+     "role": "helper",
+     "hash": "e145d9003c8d"
+    },
+    {
+     "name": "bookingScheduleIds",
+     "file": "src/app/modules/booking/booking.seats.ts",
+     "line": 17,
+     "role": "helper",
+     "hash": "2cf9ab33bd61"
+    },
+    {
+     "name": "calculateBookingAmounts",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 18,
+     "role": "helper",
+     "hash": "7aea92771ed2"
+    },
+    {
+     "name": "generateBookingReference",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 101,
+     "role": "service",
+     "hash": "9b4051abc204"
+    },
+    {
+     "name": "generateTicketNumber",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 110,
+     "role": "service",
+     "hash": "e2b449eef343"
+    },
+    {
+     "name": "DEFAULT_CURRENCY",
+     "file": "src/config/stripe.ts",
+     "line": 20,
+     "role": "shared",
+     "hash": "ba38d5bad93f"
+    },
+    {
+     "name": "bookingDetailInclude",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 52,
+     "role": "service",
+     "hash": "e0a121c665d8"
+    },
+    {
+     "name": "paymentInclude",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 50,
+     "role": "service",
+     "hash": "000eff351b1f"
+    },
+    {
+     "name": "serializeBooking",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 104,
+     "role": "helper",
+     "hash": "0b31317a8f23"
+    },
+    {
+     "name": "serializePayment",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 67,
+     "role": "helper",
+     "hash": "93e977cb4795"
+    },
+    {
+     "name": "serializeRefunds",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 52,
+     "role": "helper",
+     "hash": "d54f26703008"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [],
+     "login": "optional",
+     "via": "optionalAuth",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/booking/booking.route.ts",
+      "line": 12
+     },
+     "text": "Guests can do this too; a logged-in user is recognised."
+    },
+    {
+     "kind": "check",
+     "section": "body",
+     "field": "passengers",
+     "message": "Expected {total required passengers} passenger details, but received {passengers length}",
+     "when": {
+      "code": "data.passengers.length !== totalRequiredPassengers",
+      "text": "the number of passengers is different from total required passengers"
+     },
+     "id": "check:body.passengers:Expected {total required passengers} passenger details, but received {passengers length}",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 84
+     },
+     "text": "If the number of passengers is different from total required passengers, the request is refused (on passengers): \"Expected {total required passengers} passenger details, but received {passengers length}\"."
+    },
+    {
+     "kind": "check",
+     "section": "body",
+     "field": "returnScheduleId",
+     "message": "A one way booking cannot have a returnScheduleId",
+     "when": {
+      "code": "data.tripType === TripType.ONE_WAY && data.returnScheduleId",
+      "text": "trip type is ONE_WAY, and return schedule id is set"
+     },
+     "id": "check:body.returnScheduleId:A one way booking cannot have a returnScheduleId",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 92
+     },
+     "text": "If trip type is ONE_WAY, and return schedule id is set, the request is refused (on returnScheduleId): \"A one way booking cannot have a returnScheduleId\"."
+    },
+    {
+     "kind": "check",
+     "section": "body",
+     "field": "returnScheduleId",
+     "message": "returnScheduleId is required for a return trip",
+     "when": {
+      "code": "data.tripType !== TripType.ONE_WAY && !data.returnScheduleId",
+      "text": "trip type is not ONE_WAY, and return schedule id is empty"
+     },
+     "id": "check:body.returnScheduleId:returnScheduleId is required for a return trip",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 100
+     },
+     "text": "If trip type is not ONE_WAY, and return schedule id is empty, the request is refused (on returnScheduleId): \"returnScheduleId is required for a return trip\"."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "scheduleId",
+     "facet": "required",
+     "required": true,
+     "message": "scheduleId is required",
+     "id": "field:body.scheduleId:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 40
+     },
+     "text": "scheduleId: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "scheduleId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.scheduleId:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 40
+     },
+     "text": "scheduleId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "scheduleId",
+     "facet": "format",
+     "format": "uuid",
+     "message": "scheduleId must be a valid UUID",
+     "id": "field:body.scheduleId:format:uuid",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 40
+     },
+     "text": "scheduleId: must be a valid UUID."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "tripType",
+     "facet": "required",
+     "required": false,
+     "default": "ONE_WAY",
+     "id": "field:body.tripType:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 43
+     },
+     "text": "tripType: optional (default ONE_WAY)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "tripType",
+     "facet": "oneOf",
+     "values": [
+      "ONE_WAY",
+      "ROUND_TRIP",
+      "SAME_DAY_RETURN"
+     ],
+     "message": "tripType must be ONE_WAY, ROUND_TRIP, or SAME_DAY_RETURN",
+     "id": "field:body.tripType:oneOf",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 43
+     },
+     "text": "tripType: one of ONE_WAY, ROUND_TRIP or SAME_DAY_RETURN."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "returnScheduleId",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.returnScheduleId:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 49
+     },
+     "text": "returnScheduleId: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "returnScheduleId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.returnScheduleId:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 49
+     },
+     "text": "returnScheduleId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "returnScheduleId",
+     "facet": "format",
+     "format": "uuid",
+     "message": "returnScheduleId must be a valid UUID",
+     "id": "field:body.returnScheduleId:format:uuid",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 49
+     },
+     "text": "returnScheduleId: must be a valid UUID."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "leadPassengerName",
+     "facet": "required",
+     "required": true,
+     "message": "Lead passenger name is required",
+     "id": "field:body.leadPassengerName:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 53
+     },
+     "text": "leadPassengerName: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "leadPassengerName",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.leadPassengerName:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 53
+     },
+     "text": "leadPassengerName: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "leadPassengerName",
+     "facet": "min",
+     "value": 2,
+     "unit": "characters",
+     "message": "Lead passenger name must be at least 2 characters",
+     "id": "field:body.leadPassengerName:min",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 53
+     },
+     "text": "leadPassengerName: at least 2 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "leadPassengerName",
+     "facet": "max",
+     "value": 100,
+     "unit": "characters",
+     "message": "Lead passenger name cannot exceed 100 characters",
+     "id": "field:body.leadPassengerName:max",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 53
+     },
+     "text": "leadPassengerName: at most 100 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "leadPassengerEmail",
+     "facet": "required",
+     "required": true,
+     "message": "Lead passenger email is required",
+     "id": "field:body.leadPassengerEmail:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 58
+     },
+     "text": "leadPassengerEmail: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "leadPassengerEmail",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.leadPassengerEmail:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 58
+     },
+     "text": "leadPassengerEmail: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "leadPassengerEmail",
+     "facet": "format",
+     "format": "email",
+     "message": "Valid email address is required",
+     "id": "field:body.leadPassengerEmail:format:email",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 58
+     },
+     "text": "leadPassengerEmail: must be a valid email address."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "leadPassengerPhone",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.leadPassengerPhone:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 62
+     },
+     "text": "leadPassengerPhone: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "leadPassengerPhone",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.leadPassengerPhone:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 62
+     },
+     "text": "leadPassengerPhone: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "leadPassengerPhone",
+     "facet": "max",
+     "value": 30,
+     "unit": "characters",
+     "id": "field:body.leadPassengerPhone:max",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 62
+     },
+     "text": "leadPassengerPhone: at most 30 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "adultsCount",
+     "facet": "required",
+     "required": true,
+     "message": "adultsCount is required",
+     "id": "field:body.adultsCount:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 63
+     },
+     "text": "adultsCount: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "adultsCount",
+     "facet": "type",
+     "type": "a whole number",
+     "id": "field:body.adultsCount:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 63
+     },
+     "text": "adultsCount: must be a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "adultsCount",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "At least 1 adult passenger is required",
+     "id": "field:body.adultsCount:min",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 63
+     },
+     "text": "adultsCount: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "adultsCount",
+     "facet": "max",
+     "value": 20,
+     "unit": "number",
+     "message": "Maximum 20 passengers per booking",
+     "id": "field:body.adultsCount:max",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 63
+     },
+     "text": "adultsCount: at most 20."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "childrenCount",
+     "facet": "required",
+     "required": false,
+     "default": "0",
+     "id": "field:body.childrenCount:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 68
+     },
+     "text": "childrenCount: optional (default 0)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "childrenCount",
+     "facet": "type",
+     "type": "a whole number",
+     "id": "field:body.childrenCount:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 68
+     },
+     "text": "childrenCount: must be a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "childrenCount",
+     "facet": "min",
+     "value": 0,
+     "unit": "number",
+     "message": "childrenCount cannot be negative",
+     "id": "field:body.childrenCount:min",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 68
+     },
+     "text": "childrenCount: at least 0."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "childrenCount",
+     "facet": "max",
+     "value": 15,
+     "unit": "number",
+     "message": "Maximum 15 child passengers per booking",
+     "id": "field:body.childrenCount:max",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 68
+     },
+     "text": "childrenCount: at most 15."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers",
+     "facet": "required",
+     "required": true,
+     "id": "field:body.passengers:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 75
+     },
+     "text": "passengers: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers",
+     "facet": "type",
+     "type": "a list",
+     "id": "field:body.passengers:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 75
+     },
+     "text": "passengers: must be a list."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers",
+     "facet": "min",
+     "value": 1,
+     "unit": "items",
+     "message": "At least one passenger record is required",
+     "id": "field:body.passengers:min",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 75
+     },
+     "text": "passengers: at least 1 item."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].passengerName",
+     "facet": "required",
+     "required": true,
+     "message": "Passenger name is required",
+     "id": "field:body.passengers[].passengerName:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 5
+     },
+     "text": "passengers[].passengerName: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].passengerName",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.passengers[].passengerName:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 5
+     },
+     "text": "passengers[].passengerName: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].passengerName",
+     "facet": "min",
+     "value": 2,
+     "unit": "characters",
+     "message": "Passenger name must be at least 2 characters",
+     "id": "field:body.passengers[].passengerName:min",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 5
+     },
+     "text": "passengers[].passengerName: at least 2 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].passengerName",
+     "facet": "max",
+     "value": 100,
+     "unit": "characters",
+     "message": "Passenger name cannot exceed 100 characters",
+     "id": "field:body.passengers[].passengerName:max",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 5
+     },
+     "text": "passengers[].passengerName: at most 100 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].nationality",
+     "facet": "required",
+     "required": true,
+     "message": "Nationality is required",
+     "id": "field:body.passengers[].nationality:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 10
+     },
+     "text": "passengers[].nationality: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].nationality",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.passengers[].nationality:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 10
+     },
+     "text": "passengers[].nationality: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].nationality",
+     "facet": "min",
+     "value": 2,
+     "unit": "characters",
+     "message": "Nationality must be at least 2 characters",
+     "id": "field:body.passengers[].nationality:min",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 10
+     },
+     "text": "passengers[].nationality: at least 2 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].nationality",
+     "facet": "max",
+     "value": 50,
+     "unit": "characters",
+     "message": "Nationality cannot exceed 50 characters",
+     "id": "field:body.passengers[].nationality:max",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 10
+     },
+     "text": "passengers[].nationality: at most 50 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].passportOrId",
+     "facet": "required",
+     "required": true,
+     "message": "Passport or ID number is required",
+     "id": "field:body.passengers[].passportOrId:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 16
+     },
+     "text": "passengers[].passportOrId: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].passportOrId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.passengers[].passportOrId:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 16
+     },
+     "text": "passengers[].passportOrId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].passportOrId",
+     "facet": "min",
+     "value": 3,
+     "unit": "characters",
+     "message": "Passport or ID must be at least 3 characters",
+     "id": "field:body.passengers[].passportOrId:min",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 16
+     },
+     "text": "passengers[].passportOrId: at least 3 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].passportOrId",
+     "facet": "max",
+     "value": 50,
+     "unit": "characters",
+     "message": "Passport or ID cannot exceed 50 characters",
+     "id": "field:body.passengers[].passportOrId:max",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 16
+     },
+     "text": "passengers[].passportOrId: at most 50 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].cabinClass",
+     "facet": "required",
+     "required": false,
+     "default": "STANDARD",
+     "id": "field:body.passengers[].cabinClass:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 22
+     },
+     "text": "passengers[].cabinClass: optional (default STANDARD)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].cabinClass",
+     "facet": "oneOf",
+     "values": [
+      "STANDARD",
+      "BUSINESS",
+      "VIP"
+     ],
+     "message": "Cabin class must be STANDARD, BUSINESS, or VIP",
+     "id": "field:body.passengers[].cabinClass:oneOf",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 22
+     },
+     "text": "passengers[].cabinClass: one of STANDARD, BUSINESS or VIP."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].luggageCount",
+     "facet": "required",
+     "required": false,
+     "default": "0",
+     "id": "field:body.passengers[].luggageCount:required",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 28
+     },
+     "text": "passengers[].luggageCount: optional (default 0)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].luggageCount",
+     "facet": "type",
+     "type": "a whole number",
+     "id": "field:body.passengers[].luggageCount:type",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 28
+     },
+     "text": "passengers[].luggageCount: must be a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].luggageCount",
+     "facet": "min",
+     "value": 0,
+     "unit": "number",
+     "message": "Luggage count cannot be negative",
+     "id": "field:body.passengers[].luggageCount:min",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 28
+     },
+     "text": "passengers[].luggageCount: at least 0."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "passengers[].luggageCount",
+     "facet": "max",
+     "value": 10,
+     "unit": "number",
+     "message": "Luggage count cannot exceed 10 bags per passenger",
+     "id": "field:body.passengers[].luggageCount:max",
+     "source": {
+      "file": "src/app/modules/booking/booking.validation.ts",
+      "line": 28
+     },
+     "text": "passengers[].luggageCount: at most 10."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createBooking:404:!schedule",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 144
+     },
+     "in": "createBooking",
+     "when": [
+      {
+       "code": "!schedule",
+       "text": "schedule is not found"
+      }
+     ],
+     "status": 404,
+     "message": "Selected return trip not found",
+     "otherMessages": [
+      "Selected schedule not found"
+     ],
+     "text": "If schedule is not found, the server answers 404 Not Found: \"Selected return trip not found\" (or \"Selected schedule not found\")."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createBooking:400:!isTripOpenForBooking(schedule.status)",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 151
+     },
+     "in": "createBooking",
+     "when": [
+      {
+       "code": "!isTripOpenForBooking(schedule.status)"
+      }
+     ],
+     "status": 400,
+     "message": "Cannot book tickets on a departed or cancelled return trip",
+     "otherMessages": [
+      "Cannot book tickets on a departed or cancelled trip"
+     ],
+     "text": "If `!isTripOpenForBooking(schedule.status)`, the server answers 400 Bad Request: \"Cannot book tickets on a departed or cancelled return trip\" (or \"Cannot book tickets on a departed or cancelled trip\")."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createBooking:400:schedule.departureTime.getTime() <= Date.now()",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 162
+     },
+     "in": "createBooking",
+     "when": [
+      {
+       "code": "schedule.departureTime.getTime() <= Date.now()",
+       "text": "schedule departure time is now or in the past"
+      }
+     ],
+     "status": 400,
+     "message": "The selected return trip has already departed",
+     "otherMessages": [
+      "This trip has already departed"
+     ],
+     "text": "If schedule departure time is now or in the past, the server answers 400 Bad Request: \"The selected return trip has already departed\" (or \"This trip has already departed\")."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createBooking:400:schedule.availableSeats < totalPassengers",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 170
+     },
+     "in": "createBooking",
+     "when": [
+      {
+       "code": "schedule.availableSeats < totalPassengers",
+       "text": "schedule available seats is less than total passengers"
+      }
+     ],
+     "status": 400,
+     "message": "Not enough available seats on the return trip",
+     "otherMessages": [
+      "Not enough available seats on this trip"
+     ],
+     "text": "If schedule available seats is less than total passengers, the server answers 400 Bad Request: \"Not enough available seats on the return trip\" (or \"Not enough available seats on this trip\")."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createBooking:400:!seatsTaken",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 201
+     },
+     "in": "createBooking",
+     "when": [
+      {
+       "code": "!seatsTaken",
+       "text": "seats taken is false"
+      }
+     ],
+     "status": 400,
+     "message": "Not enough available seats on this trip",
+     "text": "If seats taken is false, the server answers 400 Bad Request: \"Not enough available seats on this trip\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:assertValidReturnLeg:400:tripType === TripType.ONE_WAY && returnLeg",
+     "source": {
+      "file": "src/app/modules/booking/booking.fare.ts",
+      "line": 68
+     },
+     "in": "assertValidReturnLeg",
+     "when": [
+      {
+       "code": "tripType === TripType.ONE_WAY",
+       "text": "trip type is ONE_WAY"
+      },
+      {
+       "code": "returnLeg",
+       "text": "return leg is found"
+      }
+     ],
+     "status": 400,
+     "message": "A one way booking cannot have a return trip",
+     "text": "If trip type is ONE_WAY, and return leg is found, the server answers 400 Bad Request: \"A one way booking cannot have a return trip\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:assertValidReturnLeg:400:!returnLeg",
+     "source": {
+      "file": "src/app/modules/booking/booking.fare.ts",
+      "line": 74
+     },
+     "in": "assertValidReturnLeg",
+     "when": [
+      {
+       "code": "!returnLeg",
+       "text": "return leg is not found"
+      }
+     ],
+     "status": 400,
+     "message": "Please select a return trip",
+     "text": "If return leg is not found, the server answers 400 Bad Request: \"Please select a return trip\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:assertValidReturnLeg:400:!isReverseRoute",
+     "source": {
+      "file": "src/app/modules/booking/booking.fare.ts",
+      "line": 81
+     },
+     "in": "assertValidReturnLeg",
+     "when": [
+      {
+       "code": "!isReverseRoute",
+       "text": "reverse route is false"
+      }
+     ],
+     "status": 400,
+     "message": "The return trip must go back the opposite way of the outbound trip",
+     "text": "If reverse route is false, the server answers 400 Bad Request: \"The return trip must go back the opposite way of the outbound trip\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:assertValidReturnLeg:400:returnLeg.ferry.operatorId !== outbound.ferry.operatorId",
+     "source": {
+      "file": "src/app/modules/booking/booking.fare.ts",
+      "line": 88
+     },
+     "in": "assertValidReturnLeg",
+     "when": [
+      {
+       "code": "returnLeg.ferry.operatorId !== outbound.ferry.operatorId",
+       "text": "return leg ferry operator id is different from outbound ferry operator id"
+      }
+     ],
+     "status": 400,
+     "message": "The return trip must be with the same ferry operator",
+     "text": "If return leg ferry operator id is different from outbound ferry operator id, the server answers 400 Bad Request: \"The return trip must be with the same ferry operator\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:assertValidReturnLeg:400:returnLeg.departureTime.getTime() < outbound.arrivalTime.getTime()",
+     "source": {
+      "file": "src/app/modules/booking/booking.fare.ts",
+      "line": 95
+     },
+     "in": "assertValidReturnLeg",
+     "when": [
+      {
+       "code": "returnLeg.departureTime.getTime() < outbound.arrivalTime.getTime()",
+       "text": "return leg departure time is before outbound arrival time"
+      }
+     ],
+     "status": 400,
+     "message": "The return trip must leave after the outbound trip arrives",
+     "text": "If return leg departure time is before outbound arrival time, the server answers 400 Bad Request: \"The return trip must leave after the outbound trip arrives\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:assertValidReturnLeg:400:tripType === TripType.SAME_DAY_RETURN && legLocalDate(returnLeg) !== legLocalDate(outbound)",
+     "source": {
+      "file": "src/app/modules/booking/booking.fare.ts",
+      "line": 105
+     },
+     "in": "assertValidReturnLeg",
+     "when": [
+      {
+       "code": "tripType === TripType.SAME_DAY_RETURN && legLocalDate(returnLeg) !== legLocalDate(outbound)"
+      }
+     ],
+     "status": 400,
+     "message": "A same day return must come back on the same day",
+     "text": "If `tripType === TripType.SAME_DAY_RETURN && legLocalDate(returnLeg) !== legLocalDate(outbound)`, the server answers 400 Bad Request: \"A same day return must come back on the same day\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveTripFare:400:!fare",
+     "source": {
+      "file": "src/app/modules/booking/booking.fare.ts",
+      "line": 120
+     },
+     "in": "resolveTripFare",
+     "when": [
+      {
+       "code": "!fare",
+       "text": "fare is not found"
+      }
+     ],
+     "status": 400,
+     "message": "{label} is not offered on this trip",
+     "text": "If fare is not found, the server answers 400 Bad Request: \"{label} is not offered on this trip\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "createBooking",
+     "status": 201,
+     "message": "Booking reserved, seats are held until payment completes",
+     "otherMessages": [
+      "Booking reservation confirmed successfully"
+     ],
+     "id": "reply:createBooking:201:",
+     "source": {
+      "file": "src/app/modules/booking/booking.controller.ts",
+      "line": 25
+     },
+     "text": "When nothing stops it, the server answers 201 Created: \"Booking reserved, seats are held until payment completes\" (or \"Booking reservation confirmed successfully\")."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "booking",
+     "fields": [
+      {
+       "name": "reference",
+       "how": "set"
+      },
+      {
+       "name": "user id",
+       "how": "set"
+      },
+      {
+       "name": "schedule id",
+       "how": "set"
+      },
+      {
+       "name": "trip type",
+       "how": "set"
+      },
+      {
+       "name": "return schedule id",
+       "how": "set"
+      },
+      {
+       "name": "lead passenger name",
+       "how": "set"
+      },
+      {
+       "name": "lead passenger email",
+       "how": "set"
+      },
+      {
+       "name": "lead passenger phone",
+       "how": "set"
+      },
+      {
+       "name": "adults count",
+       "how": "set"
+      },
+      {
+       "name": "children count",
+       "how": "set"
+      },
+      {
+       "name": "total amount",
+       "how": "set"
+      },
+      {
+       "name": "status",
+       "how": "set",
+       "value": "PENDING if starts pending is true, otherwise CONFIRMED"
+      },
+      {
+       "name": "hold expires at",
+       "how": "set"
+      },
+      {
+       "name": "confirmed at",
+       "how": "set"
+      }
+     ],
+     "when": [],
+     "in": "createBooking",
+     "id": "effect:createBooking:create:booking:",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 220
+     },
+     "text": "A new booking is saved (status becomes PENDING if starts pending is true, otherwise CONFIRMED)."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "ticket",
+     "many": true,
+     "when": [],
+     "in": "createBooking",
+     "id": "effect:createBooking:create:ticket:",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 252
+     },
+     "text": "New tickets are saved."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "payment",
+     "fields": [
+      {
+       "name": "booking id",
+       "how": "set"
+      },
+      {
+       "name": "amount cents",
+       "how": "set"
+      },
+      {
+       "name": "currency",
+       "how": "set"
+      },
+      {
+       "name": "commission rate",
+       "how": "set"
+      },
+      {
+       "name": "platform commission cents",
+       "how": "set"
+      },
+      {
+       "name": "operator payout cents",
+       "how": "set"
+      },
+      {
+       "name": "provider",
+       "how": "set",
+       "value": "STRIPE if starts pending is true, otherwise MANUAL"
+      },
+      {
+       "name": "status",
+       "how": "set",
+       "value": "COMPLETED if free booking is true, otherwise PENDING"
+      },
+      {
+       "name": "paid at",
+       "how": "set"
+      }
+     ],
+     "when": [],
+     "in": "createBooking",
+     "id": "effect:createBooking:create:payment:",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 258
+     },
+     "text": "A new payment is saved (provider becomes STRIPE if starts pending is true, otherwise MANUAL; status becomes COMPLETED if free booking is true, otherwise PENDING)."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "platform setting",
+     "fields": [
+      {
+       "name": "platform name",
+       "how": "set",
+       "value": "\"FerryGo\""
+      },
+      {
+       "name": "support email",
+       "how": "set",
+       "value": "\"support@ferrygo.com\""
+      },
+      {
+       "name": "commission rate",
+       "how": "set",
+       "value": "10"
+      },
+      {
+       "name": "payout schedule",
+       "how": "set",
+       "value": "\"WEEKLY\""
+      }
+     ],
+     "when": [
+      {
+       "code": "!(existing)",
+       "text": "no matching platform setting is found"
+      }
+     ],
+     "in": "getOrCreatePlatformSettings",
+     "id": "effect:getOrCreatePlatformSettings:create:platform setting:!(existing)",
+     "source": {
+      "file": "src/app/modules/admin/admin.service.ts",
+      "line": 41
+     },
+     "text": "If no matching platform setting is found, a new platform setting is saved (platform name becomes \"FerryGo\"; support email becomes \"support@ferrygo.com\"; commission rate becomes 10; payout schedule becomes \"WEEKLY\")."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "schedule",
+     "many": true,
+     "fields": [
+      {
+       "name": "available seats",
+       "how": "decrement",
+       "value": "seats"
+      }
+     ],
+     "when": [],
+     "in": "takeSeats",
+     "id": "effect:takeSeats:update:schedule:",
+     "source": {
+      "file": "src/app/modules/booking/booking.seats.ts",
+      "line": 36
+     },
+     "text": "The matching schedules are changed: available seats goes down by seats."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "schedule",
+     "fields": [
+      {
+       "name": "available seats",
+       "how": "increment",
+       "value": "seats"
+      }
+     ],
+     "when": [
+      {
+       "code": "result.count !== 1",
+       "text": "result count is not 1"
+      }
+     ],
+     "in": "takeSeats",
+     "id": "effect:takeSeats:update:schedule:result.count !== 1",
+     "source": {
+      "file": "src/app/modules/booking/booking.seats.ts",
+      "line": 42
+     },
+     "text": "If result count is not 1, the schedule is changed: available seats goes up by seats."
+    },
+    {
+     "kind": "together",
+     "changes": [
+      {
+       "effect": "create",
+       "model": "booking"
+      },
+      {
+       "effect": "create",
+       "model": "ticket",
+       "many": true
+      },
+      {
+       "effect": "create",
+       "model": "payment"
+      },
+      {
+       "effect": "update",
+       "model": "schedule",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "schedule"
+      }
+     ],
+     "in": "createBooking",
+     "id": "together:createBooking#0",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 132
+     },
+     "text": "These happen together: a new booking is saved, new tickets are saved, a new payment is saved, the matching schedules are changed and the schedule is changed. If one of them fails, none of them is kept."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Manage booking\" on src/app/(marketing-and-booking)/book/[tripId]/confirmation/page.tsx",
+   "ui": {
+    "url": "/book/b77329c2-3f0d-4b53-b3b1-0108ce37ef9a/confirmation",
+    "label": "Manage booking"
+   },
+   "functions": [
+    {
+     "name": "ManageBookingLink",
+     "file": "src/app/(marketing-and-booking)/book/[tripId]/confirmation/page.tsx",
+     "line": 201,
+     "role": "helper",
+     "hash": "822797017277"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "GET /api/v1/bookings/manage/:reference",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/bookings/manage/:reference",
+    "file": "src/app/modules/booking/booking.route.ts",
+    "line": 25
+   },
+   "functions": [
+    {
+     "name": "optionalAuth",
+     "file": "src/app/middlewares/optionalAuth.ts",
+     "line": 9,
+     "role": "middleware",
+     "hash": "6015130aa928"
+    },
+    {
+     "name": "getBookingByReference",
+     "file": "src/app/modules/booking/booking.controller.ts",
+     "line": 48,
+     "role": "controller",
+     "hash": "b382040ebd8c"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getBookingByReference",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 295,
+     "role": "service",
+     "hash": "b19c5fef0ad7"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "bookingDetailInclude",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 52,
+     "role": "service",
+     "hash": "e0a121c665d8"
+    },
+    {
+     "name": "paymentInclude",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 50,
+     "role": "service",
+     "hash": "000eff351b1f"
+    },
+    {
+     "name": "emailsMatch",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 112,
+     "role": "helper",
+     "hash": "0752054c89f0"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "serializeBooking",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 104,
+     "role": "helper",
+     "hash": "0b31317a8f23"
+    },
+    {
+     "name": "serializePayment",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 67,
+     "role": "helper",
+     "hash": "93e977cb4795"
+    },
+    {
+     "name": "serializeRefunds",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 52,
+     "role": "helper",
+     "hash": "d54f26703008"
+    },
+    {
+     "name": "requesterFrom",
+     "file": "src/app/modules/booking/booking.controller.ts",
+     "line": 8,
+     "role": "controller",
+     "hash": "3d3135f84246"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [],
+     "login": "optional",
+     "via": "optionalAuth",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/booking/booking.route.ts",
+      "line": 25
+     },
+     "text": "Guests can do this too; a logged-in user is recognised."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:getBookingByReference:404:!booking || !(isAdmin || isOwner || hasMatchingEmail)",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 310
+     },
+     "in": "getBookingByReference",
+     "when": [
+      {
+       "code": "!booking || !(isAdmin || isOwner || hasMatchingEmail)",
+       "text": "booking is not found, or admin is false, and owner is false, and matching email is false"
+      }
+     ],
+     "status": 404,
+     "message": "Booking reservation not found",
+     "text": "If booking is not found, or admin is false, and owner is false, and matching email is false, the server answers 404 Not Found: \"Booking reservation not found\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getBookingByReference",
+     "status": 200,
+     "message": "Booking reservation found successfully",
+     "id": "reply:getBookingByReference:200:",
+     "source": {
+      "file": "src/app/modules/booking/booking.controller.ts",
+      "line": 54
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Booking reservation found successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Cancel Booking\" on src/app/(marketing-and-booking)/(private)/manage-booking/page.tsx",
+   "ui": {
+    "url": "/manage-booking",
+    "label": "Cancel Booking"
+   },
+   "functions": [
+    {
+     "name": "ManageBookingsTable",
+     "file": "src/components/widgets/booking/ManageBookingsTable.tsx",
+     "line": 60,
+     "role": "helper",
+     "hash": "16f6640ec4e5"
+    },
+    {
+     "name": "the onClick function written there",
+     "file": "src/components/widgets/booking/ManageBookingsTable.tsx",
+     "line": 448,
+     "role": "helper",
+     "hash": "1dac221e5727"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Cancel Booking",
+     "when": {
+      "code": "b.status === \"CANCELLED\" || cancelBookingMutation.isPending",
+      "text": "b status is \"CANCELLED\", or a request is in progress"
+     },
+     "id": "ui-block:Cancel Booking",
+     "source": {
+      "file": "src/components/widgets/booking/ManageBookingsTable.tsx",
+      "line": 444
+     },
+     "text": "\"Cancel Booking\" can't be used while b status is \"CANCELLED\", or a request is in progress."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/bookings/my",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/bookings/my",
+    "file": "src/app/modules/booking/booking.route.ts",
+    "line": 19
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.USER",
+     "file": "src/enums/user.ts",
+     "line": 26,
+     "role": "helper",
+     "hash": "0cf75cfcb51f"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "getMyBookings",
+     "file": "src/app/modules/booking/booking.controller.ts",
+     "line": 36,
+     "role": "controller",
+     "hash": "cfea09ac5da9"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getMyBookings",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 281,
+     "role": "service",
+     "hash": "4d5af03e6a67"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "bookingDetailInclude",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 52,
+     "role": "service",
+     "hash": "e0a121c665d8"
+    },
+    {
+     "name": "paymentInclude",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 50,
+     "role": "service",
+     "hash": "000eff351b1f"
+    },
+    {
+     "name": "serializeBooking",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 104,
+     "role": "helper",
+     "hash": "0b31317a8f23"
+    },
+    {
+     "name": "serializePayment",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 67,
+     "role": "helper",
+     "hash": "93e977cb4795"
+    },
+    {
+     "name": "serializeRefunds",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 52,
+     "role": "helper",
+     "hash": "d54f26703008"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "USER",
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.USER, USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/booking/booking.route.ts",
+      "line": 19
+     },
+     "text": "Only USER, OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getMyBookings",
+     "status": 200,
+     "message": "My bookings retrieved successfully",
+     "id": "reply:getMyBookings:200:",
+     "source": {
+      "file": "src/app/modules/booking/booking.controller.ts",
+      "line": 40
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"My bookings retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "CLICK \"Confirm Cancellation\" on src/app/(marketing-and-booking)/(private)/manage-booking/page.tsx",
+   "ui": {
+    "url": "/manage-booking",
+    "label": "Confirm Cancellation"
+   },
+   "functions": [
+    {
+     "name": "ManageBookingsTable",
+     "file": "src/components/widgets/booking/ManageBookingsTable.tsx",
+     "line": 60,
+     "role": "helper",
+     "hash": "16f6640ec4e5"
+    },
+    {
+     "name": "handleConfirmCancel",
+     "file": "src/components/widgets/booking/ManageBookingsTable.tsx",
+     "line": 137,
+     "role": "helper",
+     "hash": "70755295aa08"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Confirm Cancellation",
+     "when": {
+      "code": "cancelBookingMutation.isPending",
+      "text": "a request is in progress"
+     },
+     "id": "ui-block:Confirm Cancellation",
+     "source": {
+      "file": "src/components/widgets/booking/ManageBookingsTable.tsx",
+      "line": 562
+     },
+     "text": "\"Confirm Cancellation\" can't be used while a request is in progress."
+    },
+    {
+     "kind": "ui-guard",
+     "side": "frontend",
+     "in": "handleConfirmCancel",
+     "when": [
+      {
+       "code": "!selectedBookingToCancel",
+       "text": "selected booking to cancel is not found"
+      }
+     ],
+     "id": "ui-guard:handleConfirmCancel:!selectedBookingToCancel",
+     "source": {
+      "file": "src/components/widgets/booking/ManageBookingsTable.tsx",
+      "line": 138
+     },
+     "text": "If selected booking to cancel is not found, the page stops, before sending anything."
+    }
+   ]
+  },
+  {
+   "request": "PATCH /api/v1/bookings/:id/cancel",
+   "route": {
+    "method": "PATCH",
+    "path": "/api/v1/bookings/:id/cancel",
+    "file": "src/app/modules/booking/booking.route.ts",
+    "line": 46
+   },
+   "functions": [
+    {
+     "name": "optionalAuth",
+     "file": "src/app/middlewares/optionalAuth.ts",
+     "line": 9,
+     "role": "middleware",
+     "hash": "6015130aa928"
+    },
+    {
+     "name": "cancelBooking",
+     "file": "src/app/modules/booking/booking.controller.ts",
+     "line": 62,
+     "role": "controller",
+     "hash": "d15d9c10cd6f"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "cancelBooking",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 319,
+     "role": "service",
+     "hash": "3e2d77f720ac"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "UUID_REGEX",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 316,
+     "role": "service",
+     "hash": "28320d4a6122"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "emailsMatch",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 112,
+     "role": "helper",
+     "hash": "0752054c89f0"
+    },
+    {
+     "name": "CANCELLABLE_BOOKING_STATUSES",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 35,
+     "role": "service",
+     "hash": "d506af4ad624"
+    },
+    {
+     "name": "releaseBookingSeats",
+     "file": "src/app/modules/booking/booking.seats.ts",
+     "line": 55,
+     "role": "helper",
+     "hash": "81b3bc086a25"
+    },
+    {
+     "name": "bookingSeatCount",
+     "file": "src/app/modules/booking/booking.seats.ts",
+     "line": 22,
+     "role": "helper",
+     "hash": "29732ff44838"
+    },
+    {
+     "name": "bookingScheduleIds",
+     "file": "src/app/modules/booking/booking.seats.ts",
+     "line": 17,
+     "role": "helper",
+     "hash": "2cf9ab33bd61"
+    },
+    {
+     "name": "paymentInclude",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 50,
+     "role": "service",
+     "hash": "000eff351b1f"
+    },
+    {
+     "name": "serializeBooking",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 104,
+     "role": "helper",
+     "hash": "0b31317a8f23"
+    },
+    {
+     "name": "serializePayment",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 67,
+     "role": "helper",
+     "hash": "93e977cb4795"
+    },
+    {
+     "name": "serializeRefunds",
+     "file": "src/app/modules/booking/booking.payment.ts",
+     "line": 52,
+     "role": "helper",
+     "hash": "d54f26703008"
+    },
+    {
+     "name": "cancelPaymentIntentAfterCommit",
+     "file": "src/app/modules/payment/payment.intentCancel.ts",
+     "line": 16,
+     "role": "helper",
+     "hash": "c10e5cd0d1a3"
+    },
+    {
+     "name": "stripe",
+     "file": "src/config/stripe.ts",
+     "line": 6,
+     "role": "shared",
+     "hash": "39c356475fc0"
+    },
+    {
+     "name": "logger",
+     "file": "src/shared/logger.ts",
+     "line": 62,
+     "role": "shared",
+     "hash": "4f13f34d9879"
+    },
+    {
+     "name": "applyIntentResult",
+     "file": "src/app/modules/payment/payment.service.ts",
+     "line": 557,
+     "role": "service",
+     "hash": "832df7b296c2"
+    },
+    {
+     "name": "applyIntentResultInTx",
+     "file": "src/app/modules/payment/payment.service.ts",
+     "line": 415,
+     "role": "service",
+     "hash": "e05d54c38a1d"
+    },
+    {
+     "name": "findPaymentForIntent",
+     "file": "src/app/modules/payment/payment.service.ts",
+     "line": 331,
+     "role": "service",
+     "hash": "72088b168086"
+    },
+    {
+     "name": "isLiveStripeKey",
+     "file": "src/config/stripe.ts",
+     "line": 58,
+     "role": "shared",
+     "hash": "081534c97e23"
+    },
+    {
+     "name": "ALREADY_APPLIED_PAYMENT_STATUSES",
+     "file": "src/app/modules/payment/payment.service.ts",
+     "line": 45,
+     "role": "service",
+     "hash": "7af3a82909c3"
+    },
+    {
+     "name": "APPLICABLE_PAYMENT_STATUSES",
+     "file": "src/app/modules/payment/payment.service.ts",
+     "line": 52,
+     "role": "service",
+     "hash": "7f532ad6c67b"
+    },
+    {
+     "name": "retakeSeats",
+     "file": "src/app/modules/payment/payment.service.ts",
+     "line": 379,
+     "role": "service",
+     "hash": "b511715c3c91"
+    },
+    {
+     "name": "isTripOpenForBooking",
+     "file": "src/app/modules/booking/booking.service.ts",
+     "line": 47,
+     "role": "service",
+     "hash": "f5a0ca466c8b"
+    },
+    {
+     "name": "takeSeats",
+     "file": "src/app/modules/booking/booking.seats.ts",
+     "line": 29,
+     "role": "helper",
+     "hash": "e145d9003c8d"
+    },
+    {
+     "name": "sendRefunds",
+     "file": "src/app/modules/payment/payment.refund.ts",
+     "line": 139,
+     "role": "helper",
+     "hash": "e20e4251827c"
+    },
+    {
+     "name": "sendRefund",
+     "file": "src/app/modules/payment/payment.refund.ts",
+     "line": 74,
+     "role": "helper",
+     "hash": "6d229263e004"
+    },
+    {
+     "name": "refundIdempotencyKey",
+     "file": "src/app/modules/payment/payment.refund.ts",
+     "line": 23,
+     "role": "helper",
+     "hash": "c18cc2ba4850"
+    },
+    {
+     "name": "applyRefundStatus",
+     "file": "src/app/modules/payment/payment.refund.ts",
+     "line": 33,
+     "role": "helper",
+     "hash": "c9052fc6ab92"
+    },
+    {
+     "name": "requesterFrom",
+     "file": "src/app/modules/booking/booking.controller.ts",
+     "line": 8,
+     "role": "controller",
+     "hash": "3d3135f84246"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [],
+     "login": "optional",
+     "via": "optionalAuth",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/booking/booking.route.ts",
+      "line": 46
+     },
+     "text": "Guests can do this too; a logged-in user is recognised."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:cancelBooking:404:!existingBooking",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 338
+     },
+     "in": "cancelBooking",
+     "when": [
+      {
+       "code": "!existingBooking",
+       "text": "no matching booking is found"
+      }
+     ],
+     "status": 404,
+     "message": "Booking not found",
+     "text": "If no matching booking is found, the server answers 404 Not Found: \"Booking not found\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:cancelBooking:403:!(isAdmin || isOwner || hasMatchingEmail) && requester.userId && existingBooking.userId",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 354
+     },
+     "in": "cancelBooking",
+     "when": [
+      {
+       "code": "!(isAdmin || isOwner || hasMatchingEmail)",
+       "text": "admin is false, and owner is false, and matching email is false"
+      },
+      {
+       "code": "requester.userId && existingBooking.userId",
+       "text": "requester user id is set, and existing booking user id is set"
+      }
+     ],
+     "status": 403,
+     "message": "You are not authorized to cancel this booking",
+     "text": "If admin is false, and owner is false, and matching email is false, and requester user id is set, and existing booking user id is set, the server answers 403 Forbidden: \"You are not authorized to cancel this booking\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:cancelBooking:404:!(isAdmin || isOwner || hasMatchingEmail)",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 359
+     },
+     "in": "cancelBooking",
+     "when": [
+      {
+       "code": "!(isAdmin || isOwner || hasMatchingEmail)",
+       "text": "admin is false, and owner is false, and matching email is false"
+      }
+     ],
+     "status": 404,
+     "message": "Booking not found",
+     "text": "If admin is false, and owner is false, and matching email is false, the server answers 404 Not Found: \"Booking not found\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:cancelBooking:400:existingBooking.status === BookingStatus.CANCELLED",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 363
+     },
+     "in": "cancelBooking",
+     "when": [
+      {
+       "code": "existingBooking.status === BookingStatus.CANCELLED",
+       "text": "existing booking status is CANCELLED"
+      }
+     ],
+     "status": 400,
+     "message": "Booking is already cancelled",
+     "text": "If existing booking status is CANCELLED, the server answers 400 Bad Request: \"Booking is already cancelled\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:cancelBooking:400:!CANCELLABLE_BOOKING_STATUSES.includes(existingBooking.status)",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 367
+     },
+     "in": "cancelBooking",
+     "when": [
+      {
+       "code": "!CANCELLABLE_BOOKING_STATUSES.includes(existingBooking.status)",
+       "text": "existing booking status is not one of PENDING or CONFIRMED"
+      }
+     ],
+     "status": 400,
+     "message": "A {…} booking cannot be cancelled",
+     "text": "If existing booking status is not one of PENDING or CONFIRMED, the server answers 400 Bad Request: \"A {…} booking cannot be cancelled\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:cancelBooking:409:!isAdmin && existingBooking.payment?.provider === PaymentProvider.STRIPE && existingBooking.payment.status === PaymentStatus.COMPLETED",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 380
+     },
+     "in": "cancelBooking",
+     "when": [
+      {
+       "code": "!isAdmin && existingBooking.payment?.provider === PaymentProvider.STRIPE && existingBooking.payment.status === PaymentStatus.COMPLETED",
+       "text": "admin is false, and existing booking payment provider is STRIPE, and existing booking payment status is COMPLETED"
+      }
+     ],
+     "status": 409,
+     "message": "Contact support to cancel a paid booking",
+     "text": "If admin is false, and existing booking payment provider is STRIPE, and existing booking payment status is COMPLETED, the server answers 409 Conflict: \"Contact support to cancel a paid booking\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:cancelBooking:400:cancellation.count !== 1",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 393
+     },
+     "in": "cancelBooking",
+     "when": [
+      {
+       "code": "cancellation.count !== 1",
+       "text": "cancellation count is not 1"
+      }
+     ],
+     "status": 400,
+     "message": "Booking is already cancelled",
+     "text": "If cancellation count is not 1, the server answers 400 Bad Request: \"Booking is already cancelled\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "cancelBooking",
+     "status": 200,
+     "message": "Booking cancelled successfully",
+     "id": "reply:cancelBooking:200:",
+     "source": {
+      "file": "src/app/modules/booking/booking.controller.ts",
+      "line": 68
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Booking cancelled successfully\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "booking",
+     "many": true,
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "CANCELLED"
+      },
+      {
+       "name": "cancelled at",
+       "how": "set",
+       "value": "the current time"
+      }
+     ],
+     "when": [],
+     "in": "cancelBooking",
+     "id": "effect:cancelBooking:update:booking:",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 384
+     },
+     "text": "The matching bookings are changed: status becomes CANCELLED; cancelled at becomes the current time."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "payment",
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "CANCELED"
+      }
+     ],
+     "when": [
+      {
+       "code": "existingBooking.payment?.status === PaymentStatus.PENDING",
+       "text": "existing booking payment status is PENDING"
+      }
+     ],
+     "in": "cancelBooking",
+     "id": "effect:cancelBooking:update:payment:existingBooking.payment?.status === PaymentStatus.PENDING",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 402
+     },
+     "text": "If existing booking payment status is PENDING, the payment is changed: status becomes CANCELED."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "schedule",
+     "fields": [
+      {
+       "name": "available seats",
+       "how": "increment",
+       "value": "seats"
+      }
+     ],
+     "when": [],
+     "in": "releaseBookingSeats",
+     "id": "effect:releaseBookingSeats:update:schedule:",
+     "source": {
+      "file": "src/app/modules/booking/booking.seats.ts",
+      "line": 61
+     },
+     "text": "The schedule is changed: available seats goes up by seats."
+    },
+    {
+     "kind": "effect",
+     "effect": "payment",
+     "what": "paymentIntents.cancel",
+     "when": [
+      {
+       "code": "!(!intentId)",
+       "text": "intent id is set"
+      },
+      {
+       "code": "!(!stripe)",
+       "text": "stripe is found"
+      }
+     ],
+     "in": "cancelPaymentIntentAfterCommit",
+     "bestEffort": true,
+     "id": "effect:cancelPaymentIntentAfterCommit:payment:paymentIntents.cancel:!(!intentId) && !(!stripe)|via:intentToCancel",
+     "source": {
+      "file": "src/app/modules/payment/payment.intentCancel.ts",
+      "line": 31
+     },
+     "path": {
+      "through": "cancelPaymentIntentAfterCommit",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       }
+      ]
+     },
+     "text": "If intent to cancel is found, and intent id is set, and stripe is found, Stripe is asked to cancel a payment intent. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "payment",
+     "many": true,
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "COMPLETED"
+      },
+      {
+       "name": "paid at",
+       "how": "set"
+      },
+      {
+       "name": "payment method",
+       "how": "set",
+       "value": "\"card\""
+      },
+      {
+       "name": "last failure code",
+       "how": "set",
+       "value": "empty"
+      },
+      {
+       "name": "last failure message",
+       "how": "set",
+       "value": "empty"
+      }
+     ],
+     "when": [
+      {
+       "code": "!(matchError || !payment)",
+       "text": "match error is empty, and payment is found"
+      },
+      {
+       "code": "!(intent.livemode !== isLiveStripeKey())"
+      },
+      {
+       "code": "!(intent.status !== 'succeeded')",
+       "text": "intent status is \"succeeded\""
+      },
+      {
+       "code": "!(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status))",
+       "text": "current status is not one of COMPLETED, PARTIALLY_REFUNDED or REFUNDED"
+      },
+      {
+       "code": "!(!APPLICABLE_PAYMENT_STATUSES.includes(current.status))",
+       "text": "current status is one of PENDING or CANCELED"
+      }
+     ],
+     "in": "applyIntentResultInTx",
+     "id": "effect:applyIntentResultInTx:update:payment:!(matchError || !payment) && !(intent.livemode !== isLiveStripeKey()) && !(intent.status !== 'succeeded') && !(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status)) && !(!APPLICABLE_PAYMENT_STATUSES.includes(current.status))|via:intentToCancel && !(!intentId) && !(!stripe) && intent.status === 'succeeded'",
+     "source": {
+      "file": "src/app/modules/payment/payment.service.ts",
+      "line": 457
+     },
+     "path": {
+      "through": "applyIntentResultInTx",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "!(!stripe)",
+        "text": "stripe is found"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 6 earlier checks (the first: intent to cancel is found; on the way to applyIntentResultInTx), if intent status is \"succeeded\", and current status is not one of COMPLETED, PARTIALLY_REFUNDED or REFUNDED, and current status is one of PENDING or CANCELED, the matching payments are changed: status becomes COMPLETED; paid at is set; payment method becomes \"card\"; last failure code becomes empty; last failure message becomes empty. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "refund",
+     "fields": [
+      {
+       "name": "payment id",
+       "how": "set"
+      },
+      {
+       "name": "amount cents",
+       "how": "set"
+      },
+      {
+       "name": "reason",
+       "how": "set",
+       "value": "ADMIN"
+      },
+      {
+       "name": "status",
+       "how": "set",
+       "value": "PENDING"
+      }
+     ],
+     "when": [
+      {
+       "code": "!(matchError || !payment)",
+       "text": "match error is empty, and payment is found"
+      },
+      {
+       "code": "!(intent.livemode !== isLiveStripeKey())"
+      },
+      {
+       "code": "!(intent.status !== 'succeeded')",
+       "text": "intent status is \"succeeded\""
+      },
+      {
+       "code": "!(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status))",
+       "text": "current status is not one of COMPLETED, PARTIALLY_REFUNDED or REFUNDED"
+      },
+      {
+       "code": "!(!APPLICABLE_PAYMENT_STATUSES.includes(current.status))",
+       "text": "current status is one of PENDING or CANCELED"
+      },
+      {
+       "code": "intent.amount_received !== current.amountCents || intent.currency !== current.currency",
+       "text": "intent amount received is different from current amount cents, or intent currency is different from current currency"
+      },
+      {
+       "code": "!(completed.count !== 1)",
+       "text": "completed count is 1"
+      }
+     ],
+     "in": "applyIntentResultInTx",
+     "id": "effect:applyIntentResultInTx:create:refund:!(matchError || !payment) && !(intent.livemode !== isLiveStripeKey()) && !(intent.status !== 'succeeded') && !(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status)) && !(!APPLICABLE_PAYMENT_STATUSES.includes(current.status)) && intent.amount_received !== current.amountCents || intent.currency !== current.currency && !(completed.count !== 1)|via:intentToCancel && !(!intentId) && !(!stripe) && intent.status === 'succeeded'",
+     "source": {
+      "file": "src/app/modules/payment/payment.service.ts",
+      "line": 480
+     },
+     "path": {
+      "through": "applyIntentResultInTx",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "!(!stripe)",
+        "text": "stripe is found"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 8 earlier checks (the first: intent to cancel is found; on the way to applyIntentResultInTx), if current status is one of PENDING or CANCELED, and (intent amount received is different from current amount cents, or intent currency is different from current currency), and completed count is 1, a new refund is saved (reason becomes ADMIN; status becomes PENDING). If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "refund",
+     "fields": [
+      {
+       "name": "payment id",
+       "how": "set"
+      },
+      {
+       "name": "amount cents",
+       "how": "set"
+      },
+      {
+       "name": "reason",
+       "how": "set"
+      },
+      {
+       "name": "status",
+       "how": "set",
+       "value": "PENDING"
+      }
+     ],
+     "when": [
+      {
+       "code": "!(matchError || !payment)",
+       "text": "match error is empty, and payment is found"
+      },
+      {
+       "code": "!(intent.livemode !== isLiveStripeKey())"
+      },
+      {
+       "code": "!(intent.status !== 'succeeded')",
+       "text": "intent status is \"succeeded\""
+      },
+      {
+       "code": "!(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status))",
+       "text": "current status is not one of COMPLETED, PARTIALLY_REFUNDED or REFUNDED"
+      },
+      {
+       "code": "!(!APPLICABLE_PAYMENT_STATUSES.includes(current.status))",
+       "text": "current status is one of PENDING or CANCELED"
+      },
+      {
+       "code": "!(intent.amount_received !== current.amountCents || intent.currency !== current.currency)",
+       "text": "intent amount received is the same as current amount cents, and intent currency is the same as current currency"
+      },
+      {
+       "code": "booking.status === BookingStatus.EXPIRED || booking.status === BookingStatus.CANCELLED",
+       "text": "booking status is EXPIRED, or booking status is CANCELLED"
+      },
+      {
+       "code": "!(completed.count !== 1)",
+       "text": "completed count is 1"
+      },
+      {
+       "code": "!(booking.status === BookingStatus.EXPIRED && (await retakeSeats(tx, booking, now)))"
+      }
+     ],
+     "in": "applyIntentResultInTx",
+     "id": "effect:applyIntentResultInTx:create:refund:!(matchError || !payment) && !(intent.livemode !== isLiveStripeKey()) && !(intent.status !== 'succeeded') && !(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status)) && !(!APPLICABLE_PAYMENT_STATUSES.includes(current.status)) && !(intent.amount_received !== current.amountCents || intent.currency !== current.currency) && booking.status === BookingStatus.EXPIRED || booking.status === BookingStatus.CANCELLED && !(completed.count !== 1) && !(booking.status === BookingStatus.EXPIRED && (await retakeSeats(tx, booking, now)))|via:intentToCancel && !(!intentId) && !(!stripe) && intent.status === 'succeeded'",
+     "source": {
+      "file": "src/app/modules/payment/payment.service.ts",
+      "line": 516
+     },
+     "path": {
+      "through": "applyIntentResultInTx",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "!(!stripe)",
+        "text": "stripe is found"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 10 earlier checks (the first: intent to cancel is found; on the way to applyIntentResultInTx), if (booking status is EXPIRED, or booking status is CANCELLED), and completed count is 1, and `!(booking.status === BookingStatus.EXPIRED && (await retakeSeats(tx, booking, now)))`, a new refund is saved (status becomes PENDING). If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "booking",
+     "many": true,
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "CONFIRMED"
+      },
+      {
+       "name": "confirmed at",
+       "how": "set"
+      }
+     ],
+     "when": [
+      {
+       "code": "!(matchError || !payment)",
+       "text": "match error is empty, and payment is found"
+      },
+      {
+       "code": "!(intent.livemode !== isLiveStripeKey())"
+      },
+      {
+       "code": "!(intent.status !== 'succeeded')",
+       "text": "intent status is \"succeeded\""
+      },
+      {
+       "code": "!(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status))",
+       "text": "current status is not one of COMPLETED, PARTIALLY_REFUNDED or REFUNDED"
+      },
+      {
+       "code": "!(!APPLICABLE_PAYMENT_STATUSES.includes(current.status))",
+       "text": "current status is one of PENDING or CANCELED"
+      },
+      {
+       "code": "!(intent.amount_received !== current.amountCents || intent.currency !== current.currency)",
+       "text": "intent amount received is the same as current amount cents, and intent currency is the same as current currency"
+      },
+      {
+       "code": "!(booking.status === BookingStatus.EXPIRED || booking.status === BookingStatus.CANCELLED)",
+       "text": "booking status is not EXPIRED, and booking status is not CANCELLED"
+      },
+      {
+       "code": "!(booking.status !== BookingStatus.PENDING)",
+       "text": "booking status is PENDING"
+      }
+     ],
+     "in": "applyIntentResultInTx",
+     "id": "effect:applyIntentResultInTx:update:booking:!(matchError || !payment) && !(intent.livemode !== isLiveStripeKey()) && !(intent.status !== 'succeeded') && !(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status)) && !(!APPLICABLE_PAYMENT_STATUSES.includes(current.status)) && !(intent.amount_received !== current.amountCents || intent.currency !== current.currency) && !(booking.status === BookingStatus.EXPIRED || booking.status === BookingStatus.CANCELLED) && !(booking.status !== BookingStatus.PENDING)|via:intentToCancel && !(!intentId) && !(!stripe) && intent.status === 'succeeded'",
+     "source": {
+      "file": "src/app/modules/payment/payment.service.ts",
+      "line": 535
+     },
+     "path": {
+      "through": "applyIntentResultInTx",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "!(!stripe)",
+        "text": "stripe is found"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 9 earlier checks (the first: intent to cancel is found; on the way to applyIntentResultInTx), if intent amount received is the same as current amount cents, and intent currency is the same as current currency, and booking status is not EXPIRED, and booking status is not CANCELLED, and booking status is PENDING, the matching bookings are changed: status becomes CONFIRMED; confirmed at is set. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "payment",
+     "many": true,
+     "fields": [
+      {
+       "name": "stripe payment intent id",
+       "how": "set"
+      }
+     ],
+     "when": [
+      {
+       "code": "!(byIntentId)",
+       "text": "no matching payment is found"
+      },
+      {
+       "code": "!(!metadataPaymentId)",
+       "text": "metadata payment id is set"
+      },
+      {
+       "code": "!(!byMetadata)",
+       "text": "a matching payment is found"
+      },
+      {
+       "code": "!(byMetadata.stripePaymentIntentId && byMetadata.stripePaymentIntentId !== intent.id)",
+       "text": "by metadata stripe payment intent id is empty, or by metadata stripe payment intent id is the same as intent id"
+      }
+     ],
+     "in": "findPaymentForIntent",
+     "id": "effect:findPaymentForIntent:update:payment:!(byIntentId) && !(!metadataPaymentId) && !(!byMetadata) && !(byMetadata.stripePaymentIntentId && byMetadata.stripePaymentIntentId !== intent.id)|via:intentToCancel && !(!intentId) && !(!stripe) && intent.status === 'succeeded'",
+     "source": {
+      "file": "src/app/modules/payment/payment.service.ts",
+      "line": 356
+     },
+     "path": {
+      "through": "findPaymentForIntent",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "!(!stripe)",
+        "text": "stripe is found"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 5 earlier checks (the first: intent to cancel is found; on the way to findPaymentForIntent), if metadata payment id is set, and a matching payment is found, and (by metadata stripe payment intent id is empty, or by metadata stripe payment intent id is the same as intent id), the matching payments are changed: stripe payment intent id is set. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "booking",
+     "many": true,
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "CONFIRMED"
+      },
+      {
+       "name": "confirmed at",
+       "how": "set"
+      }
+     ],
+     "when": [
+      {
+       "code": "!(!allBookable)",
+       "text": "all bookable is true"
+      },
+      {
+       "code": "!(!(await takeSeats(tx, scheduleIds, bookingSeatCount(booking))))"
+      }
+     ],
+     "in": "retakeSeats",
+     "id": "effect:retakeSeats:update:booking:!(!allBookable) && !(!(await takeSeats(tx, scheduleIds, bookingSeatCount(booking))))|via:intentToCancel && !(!intentId) && !(!stripe) && intent.status === 'succeeded' && !(matchError || !payment) && !(intent.livemode !== isLiveStripeKey()) && !(intent.status !== 'succeeded') && !(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status)) && !(!APPLICABLE_PAYMENT_STATUSES.includes(current.status)) && !(intent.amount_received !== current.amountCents || intent.currency !== current.currency) && booking.status === BookingStatus.EXPIRED || booking.status === BookingStatus.CANCELLED && !(completed.count !== 1)",
+     "source": {
+      "file": "src/app/modules/payment/payment.service.ts",
+      "line": 395
+     },
+     "path": {
+      "through": "retakeSeats",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "!(!stripe)",
+        "text": "stripe is found"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       },
+       {
+        "code": "!(matchError || !payment)",
+        "text": "match error is empty, and payment is found"
+       },
+       {
+        "code": "!(intent.livemode !== isLiveStripeKey())"
+       },
+       {
+        "code": "!(intent.status !== 'succeeded')",
+        "text": "intent status is \"succeeded\""
+       },
+       {
+        "code": "!(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status))",
+        "text": "current status is not one of COMPLETED, PARTIALLY_REFUNDED or REFUNDED"
+       },
+       {
+        "code": "!(!APPLICABLE_PAYMENT_STATUSES.includes(current.status))",
+        "text": "current status is one of PENDING or CANCELED"
+       },
+       {
+        "code": "!(intent.amount_received !== current.amountCents || intent.currency !== current.currency)",
+        "text": "intent amount received is the same as current amount cents, and intent currency is the same as current currency"
+       },
+       {
+        "code": "booking.status === BookingStatus.EXPIRED || booking.status === BookingStatus.CANCELLED",
+        "text": "booking status is EXPIRED, or booking status is CANCELLED"
+       },
+       {
+        "code": "!(completed.count !== 1)",
+        "text": "completed count is 1"
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 11 earlier checks (the first: intent to cancel is found; on the way to retakeSeats), if completed count is 1, and all bookable is true, and `!(!(await takeSeats(tx, scheduleIds, bookingSeatCount(booking))))`, the matching bookings are changed: status becomes CONFIRMED; confirmed at is set. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "schedule",
+     "many": true,
+     "fields": [
+      {
+       "name": "available seats",
+       "how": "decrement",
+       "value": "seats"
+      }
+     ],
+     "when": [],
+     "in": "takeSeats",
+     "id": "effect:takeSeats:update:schedule:|via:intentToCancel && !(!intentId) && !(!stripe) && intent.status === 'succeeded' && !(matchError || !payment) && !(intent.livemode !== isLiveStripeKey()) && !(intent.status !== 'succeeded') && !(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status)) && !(!APPLICABLE_PAYMENT_STATUSES.includes(current.status)) && !(intent.amount_received !== current.amountCents || intent.currency !== current.currency) && booking.status === BookingStatus.EXPIRED || booking.status === BookingStatus.CANCELLED && !(completed.count !== 1) && !(!allBookable)",
+     "source": {
+      "file": "src/app/modules/booking/booking.seats.ts",
+      "line": 36
+     },
+     "path": {
+      "through": "takeSeats",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "!(!stripe)",
+        "text": "stripe is found"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       },
+       {
+        "code": "!(matchError || !payment)",
+        "text": "match error is empty, and payment is found"
+       },
+       {
+        "code": "!(intent.livemode !== isLiveStripeKey())"
+       },
+       {
+        "code": "!(intent.status !== 'succeeded')",
+        "text": "intent status is \"succeeded\""
+       },
+       {
+        "code": "!(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status))",
+        "text": "current status is not one of COMPLETED, PARTIALLY_REFUNDED or REFUNDED"
+       },
+       {
+        "code": "!(!APPLICABLE_PAYMENT_STATUSES.includes(current.status))",
+        "text": "current status is one of PENDING or CANCELED"
+       },
+       {
+        "code": "!(intent.amount_received !== current.amountCents || intent.currency !== current.currency)",
+        "text": "intent amount received is the same as current amount cents, and intent currency is the same as current currency"
+       },
+       {
+        "code": "booking.status === BookingStatus.EXPIRED || booking.status === BookingStatus.CANCELLED",
+        "text": "booking status is EXPIRED, or booking status is CANCELLED"
+       },
+       {
+        "code": "!(completed.count !== 1)",
+        "text": "completed count is 1"
+       },
+       {
+        "code": "!(!allBookable)",
+        "text": "all bookable is true"
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 10 earlier checks (the first: intent to cancel is found; on the way to takeSeats), if (booking status is EXPIRED, or booking status is CANCELLED), and completed count is 1, and all bookable is true, the matching schedules are changed: available seats goes down by seats. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "schedule",
+     "fields": [
+      {
+       "name": "available seats",
+       "how": "increment",
+       "value": "seats"
+      }
+     ],
+     "when": [
+      {
+       "code": "result.count !== 1",
+       "text": "result count is not 1"
+      }
+     ],
+     "in": "takeSeats",
+     "id": "effect:takeSeats:update:schedule:result.count !== 1|via:intentToCancel && !(!intentId) && !(!stripe) && intent.status === 'succeeded' && !(matchError || !payment) && !(intent.livemode !== isLiveStripeKey()) && !(intent.status !== 'succeeded') && !(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status)) && !(!APPLICABLE_PAYMENT_STATUSES.includes(current.status)) && !(intent.amount_received !== current.amountCents || intent.currency !== current.currency) && booking.status === BookingStatus.EXPIRED || booking.status === BookingStatus.CANCELLED && !(completed.count !== 1) && !(!allBookable)",
+     "source": {
+      "file": "src/app/modules/booking/booking.seats.ts",
+      "line": 42
+     },
+     "path": {
+      "through": "takeSeats",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "!(!stripe)",
+        "text": "stripe is found"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       },
+       {
+        "code": "!(matchError || !payment)",
+        "text": "match error is empty, and payment is found"
+       },
+       {
+        "code": "!(intent.livemode !== isLiveStripeKey())"
+       },
+       {
+        "code": "!(intent.status !== 'succeeded')",
+        "text": "intent status is \"succeeded\""
+       },
+       {
+        "code": "!(ALREADY_APPLIED_PAYMENT_STATUSES.includes(current.status))",
+        "text": "current status is not one of COMPLETED, PARTIALLY_REFUNDED or REFUNDED"
+       },
+       {
+        "code": "!(!APPLICABLE_PAYMENT_STATUSES.includes(current.status))",
+        "text": "current status is one of PENDING or CANCELED"
+       },
+       {
+        "code": "!(intent.amount_received !== current.amountCents || intent.currency !== current.currency)",
+        "text": "intent amount received is the same as current amount cents, and intent currency is the same as current currency"
+       },
+       {
+        "code": "booking.status === BookingStatus.EXPIRED || booking.status === BookingStatus.CANCELLED",
+        "text": "booking status is EXPIRED, or booking status is CANCELLED"
+       },
+       {
+        "code": "!(completed.count !== 1)",
+        "text": "completed count is 1"
+       },
+       {
+        "code": "!(!allBookable)",
+        "text": "all bookable is true"
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 11 earlier checks (the first: intent to cancel is found; on the way to takeSeats), if completed count is 1, and all bookable is true, and result count is not 1, the schedule is changed: available seats goes up by seats. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "payment",
+     "what": "refunds.create",
+     "when": [
+      {
+       "code": "!(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId)",
+       "text": "refund is found, and refund status is PENDING, and refund stripe refund id is empty"
+      },
+      {
+       "code": "!(!stripe)",
+       "text": "stripe is found"
+      },
+      {
+       "code": "!(!payment.stripePaymentIntentId)",
+       "text": "payment stripe payment intent id is set"
+      }
+     ],
+     "in": "sendRefund",
+     "bestEffort": true,
+     "id": "effect:sendRefund:payment:refunds.create:!(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId) && !(!stripe) && !(!payment.stripePaymentIntentId)|via:intentToCancel && !(!intentId) && intent.status === 'succeeded'",
+     "source": {
+      "file": "src/app/modules/payment/payment.refund.ts",
+      "line": 97
+     },
+     "path": {
+      "through": "sendRefund",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       }
+      ]
+     },
+     "text": "After 3 earlier checks (the first: intent to cancel is found; on the way to sendRefund), if refund is found, and refund status is PENDING, and refund stripe refund id is empty, and stripe is found, and payment stripe payment intent id is set, Stripe is asked to create a refund. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "refund",
+     "many": true,
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "FAILED"
+      },
+      {
+       "name": "failure message",
+       "how": "set"
+      }
+     ],
+     "when": [
+      {
+       "code": "!(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId)",
+       "text": "refund is found, and refund status is PENDING, and refund stripe refund id is empty"
+      },
+      {
+       "code": "!(!stripe)",
+       "text": "stripe is found"
+      },
+      {
+       "code": "!(!payment.stripePaymentIntentId)",
+       "text": "payment stripe payment intent id is set"
+      },
+      {
+       "code": "error instanceof Stripe.errors.StripeError",
+       "text": "error is a stripe error"
+      }
+     ],
+     "in": "sendRefund",
+     "onError": true,
+     "id": "effect:sendRefund:update:refund:!(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId) && !(!stripe) && !(!payment.stripePaymentIntentId) && error instanceof Stripe.errors.StripeError:catch|via:intentToCancel && !(!intentId) && intent.status === 'succeeded'",
+     "source": {
+      "file": "src/app/modules/payment/payment.refund.ts",
+      "line": 108
+     },
+     "path": {
+      "through": "sendRefund",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 5 earlier checks (the first: intent to cancel is found; on the way to sendRefund), if stripe is found, and payment stripe payment intent id is set, and error is a stripe error, the matching refunds are changed: status becomes FAILED; failure message is set. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "refund",
+     "many": true,
+     "fields": [
+      {
+       "name": "stripe refund id",
+       "how": "set"
+      }
+     ],
+     "when": [
+      {
+       "code": "!(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId)",
+       "text": "refund is found, and refund status is PENDING, and refund stripe refund id is empty"
+      },
+      {
+       "code": "!(!stripe)",
+       "text": "stripe is found"
+      },
+      {
+       "code": "!(!payment.stripePaymentIntentId)",
+       "text": "payment stripe payment intent id is set"
+      }
+     ],
+     "in": "sendRefund",
+     "bestEffort": true,
+     "id": "effect:sendRefund:update:refund:!(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId) && !(!stripe) && !(!payment.stripePaymentIntentId)|via:intentToCancel && !(!intentId) && intent.status === 'succeeded'",
+     "source": {
+      "file": "src/app/modules/payment/payment.refund.ts",
+      "line": 125
+     },
+     "path": {
+      "through": "sendRefund",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       }
+      ]
+     },
+     "text": "After 3 earlier checks (the first: intent to cancel is found; on the way to sendRefund), if refund is found, and refund status is PENDING, and refund stripe refund id is empty, and stripe is found, and payment stripe payment intent id is set, the matching refunds are changed: stripe refund id is set. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "refund",
+     "many": true,
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "SUCCEEDED"
+      },
+      {
+       "name": "processed at",
+       "how": "set",
+       "value": "the current time"
+      },
+      {
+       "name": "failure message",
+       "how": "set",
+       "value": "empty"
+      }
+     ],
+     "when": [
+      {
+       "code": "!(status === RefundStatus.PENDING)",
+       "text": "status is not PENDING"
+      },
+      {
+       "code": "status === RefundStatus.SUCCEEDED",
+       "text": "status is SUCCEEDED"
+      }
+     ],
+     "in": "applyRefundStatus",
+     "id": "effect:applyRefundStatus:update:refund:!(status === RefundStatus.PENDING) && status === RefundStatus.SUCCEEDED|via:intentToCancel && !(!intentId) && !(!stripe) && intent.status === 'succeeded' && !(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId) && !(!payment.stripePaymentIntentId)",
+     "source": {
+      "file": "src/app/modules/payment/payment.refund.ts",
+      "line": 43
+     },
+     "path": {
+      "through": "applyRefundStatus",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "!(!stripe)",
+        "text": "stripe is found"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       },
+       {
+        "code": "!(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId)",
+        "text": "refund is found, and refund status is PENDING, and refund stripe refund id is empty"
+       },
+       {
+        "code": "!(!payment.stripePaymentIntentId)",
+        "text": "payment stripe payment intent id is set"
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 5 earlier checks (the first: intent to cancel is found; on the way to applyRefundStatus), if payment stripe payment intent id is set, and status is not PENDING, and status is SUCCEEDED, the matching refunds are changed: status becomes SUCCEEDED; processed at becomes the current time; failure message becomes empty. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "payment",
+     "many": true,
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "REFUNDED"
+      }
+     ],
+     "when": [
+      {
+       "code": "!(status === RefundStatus.PENDING)",
+       "text": "status is not PENDING"
+      },
+      {
+       "code": "status === RefundStatus.SUCCEEDED",
+       "text": "status is SUCCEEDED"
+      },
+      {
+       "code": "!(updated.count !== 1)",
+       "text": "updated count is 1"
+      }
+     ],
+     "in": "applyRefundStatus",
+     "id": "effect:applyRefundStatus:update:payment:!(status === RefundStatus.PENDING) && status === RefundStatus.SUCCEEDED && !(updated.count !== 1)|via:intentToCancel && !(!intentId) && !(!stripe) && intent.status === 'succeeded' && !(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId) && !(!payment.stripePaymentIntentId)",
+     "source": {
+      "file": "src/app/modules/payment/payment.refund.ts",
+      "line": 48
+     },
+     "path": {
+      "through": "applyRefundStatus",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "!(!stripe)",
+        "text": "stripe is found"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       },
+       {
+        "code": "!(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId)",
+        "text": "refund is found, and refund status is PENDING, and refund stripe refund id is empty"
+       },
+       {
+        "code": "!(!payment.stripePaymentIntentId)",
+        "text": "payment stripe payment intent id is set"
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 6 earlier checks (the first: intent to cancel is found; on the way to applyRefundStatus), if status is not PENDING, and status is SUCCEEDED, and updated count is 1, the matching payments are changed: status becomes REFUNDED. If that fails, the request still goes on."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "refund",
+     "many": true,
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "FAILED"
+      },
+      {
+       "name": "failure message",
+       "how": "set"
+      }
+     ],
+     "when": [
+      {
+       "code": "!(status === RefundStatus.PENDING)",
+       "text": "status is not PENDING"
+      },
+      {
+       "code": "!(status === RefundStatus.SUCCEEDED)",
+       "text": "status is not SUCCEEDED"
+      }
+     ],
+     "in": "applyRefundStatus",
+     "id": "effect:applyRefundStatus:update:refund:!(status === RefundStatus.PENDING) && !(status === RefundStatus.SUCCEEDED)|via:intentToCancel && !(!intentId) && !(!stripe) && intent.status === 'succeeded' && !(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId) && !(!payment.stripePaymentIntentId)",
+     "source": {
+      "file": "src/app/modules/payment/payment.refund.ts",
+      "line": 58
+     },
+     "path": {
+      "through": "applyRefundStatus",
+      "when": [
+       {
+        "code": "intentToCancel",
+        "text": "intent to cancel is found"
+       },
+       {
+        "code": "!(!intentId)",
+        "text": "intent id is set"
+       },
+       {
+        "code": "!(!stripe)",
+        "text": "stripe is found"
+       },
+       {
+        "code": "intent.status === 'succeeded'",
+        "text": "intent status is \"succeeded\""
+       },
+       {
+        "code": "!(!refund || refund.status !== RefundStatus.PENDING || refund.stripeRefundId)",
+        "text": "refund is found, and refund status is PENDING, and refund stripe refund id is empty"
+       },
+       {
+        "code": "!(!payment.stripePaymentIntentId)",
+        "text": "payment stripe payment intent id is set"
+       }
+      ]
+     },
+     "bestEffort": true,
+     "text": "After 5 earlier checks (the first: intent to cancel is found; on the way to applyRefundStatus), if payment stripe payment intent id is set, and status is not PENDING, and status is not SUCCEEDED, the matching refunds are changed: status becomes FAILED; failure message is set. If that fails, the request still goes on."
+    },
+    {
+     "kind": "together",
+     "changes": [
+      {
+       "effect": "update",
+       "model": "booking",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "payment"
+      },
+      {
+       "effect": "update",
+       "model": "schedule"
+      }
+     ],
+     "in": "cancelBooking",
+     "id": "together:cancelBooking#0",
+     "source": {
+      "file": "src/app/modules/booking/booking.service.ts",
+      "line": 325
+     },
+     "text": "These happen together: the matching bookings are changed, the payment is changed and the schedule is changed. If one of them fails, none of them is kept."
+    },
+    {
+     "kind": "together",
+     "changes": [
+      {
+       "effect": "update",
+       "model": "payment",
+       "many": true
+      },
+      {
+       "effect": "create",
+       "model": "refund"
+      },
+      {
+       "effect": "create",
+       "model": "refund"
+      },
+      {
+       "effect": "update",
+       "model": "booking",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "payment",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "booking",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "schedule",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "schedule"
+      }
+     ],
+     "in": "applyIntentResult",
+     "id": "together:applyIntentResult#0",
+     "source": {
+      "file": "src/app/modules/payment/payment.service.ts",
+      "line": 561
+     },
+     "text": "These happen together: the matching payments are changed, a new refund is saved, the matching bookings are changed, the matching schedules are changed and the schedule is changed. If one of them fails, none of them is kept."
+    },
+    {
+     "kind": "together",
+     "changes": [
+      {
+       "effect": "update",
+       "model": "refund",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "refund",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "payment",
+       "many": true
+      },
+      {
+       "effect": "update",
+       "model": "refund",
+       "many": true
+      }
+     ],
+     "in": "sendRefund",
+     "id": "together:sendRefund#0",
+     "source": {
+      "file": "src/app/modules/payment/payment.refund.ts",
+      "line": 124
+     },
+     "text": "These happen together: the matching refunds are changed and the matching payments are changed. If one of them fails, none of them is kept."
+    }
+   ]
+  }
+ ],
+ "frontend": true,
+ "acceptedAt": "2026-11-06T22:07:34.741Z"
+}

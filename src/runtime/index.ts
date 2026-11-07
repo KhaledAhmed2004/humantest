@@ -15,11 +15,22 @@ import {
 } from '@playwright/test';
 
 const DEMO = !!process.env.HUMANTEST_DEMO;
+// What "type …" and "choose …" can fill in. Radix's hidden native <select> only mirrors the real dropdown.
+const FIELD_CSS = 'input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]), textarea, select:not([aria-hidden=true]), [role=combobox]';
 
 interface Config {
   baseURL: string;
   apiPrefix?: string;
-  login?: { endpoint: string };
+  /**
+   * Hosts the page may send API calls to, e.g. ["localhost:5000"]. A call anywhere else is blocked
+   * and fails the test, so a frontend that still points at a real server can't change its data.
+   */
+  apiHosts?: string[];
+  login?: {
+    endpoint: string;
+    /** For apps that keep the token in a cookie they set themselves: where the token is in the reply. */
+    tokenCookie?: { name: string; from: string };
+  };
   users: Record<string, { email?: string; password?: string }>;
   elements?: Record<string, string>;
   watchdog?: { failTestOnWarning?: boolean; slowApiMs?: number };
@@ -32,8 +43,24 @@ export interface StateContext {
   api: APIRequestContext;
   /** The "quoted" values from the Start with: line. */
   args: string[];
+  /**
+   * The login token of a user from the config (`login.tokenCookie.from` in the login reply),
+   * e.g. `headers: { Authorization: \`Bearer ${await token('admin')}\` }`. Shares the tests' login.
+   */
+  token: (user: string) => Promise<string>;
 }
 export type StateFn = (ctx: StateContext) => Promise<void>;
+/**
+ * A state file: its default export sets the data up. `export const logsOut = true` when it resets
+ * the users or their sessions (a fresh database): logins from before it then no longer work, so
+ * HumanTest logs in again after it. Otherwise logins are kept (backends limit how many there are).
+ */
+export type StateModule = { default: StateFn; logsOut?: boolean };
+
+interface Session { cookies: Awaited<ReturnType<BrowserContext['cookies']>>; token?: string; at: number }
+// One login per user per run (per Playwright worker). Access tokens usually live 15 minutes or more.
+const SESSIONS = new Map<string, Session>();
+const SESSION_REUSE_MS = 10 * 60_000;
 
 interface Options { browser: Browser; testInfo: TestInfo; configPath: string; source: string; line: number }
 
@@ -60,34 +87,126 @@ const short = (v: unknown, max = 300) => {
   const t = typeof v === 'string' ? v : JSON.stringify(v);
   return t && t.length > max ? `${t.slice(0, max)}…` : t;
 };
+/**
+ * {today}, {tomorrow}, {yesterday}, {in 3 days}, {3 days ago} in a step's text: that date on the
+ * test machine, as YYYY-MM-DD. Tests that need "a day with trips" keep working as days pass.
+ */
+export function withDates(text: string): string {
+  return text.replace(/{(today|tomorrow|yesterday|in (\d+) days?|(\d+) days? ago)}/gi, (_m, word: string, ahead?: string, back?: string) => {
+    const shift = ahead ? Number(ahead) : back ? -Number(back) : ({ today: 0, tomorrow: 1, yesterday: -1 } as Record<string, number>)[word.toLowerCase()];
+    const d = new Date();
+    d.setDate(d.getDate() + shift);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** `a.b[0].c` inside a parsed JSON reply. */
+const pick = (obj: unknown, dotted: string) =>
+  dotted.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean).reduce<any>((v, k) => (v == null ? undefined : v[k]), obj);
 
 interface Warning { line: number; user: string; message: string }
+
+/** One API call, as written to the trace file. Only names of query and body fields, never their values. */
+export interface TraceCall {
+  method: string;
+  path: string;
+  query: string[];
+  bodyKeys: string[];
+  status?: number;
+  simulated?: boolean;
+  /** The page the user was on when the call was sent. */
+  pageUrl?: string;
+}
+
+export interface TraceStep {
+  /** Same title as the Playwright step, so the reporter can match them. */
+  title: string;
+  user: string;
+  line: number;
+  text: string;
+  status: 'passed' | 'failed';
+  calls: TraceCall[];
+  /** The page (path) the step ended on. */
+  pageUrl?: string;
+}
+
+export interface Trace { version: 1; test: string; source: string; status: 'passed' | 'failed'; steps: TraceStep[] }
 
 export class Scenario {
   readonly users: User[] = [];
   readonly warnings: Warning[] = [];
+  /** Error replies a step checked (`backend should reply 409`): the page complaining about them is expected. */
+  readonly expectedErrors: { user: string; method: string; path: string; status: number }[] = [];
   /** Every step with its timing, for the replay. */
   readonly records: ReplayStep[] = [];
   /** When each user's video started recording (ms since epoch). */
   readonly videoStarts = new Map<string, number>();
   currentLine = 0;
+  /** Set when an API call went to a host outside `apiHosts`. The test fails at the end of the step. */
+  blocked?: string;
+  /** The page (path) each step ended on, by index into `records`: discovery finds the page's code from it. */
+  readonly stepPages: (string | undefined)[] = [];
 
   constructor(readonly opts: Options, readonly config: Config) {}
+
+  /** Whether an API call to this URL is allowed by `apiHosts` (always, when it isn't set). */
+  allowsHost(url: string): boolean {
+    const hosts = this.config.apiHosts;
+    if (!hosts?.length) return true;
+    try {
+      const u = new URL(url, this.config.baseURL);
+      return hosts.includes(u.host) || hosts.includes(u.hostname);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Where `call GET /api/...` goes. A path is the app's own address, unless the API is on one other
+   * host (`apiHosts`, and the app itself is not on it): then it is that host's.
+   */
+  apiURL(pathname: string): URL {
+    const base = new URL(this.config.baseURL);
+    const hosts = this.config.apiHosts ?? [];
+    if (/^https?:\/\//i.test(pathname) || hosts.length !== 1 || hosts.includes(base.host) || hosts.includes(base.hostname)) {
+      return new URL(pathname, base);
+    }
+    return new URL(pathname, `${base.protocol}//${hosts[0]}`);
+  }
+
+  blockedError(url: string, who: 'page' | 'login' | 'call' = 'page'): string {
+    const allowed = `not one of the allowed API hosts (${this.config.apiHosts!.join(', ')})`;
+    if (who === 'login') {
+      return `The login endpoint ${url} is ${allowed}, so HumanTest did not log in there.\n` +
+        `Change "login.endpoint" or "apiHosts" in humantest.config.json.`;
+    }
+    return `${who === 'call' ? 'This step' : 'The page'} tried to call ${url}, which is ${allowed}.\n` +
+      `The call was blocked, so nothing changed there. Point the frontend at your local backend, ` +
+      `or add the host to "apiHosts" in humantest.config.json if it is safe to change.`;
+  }
 
   warn(user: string, message: string) {
     if (this.warnings.some((w) => w.message === message && w.user === user)) return;
     this.warnings.push({ line: this.currentLine, user, message });
   }
 
-  async startWith(line: number, name: string, args: string[], fn: StateFn) {
+  async startWith(line: number, name: string, args: string[], state: StateFn | StateModule) {
+    const fn = typeof state === 'function' ? state : state.default;
     this.currentLine = line;
     const rec: ReplayStep = { user: 'setup', line, text: `start with: ${name}`, start: Date.now(), end: 0, status: 'passed' };
     this.records.push(rec);
     await test.step(`line ${line} · start with: ${name}`, async () => {
       const api = await apiRequest.newContext({ baseURL: this.config.baseURL });
       try {
-        await fn({ api, args });
+        const token = async (user: string) => {
+          const t = (await this.login(user)).token;
+          if (!t) throw new Error('token() needs "login.tokenCookie" in humantest.config.json, to know where the token is in the login reply.');
+          return t;
+        };
+        await fn({ api, args, token });
+        // After it: the logins from before it (and from inside it) may no longer work.
+        if (typeof state !== 'function' && state.logsOut) SESSIONS.clear();
       } catch (e) {
         rec.status = 'failed';
         const err = this.humanError(line, 'setup', `Start with: ${name}`, e);
@@ -125,20 +244,60 @@ export class Scenario {
     await u.init();
     this.users.push(u);
 
-    const creds = this.config.users[name] ?? {};
-    if (creds.email) {
-      await test.step(`line ${line} · log in as ${name} (${creds.email})`, async () => {
-        const endpoint = this.config.login?.endpoint ?? '/api/login';
-        const res = await context.request.post(new URL(endpoint, this.config.baseURL).toString(), {
-          data: { email: creds.email, password: creds.password },
-        });
-        if (!res.ok()) {
-          throw this.humanError(line, name, `log in as ${name}`,
-            new Error(`${endpoint} replied ${res.status()}: ${short(await res.text())}\nCheck the email/password for "${name}" in humantest.config.json.`));
+    if (this.config.users[name]?.email) {
+      await test.step(`line ${line} · log in as ${name} (${this.config.users[name].email})`, async () => {
+        try {
+          await context.addCookies((await this.login(name)).cookies);
+        } catch (e) {
+          throw this.humanError(line, name, `log in as ${name}`, e);
         }
       }, { box: true });
     }
     return u;
+  }
+
+  /**
+   * Log a user in, once per run: later tests (and states) reuse the session, because backends
+   * often allow only a few logins a minute. Kept in memory only, never written to disk.
+   */
+  async login(name: string): Promise<Session> {
+    const creds = this.config.users[name] ?? {};
+    if (!creds.email) throw new Error(`The user "${name}" has no email/password in humantest.config.json, so HumanTest can't log them in.`);
+    const endpoint = this.config.login?.endpoint ?? '/api/login';
+    const url = new URL(endpoint, this.config.baseURL).toString();
+    const key = `${url}|${creds.email}|${creds.password}`;
+    const cached = SESSIONS.get(key);
+    if (cached && Date.now() - cached.at < SESSION_REUSE_MS) return cached;
+    if (!this.allowsHost(url)) throw new Error(this.blockedError(url, 'login'));
+
+    const api = await apiRequest.newContext();
+    try {
+      const res = await api.post(url, { data: { email: creds.email, password: creds.password } });
+      if (!res.ok()) {
+        const why = res.status() === 429
+          ? 'The backend refuses more logins for now (too many in a short time). Wait a minute and run again.'
+          : `Check the email/password for "${name}" in humantest.config.json.`;
+        throw new Error(`${endpoint} replied ${res.status()}: ${short(await res.text())}\n${why}`);
+      }
+      const cookies = (await api.storageState()).cookies;
+      let token: string | undefined;
+      const tc = this.config.login?.tokenCookie;
+      if (tc) {
+        let t: unknown;
+        try { t = pick(await res.json(), tc.from); } catch { /* not JSON */ }
+        if (typeof t !== 'string' || !t) {
+          throw new Error(`${endpoint} replied ${res.status()}, but there is no token at "${tc.from}" in the reply.\n` +
+            `Check "login.tokenCookie.from" in humantest.config.json. The reply was: ${short(await res.text())}`);
+        }
+        token = t;
+        cookies.push({ name: tc.name, value: t, domain: new URL(this.config.baseURL).hostname, path: '/', expires: -1, httpOnly: false, secure: false, sameSite: 'Lax' });
+      }
+      const session: Session = { cookies, token, at: Date.now() };
+      SESSIONS.set(key, session);
+      return session;
+    } finally {
+      await api.dispose();
+    }
   }
 
   humanError(line: number, user: string, text: string, err: unknown, u?: User): Error {
@@ -171,6 +330,7 @@ export class Scenario {
 
   async finish(passed: boolean) {
     const info = this.opts.testInfo;
+    this.dropExpected();
     const videoDir = path.join(process.cwd(), 'humantest-videos', fileSlug(info.title));
     const saved: { user: string; file: string; started: number; burnedCaptions?: boolean }[] = [];
     for (const u of this.users) {
@@ -235,12 +395,66 @@ export class Scenario {
       }
     }
 
+    this.writeTrace(passed);
+
     for (const w of this.warnings) {
       info.annotations.push({ type: 'watchdog', description: `line ${w.line} · ${w.user} · ${w.message}` });
     }
+    if (passed && this.blocked) throw new HumanError(this.blocked);
     if (passed && this.warnings.length && this.config.watchdog?.failTestOnWarning) {
       throw new HumanError(`The test steps passed, but the watchdog found ${this.warnings.length} problem(s):\n` +
         this.warnings.map((w) => `   ⚠ line ${w.line} · ${w.user} · ${w.message}`).join('\n'));
+    }
+  }
+
+  /**
+   * The test asked for a 409 from POST /api/v1/routes, so the page logging "[API Error 409]: POST
+   * /routes", or the 5xx it answered, is what the test checks, not a hidden problem. A warning goes
+   * only when it names that status, the method, and the last fixed part of the path, for that user.
+   */
+  private dropExpected() {
+    const expected = (w: Warning) => this.expectedErrors.some((e) => {
+      if (e.user !== w.user) return false;
+      const last = e.path.split('/').filter((x) => x && !x.startsWith(':')).pop() ?? '';
+      return new RegExp(`\\b${e.status}\\b`).test(w.message) && w.message.includes(e.method) && w.message.includes(`/${last}`);
+    });
+    for (let i = this.warnings.length - 1; i >= 0; i--) if (expected(this.warnings[i])) this.warnings.splice(i, 1);
+  }
+
+  /**
+   * Writes .humantest/traces/<test>.json: every step with the API calls it caused.
+   * Written on every run (not only demo runs), so other tools can see what each step touched.
+   */
+  private writeTrace(passed: boolean) {
+    const info = this.opts.testInfo;
+    const calls = new Map<number, TraceCall[]>();
+    for (const u of this.users) {
+      for (const e of u.log) {
+        if (e.step < 0) continue;
+        const list = calls.get(e.step) ?? [];
+        list.push({ method: e.method, path: e.path, query: e.query, bodyKeys: e.bodyKeys, status: e.status,
+          ...(e.mocked ? { simulated: true } : {}), ...(e.pageUrl ? { pageUrl: e.pageUrl } : {}) });
+        calls.set(e.step, list);
+      }
+    }
+    const trace: Trace = {
+      version: 1,
+      test: info.title,
+      source: `${this.opts.source}:${this.opts.line}`,
+      status: passed ? 'passed' : 'failed',
+      steps: this.records.map((r, i) => ({
+        title: r.user === 'setup' ? `line ${r.line} · ${r.text}` : `line ${r.line} · ${r.user} · ${r.text}`,
+        user: r.user, line: r.line, text: r.text, status: r.status, calls: calls.get(i) ?? [],
+        ...(this.stepPages[i] ? { pageUrl: this.stepPages[i] } : {}),
+      })),
+    };
+    const file = path.join(process.cwd(), '.humantest', 'traces', `${fileSlug(`${this.opts.source} ${info.title}`)}.json`);
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify(trace, null, 1));
+      info.annotations.push({ type: 'trace', description: path.relative(process.cwd(), file) });
+    } catch (e) {
+      this.warn('setup', `Could not write the trace file: ${(e as Error).message}`);
     }
   }
 }
@@ -307,6 +521,14 @@ interface LogEntry {
   mocked?: boolean;
   req?: Request;
   body?: Promise<string | null>;
+  /** Which step sent it: an index into Scenario.records, or -1 before this user's first step. */
+  step: number;
+  /** Names of the query parameters (not their values). */
+  query: string[];
+  /** Top-level field names of a JSON or form body (not their values). */
+  bodyKeys: string[];
+  /** Path of the page the user was on. */
+  pageUrl?: string;
 }
 
 interface Reply { label: string; status: number; text: () => Promise<string | null> }
@@ -314,17 +536,27 @@ interface Reply { label: string; status: number; text: () => Promise<string | nu
 export class User {
   readonly log: LogEntry[] = [];
   private mark = 0;
+  /** The element the last click landed on: while it is still there, the page hasn't moved on. */
+  private lastClicked?: Locator;
   private lastReply?: Reply;
   private readonly mocked = new WeakSet<Request>();
   /** Reply bodies, captured on the Node side so they survive page navigations. */
   private readonly bodies = new WeakMap<Request, string>();
   private offline = false;
   private caption?: string;
+  /** This user's latest step (index into Scenario.records), so its API calls are counted to it. */
+  private stepIndex = -1;
 
   /** Route every API call through Node so we always have its reply body. Simulations are added later and run first. */
   async init() {
     const prefix = this.ht.config.apiPrefix ?? '/api';
     await this.context.route((url) => url.pathname.startsWith(prefix), async (route) => {
+      const url = route.request().url();
+      if (!this.ht.allowsHost(url)) {
+        this.ht.blocked ??= this.ht.blockedError(url);
+        await route.abort('blockedbyclient').catch(() => {});
+        return;
+      }
       try {
         const res = await route.fetch();
         const body = await res.text();
@@ -345,7 +577,18 @@ export class User {
 
     context.on('request', (req) => {
       if (!isApi(req)) return;
-      this.log.push({ method: req.method(), path: new URL(req.url()).pathname, line: ht.currentLine, at: Date.now(), req });
+      const url = new URL(req.url());
+      let bodyKeys: string[] = [];
+      try {
+        const body = req.postDataJSON();
+        if (body && typeof body === 'object' && !Array.isArray(body)) bodyKeys = Object.keys(body);
+      } catch { /* not JSON or form data, e.g. a file upload */ }
+      let pageUrl: string | undefined;
+      try { pageUrl = new URL(page.url()).pathname; } catch { /* about:blank */ }
+      this.log.push({
+        method: req.method(), path: url.pathname, line: ht.currentLine, at: Date.now(), req,
+        step: this.stepIndex, query: [...new Set(url.searchParams.keys())], bodyKeys, pageUrl,
+      });
     });
     context.on('response', (res: Response) => {
       const req = res.request();
@@ -366,12 +609,23 @@ export class User {
     });
     context.on('requestfailed', (req) => {
       const err = req.failure()?.errorText ?? '';
-      if (this.mocked.has(req) || this.offline || /ABORTED/i.test(err)) return;
+      if (this.mocked.has(req) || this.offline || /ABORTED/i.test(err) || !ht.allowsHost(req.url())) return;
       ht.warn(name, `${req.method()} ${req.url()} failed: ${err}`);
     });
     page.on('pageerror', (err) => ht.warn(name, `JavaScript error on the page: ${err.message}`));
     page.on('console', (msg) => {
-      if (msg.type() === 'error' && !/Failed to load resource/i.test(msg.text())) ht.warn(name, `Console error: ${msg.text()}`);
+      if (msg.type() !== 'error' || /Failed to load resource/i.test(msg.text())) return;
+      // React writes console.error('In HTML, %s cannot be a descendant of <%s>.', '<div>', 'p'):
+      // the text alone keeps the %s, so the arguments are put in.
+      const text = msg.text();
+      if (!/%[sdoOif]/.test(text)) { ht.warn(name, `Console error: ${text}`); return; }
+      void Promise.all(msg.args().map((a) => a.jsonValue().catch(() => '…')))
+        .then(([format, ...args]) => {
+          let k = 0;
+          const filled = (typeof format === 'string' ? format : text).replace(/%[sdoOif]/g, () => (k < args.length ? String(typeof args[k] === 'object' ? JSON.stringify(args[k++]) : args[k++]) : '…'));
+          ht.warn(name, `Console error: ${filled}`);
+        })
+        .catch(() => ht.warn(name, `Console error: ${text}`));
     });
     if (DEMO) page.on('load', () => { void this.showCaption(); });
   }
@@ -389,17 +643,26 @@ export class User {
     }
   }
 
-  async step(line: number, text: string, fn: (u: User) => Promise<void>) {
+  /** `check`: the step only looks (or waits), so API calls during it still belong to the step before. */
+  async step(line: number, text: string, fn: (u: User) => Promise<void>, opts: { check?: boolean } = {}) {
     await test.step(`line ${line} · ${this.name} · ${text}`, async () => {
       this.ht.currentLine = line;
       this.caption = `👤 ${this.name}   ·   line ${line}   ·   ${text}`;
       const rec: ReplayStep = { user: this.name, line, text, start: Date.now(), end: 0, status: 'passed' };
+      if (!opts.check || this.stepIndex < 0) this.stepIndex = this.ht.records.length;
+      const index = this.ht.records.length;
       this.ht.records.push(rec);
       this.focus = undefined;
       await this.showCaption();
+      const notePage = () => {
+        try { this.ht.stepPages[index] = new URL(this.page.url()).pathname; } catch { /* about:blank */ }
+      };
       try {
         await fn(this);
+        notePage();
+        if (this.ht.blocked) throw new Error(this.ht.blocked);
       } catch (e) {
+        notePage();
         const err = this.ht.humanError(line, this.name, text, e, this);
         rec.status = 'failed';
         rec.error = err.message.split('\n').slice(2).join('\n').trim();
@@ -483,33 +746,73 @@ export class User {
       r.getByLabel(name),
       r.getByPlaceholder(name),
       r.getByRole('combobox', { name }),
+      this.near(name, FIELD_CSS),
     ];
   }
 
+  /**
+   * The `css` element inside the smallest block that also shows a text starting with `name`:
+   * for a label that isn't linked to its input (`<Label>From *</Label>` next to a dropdown).
+   */
+  private near(name: string, css: string): Locator {
+    const text = this.page.getByText(new RegExp(`^\\s*${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'));
+    return this.root.locator('div, section, fieldset, form, label, li')
+      .filter({ has: text }).filter({ has: this.page.locator(css) })
+      .last().locator(css).first();
+  }
+
   /** Wait until one of the candidates is visible, then use the best one. */
-  private async pick(candidates: Locator[], what: string): Promise<Locator> {
+  /**
+   * `exact`: how many of the candidates (the first ones) are a sure match. When only a weaker
+   * match is on screen, the page may still be changing: "Continue to pay" is part of "Continue to
+   * Payment" on the page before. So an exact match gets a moment to appear first.
+   */
+  private async pick(candidates: Locator[], what: string, exact = candidates.length): Promise<Locator> {
     let any = candidates[0];
     for (const c of candidates.slice(1)) any = any.or(c);
     await expect(any.first(), `I can't find ${what}.`).toBeVisible();
-    for (const c of candidates) {
-      if (await c.first().isVisible().catch(() => false)) return c.first();
+    const firstVisible = async () => {
+      for (const [i, c] of candidates.entries()) {
+        if (await c.first().isVisible().catch(() => false)) return i;
+      }
+      return -1;
+    };
+    // The partial match is the very thing the last step clicked: the page hasn't changed yet
+    // (a dev server compiles a page on its first visit), so wait as long as for anything else.
+    const stale = async (j: number) => !!this.lastClicked &&
+      await candidates[j].first().evaluate((el, last) => el === last, await this.lastClicked.elementHandle({ timeout: 100 }).catch(() => null)).catch(() => false);
+    let i = await firstVisible();
+    for (const start = Date.now(); i >= exact;) {
+      const waited = Date.now() - start;
+      if (waited > 15_000 || (waited > 1500 && !(await stale(i)))) break;
+      await sleep(100);
+      i = await firstVisible();
     }
-    return any.first();
+    return i >= 0 ? candidates[i].first() : any.first();
   }
 
   private clickable(name: string, role?: string) {
     const where = this.scope ? ` inside "${this.scope.name}"` : '';
-    return this.pick(this.clickableCandidates(name, role), `a ${role ?? 'button, link or menu item'} called "${name}"${where}`);
+    const candidates = this.clickableCandidates(name, role);
+    // Buttons and links with exactly these words come first. Plain text with the same words (help text
+    // that names the button: "Click Continue to pay") and partial matches only win when no such
+    // button shows up: a button that is still loading would otherwise lose to its own description.
+    const special = role === 'dialog' || role === 'panel' || role === 'section' || !!this.mapped(name);
+    const strong = special ? candidates.length : role === 'button' || role === 'link' ? 1 : 10;
+    return this.pick(candidates, `a ${role ?? 'button, link or menu item'} called "${name}"${where}`, strong);
   }
 
   private field(name: string) {
     const where = this.scope ? ` inside "${this.scope.name}"` : '';
-    return this.pick(this.fieldCandidates(name), `an input or dropdown called "${name}"${where} (looked for a label, placeholder or name)`);
+    const candidates = this.fieldCandidates(name);
+    // The last four are partial: label, placeholder, dropdown name, the words next to it.
+    return this.pick(candidates, `an input or dropdown called "${name}"${where} (looked for a label, placeholder or name)`, candidates.length > 1 ? candidates.length - 4 : 1);
   }
 
   // ---------------- browser actions ----------------
 
   async goTo(url: string) {
+    url = withDates(url);
     this.mark = this.log.length;
     await this.page.goto(url);
   }
@@ -520,6 +823,7 @@ export class User {
   }
 
   async type(value: string, field: string) {
+    value = withDates(value);
     const loc = await this.field(field);
     await this.noteFocus(loc);
     this.mark = this.log.length;
@@ -544,6 +848,7 @@ export class User {
   }
 
   async choose(option: string, field: string) {
+    option = withDates(option);
     const loc = await this.field(field);
     await this.noteFocus(loc);
     this.mark = this.log.length;
@@ -561,6 +866,34 @@ export class User {
     await opt.click();
   }
 
+  /**
+   * Choose a file in a file input. Upload widgets often hide the input and don't label it,
+   * so after the label, the input inside the smallest block that also shows `field` is used.
+   */
+  async upload(file: string, field?: string) {
+    const full = [path.join(process.cwd(), 'e2e', 'files', file), path.resolve(process.cwd(), file)].find((f) => fs.existsSync(f));
+    if (!full) throw new Error(`There is no file "${file}". Put it in e2e/files/ (looked for ${path.join('e2e', 'files', file)}).`);
+    const r = this.root;
+    const inputs = r.locator('input[type=file]');
+    const where = this.scope ? ` inside "${this.scope.name}"` : '';
+    let loc: Locator | undefined = field ? this.mapped(field) : undefined;
+    if (!loc && field) {
+      const labelled = r.getByLabel(field).and(inputs);
+      const near = this.near(field, 'input[type=file]');
+      await expect(labelled.or(near).first(), `I can't find a file input for "${field}"${where}.`).toBeAttached();
+      loc = (await labelled.count()) ? labelled.first() : near.first();
+    }
+    if (!loc) {
+      await expect(inputs.first(), `I can't find a file input${where}.`).toBeAttached();
+      const n = await inputs.count();
+      if (n > 1) throw new Error(`There are ${n} file inputs${where}. Say which one: upload "${file}" to "<the text next to it>".`);
+      loc = inputs.first();
+    }
+    if (DEMO) await this.highlight(loc).catch(() => {});
+    this.mark = this.log.length;
+    await loc.setInputFiles(full);
+  }
+
   async press(key: string) {
     this.mark = this.log.length;
     await this.page.keyboard.press(key);
@@ -572,9 +905,11 @@ export class User {
     if (DEMO) await this.highlight(loc);
     this.mark = this.log.length;
     await loc.click();
+    this.lastClicked = loc;
   }
 
   async see(text: string) {
+    text = withDates(text);
     try {
       await expect(this.root.getByText(text).first(), `"${text}" should be visible${this.scope ? ` inside "${this.scope.name}"` : ' on the page'}, but it isn't.`).toBeVisible();
       await this.noteFocus(this.root.getByText(text).first());
@@ -601,6 +936,7 @@ export class User {
   }
 
   async notSee(text: string) {
+    text = withDates(text);
     await expect(this.root.getByText(text).first(), `"${text}" should NOT be visible, but it is.`).toBeHidden();
   }
 
@@ -659,7 +995,13 @@ export class User {
   async backendReceives(method: string, pathname: string, timeoutMs = 5000) {
     const deadline = Date.now() + timeoutMs;
     let entry: LogEntry | undefined;
-    while (!(entry = this.log.slice(this.mark).find((e) => e.method === method && e.path === pathname)) && Date.now() < deadline) {
+    // ":id" (or any ":name") stands for one part of the path that changes from run to run.
+    const parts = pathname.split('/');
+    const matches = (p: string) => {
+      const q = p.split('/');
+      return q.length === parts.length && parts.every((x, i) => (x.startsWith(':') ? q[i] !== '' : x === q[i]));
+    };
+    while (!(entry = this.log.slice(this.mark).find((e) => e.method === method && matches(e.path))) && Date.now() < deadline) {
       await sleep(50);
     }
     if (!entry) {
@@ -681,9 +1023,16 @@ export class User {
 
   async call(method: string, pathname: string) {
     this.mark = this.log.length;
-    const res = await this.context.request.fetch(new URL(pathname, this.ht.config.baseURL).toString(), { method });
+    const url = this.ht.apiURL(pathname);
+    if (!this.ht.allowsHost(url.toString())) throw new Error(this.ht.blockedError(url.toString(), 'call'));
+    // The login's cookies go with it; its token too, the way the page sends it (many APIs read only the header).
+    const token = this.ht.config.users[this.name]?.email ? (await this.ht.login(this.name)).token : undefined;
+    const res = await this.context.request.fetch(url.toString(), { method, ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}) });
     const body = res.text().catch(() => null);
-    this.log.push({ method, path: pathname, line: this.ht.currentLine, at: Date.now(), status: res.status(), body });
+    this.log.push({
+      method, path: pathname, line: this.ht.currentLine, at: Date.now(), status: res.status(), body,
+      step: this.stepIndex, query: [...new Set(url.searchParams.keys())], bodyKeys: [],
+    });
     this.lastReply = { label: `${method} ${pathname}`, status: res.status(), text: () => body };
   }
 
@@ -706,6 +1055,10 @@ export class User {
     if (r.status !== expected) {
       const body = await r.text().catch(() => null);
       throw new Error(`${r.label} replied ${r.status}, expected ${expected}.${body ? `\nReply body: ${short(body)}` : ''}`);
+    }
+    if (expected >= 400) {
+      const [method, pathname] = r.label.split(' ');
+      this.ht.expectedErrors.push({ user: this.name, method, path: pathname, status: expected });
     }
   }
 

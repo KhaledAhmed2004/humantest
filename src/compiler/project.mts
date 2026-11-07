@@ -12,7 +12,15 @@ export interface HumanTestConfig {
   phrasesDir?: string;
   outDir: string;
   apiPrefix?: string;
-  login?: { endpoint: string };
+  /** Hosts the page may call, e.g. ["localhost:5000"]. Calls anywhere else are blocked and fail the test. */
+  apiHosts?: string[];
+  login?: { endpoint: string; tokenCookie?: { name: string; from: string } };
+  /** Where the app's own code is (for business logic discovery). Relative to this config file. */
+  source?: { backend?: string; frontend?: string };
+  /** Plain words for names in the code, used when rules are written out: { "isArch": "archived" }. */
+  glossary?: Record<string, string>;
+  /** Where the accepted business logic of each test is kept (commit it). Default: e2e/logic. */
+  logicDir?: string;
   pages: Record<string, string>;
   users: Record<string, UserConfig>;
   elements?: Record<string, string>;

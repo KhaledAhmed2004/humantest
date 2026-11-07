@@ -25,6 +25,7 @@ export function humanize(raw: string): { text: string; where?: string } {
     [/^(?:types?|enters?|writes?|fills? in) today(?:'s)?(?: date)? (?:in|into) (?:the )?(.+?)(?: (?:field|box|input))?$/i, (m) => `Enters today's date in ${unquote(m[1])}`],
     [/^(?:types?|enters?|writes?|fills? in) "([^"]*)" (?:in|into) (?:the )?(.+?)(?: (?:field|box|input))?$/i, (m) => `Types "${m[1]}" into ${unquote(m[2])}`],
     [/^(?:chooses?|selects?|picks?) "([^"]+)" (?:for|in|from) (?:the )?(.+?)(?: (?:field|dropdown|list|menu))?$/i, (m) => `Picks "${m[1]}" for ${unquote(m[2])}`],
+    [/^(?:uploads?|attach(?:es)?) "([^"]+)"(?: (?:to|in|into|for|as) (?:the )?(.+?)(?: (?:field|input|box|area))?)?$/i, (m) => `Uploads "${m[1]}"${m[2] ? ` as ${unquote(m[2])}` : ''}`],
     [/^(?:press(?:es)?|hits?) (?:the )?(\w+)(?: key)?$/i, (m) => `Presses ${m[1]}`],
     [/^(?:clicks?|press(?:es)?|taps?) (?:on )?(?:the )?"([^"]+)"(?: (?:button|link))?$/i, (m) => `Clicks "${m[1]}"`],
     [/^(?:clicks?|press(?:es)?|taps?) (?:on )?(?:the )?(.+?) (?:button|link)$/i, (m) => `Clicks "${m[1]}"`],

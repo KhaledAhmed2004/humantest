@@ -1,0 +1,767 @@
+{
+ "version": 1,
+ "key": "e2e/tests/login.ht::A login with an unknown email is refused",
+ "test": "A login with an unknown email is refused",
+ "source": "e2e/tests/login.ht:5",
+ "steps": [
+  {
+   "title": "line 8 · visitor · go to login page",
+   "line": 8,
+   "text": "go to login page",
+   "requests": []
+  },
+  {
+   "title": "line 9 · visitor · type \"nobody.humantest@example.com\" in \"Enter your email\"",
+   "line": 9,
+   "text": "type \"nobody.humantest@example.com\" in \"Enter your email\"",
+   "requests": []
+  },
+  {
+   "title": "line 10 · visitor · type \"Wrong-password-1\" in \"Enter your password\"",
+   "line": 10,
+   "text": "type \"Wrong-password-1\" in \"Enter your password\"",
+   "requests": []
+  },
+  {
+   "title": "line 11 · visitor · click \"Sign In\"",
+   "line": 11,
+   "text": "click \"Sign In\"",
+   "requests": [
+    "CLICK \"Sign In\" on src/app/(authentication)/login/page.tsx",
+    "POST /api/v1/auth/login"
+   ]
+  },
+  {
+   "title": "line 12 · visitor · backend should receive POST /api/v1/auth/login",
+   "line": 12,
+   "text": "backend should receive POST /api/v1/auth/login",
+   "requests": []
+  },
+  {
+   "title": "line 13 · visitor · backend should reply 401 Unauthorized",
+   "line": 13,
+   "text": "backend should reply 401 Unauthorized",
+   "requests": []
+  },
+  {
+   "title": "line 14 · visitor · should see \"Invalid credentials\"",
+   "line": 14,
+   "text": "should see \"Invalid credentials\"",
+   "requests": []
+  },
+  {
+   "title": "line 15 · visitor · should still be on login page",
+   "line": 15,
+   "text": "should still be on login page",
+   "requests": []
+  }
+ ],
+ "requests": [
+  {
+   "request": "CLICK \"Sign In\" on src/app/(authentication)/login/page.tsx",
+   "ui": {
+    "url": "/login",
+    "label": "Sign In"
+   },
+   "functions": [
+    {
+     "name": "LoginForm",
+     "file": "src/app/(authentication)/login/_components/LoginForm.tsx",
+     "line": 36,
+     "role": "helper",
+     "hash": "1454050473ab"
+    },
+    {
+     "name": "loginSchema",
+     "file": "src/schemas/auth.ts",
+     "line": 13,
+     "role": "validation",
+     "hash": "214e965f5f39"
+    },
+    {
+     "name": "onSubmit",
+     "file": "src/app/(authentication)/login/_components/LoginForm.tsx",
+     "line": 89,
+     "role": "helper",
+     "hash": "a8db980d822d"
+    },
+    {
+     "name": "getDestination",
+     "file": "src/app/(authentication)/login/_components/LoginForm.tsx",
+     "line": 52,
+     "role": "helper",
+     "hash": "e4865bb2c797"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "ui-block",
+     "side": "frontend",
+     "element": "Sign In",
+     "when": {
+      "code": "loginMutation.isPending",
+      "text": "a request is in progress"
+     },
+     "id": "ui-block:Sign In",
+     "source": {
+      "file": "src/app/(authentication)/login/_components/LoginForm.tsx",
+      "line": 221
+     },
+     "text": "\"Sign In\" can't be used while a request is in progress."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "Enter your email",
+     "side": "frontend",
+     "facet": "format",
+     "format": "email",
+     "id": "fe:html:Enter your email:format:email",
+     "source": {
+      "file": "src/app/(authentication)/login/_components/LoginForm.tsx",
+      "line": 164
+     },
+     "text": "Enter your email: must be a valid email address."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "required",
+     "required": true,
+     "id": "fe:field:body.email:required",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 14
+     },
+     "side": "frontend",
+     "text": "email: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "type",
+     "type": "text",
+     "id": "fe:field:body.email:type",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 14
+     },
+     "side": "frontend",
+     "text": "email: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "format",
+     "format": "email",
+     "message": "Invalid email address",
+     "id": "fe:field:body.email:format:email",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 14
+     },
+     "side": "frontend",
+     "text": "email: must be a valid email address."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "required",
+     "required": true,
+     "id": "fe:field:body.password:required",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 15
+     },
+     "side": "frontend",
+     "text": "password: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "type",
+     "type": "text",
+     "id": "fe:field:body.password:type",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 15
+     },
+     "side": "frontend",
+     "text": "password: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "min",
+     "value": 6,
+     "unit": "characters",
+     "message": "Password must be at least 6 characters",
+     "id": "fe:field:body.password:min",
+     "source": {
+      "file": "src/schemas/auth.ts",
+      "line": 15
+     },
+     "side": "frontend",
+     "text": "password: at least 6 characters."
+    }
+   ]
+  },
+  {
+   "request": "POST /api/v1/auth/login",
+   "route": {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "file": "src/app/modules/auth/auth.route.ts",
+    "line": 52
+   },
+   "functions": [
+    {
+     "name": "rateLimitMiddleware",
+     "file": "src/app/middlewares/rateLimit.ts",
+     "line": 16,
+     "role": "middleware",
+     "hash": "0b63ebf06afc"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "loginSchema",
+     "file": "src/app/modules/auth/auth.validation.ts",
+     "line": 127,
+     "role": "validation",
+     "hash": "42b5ff0b43e5"
+    },
+    {
+     "name": "loginUser",
+     "file": "src/app/modules/auth/auth.controller.ts",
+     "line": 75,
+     "role": "controller",
+     "hash": "39d016b1d577"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "loginUser",
+     "file": "src/app/modules/auth/auth.service.ts",
+     "line": 287,
+     "role": "service",
+     "hash": "caf434292c9a"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "createSession",
+     "file": "src/app/modules/session/session.service.ts",
+     "line": 41,
+     "role": "service",
+     "hash": "2e268fcd3d6f"
+    },
+    {
+     "name": "generateRandomToken",
+     "file": "src/app/modules/session/session.service.ts",
+     "line": 31,
+     "role": "service",
+     "hash": "0eecb1b0b963"
+    },
+    {
+     "name": "calculateExpirationDate",
+     "file": "src/app/modules/session/session.service.ts",
+     "line": 35,
+     "role": "service",
+     "hash": "4816ea72df2a"
+    },
+    {
+     "name": "SESSION_LIFETIME_DAYS",
+     "file": "src/app/modules/session/session.service.ts",
+     "line": 7,
+     "role": "service",
+     "hash": "fdafe050ca26"
+    },
+    {
+     "name": "createToken",
+     "file": "src/helpers/jwtHelper.ts",
+     "line": 3,
+     "role": "helper",
+     "hash": "d8e60bc84a19"
+    },
+    {
+     "name": "setAuthCookies",
+     "file": "src/app/modules/auth/auth.controller.ts",
+     "line": 28,
+     "role": "controller",
+     "hash": "66578e584433"
+    },
+    {
+     "name": "authCookieOptions",
+     "file": "src/app/modules/auth/auth.controller.ts",
+     "line": 17,
+     "role": "controller",
+     "hash": "98860389773a"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "required",
+     "required": true,
+     "message": "Email is required",
+     "id": "field:body.email:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 130
+     },
+     "text": "email: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.email:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 130
+     },
+     "text": "email: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "format",
+     "format": "email",
+     "message": "Invalid email address",
+     "id": "field:body.email:format:email",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 130
+     },
+     "text": "email: must be a valid email address."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "required",
+     "required": true,
+     "message": "Password is required",
+     "id": "field:body.password:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 134
+     },
+     "text": "password: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.password:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 134
+     },
+     "text": "password: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "message": "Password is required",
+     "id": "field:body.password:min",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 134
+     },
+     "text": "password: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "deviceToken",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.deviceToken:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 137
+     },
+     "text": "deviceToken: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "deviceToken",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.deviceToken:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 137
+     },
+     "text": "deviceToken: must be text."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:loginUser:401:!user || !user.passwordHash",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 301
+     },
+     "in": "loginUser",
+     "when": [
+      {
+       "code": "!user || !user.passwordHash",
+       "text": "user is not found, or user password hash is empty"
+      }
+     ],
+     "status": 401,
+     "message": "Invalid credentials",
+     "text": "If user is not found, or user password hash is empty, the server answers 401 Not Logged In: \"Invalid credentials\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:loginUser:403:user.deletedAt",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 305
+     },
+     "in": "loginUser",
+     "when": [
+      {
+       "code": "user.deletedAt",
+       "text": "user is deleted"
+      }
+     ],
+     "status": 403,
+     "message": "Account has been deleted",
+     "text": "If user is deleted, the server answers 403 Forbidden: \"Account has been deleted\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:loginUser:403:user.status === AccountStatus.UNVERIFIED && !user.isEmailVerified",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 309
+     },
+     "in": "loginUser",
+     "when": [
+      {
+       "code": "user.status === AccountStatus.UNVERIFIED && !user.isEmailVerified",
+       "text": "user status is UNVERIFIED, and user is not email verified"
+      }
+     ],
+     "status": 403,
+     "message": "Please verify your email to login",
+     "text": "If user status is UNVERIFIED, and user is not email verified, the server answers 403 Forbidden: \"Please verify your email to login\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:loginUser:403:user.status === AccountStatus.SUSPENDED",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 313
+     },
+     "in": "loginUser",
+     "when": [
+      {
+       "code": "user.status === AccountStatus.SUSPENDED",
+       "text": "user status is SUSPENDED"
+      }
+     ],
+     "status": 403,
+     "message": "Your account has been suspended",
+     "text": "If user status is SUSPENDED, the server answers 403 Forbidden: \"Your account has been suspended\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:loginUser:403:user.status === AccountStatus.DEACTIVATED",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 317
+     },
+     "in": "loginUser",
+     "when": [
+      {
+       "code": "user.status === AccountStatus.DEACTIVATED",
+       "text": "user status is DEACTIVATED"
+      }
+     ],
+     "status": 403,
+     "message": "Your account is deactivated",
+     "text": "If user status is DEACTIVATED, the server answers 403 Forbidden: \"Your account is deactivated\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:loginUser:403:isTempLocked || (isLocked && !user.lockedUntil)",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 325
+     },
+     "in": "loginUser",
+     "when": [
+      {
+       "code": "isTempLocked || (isLocked && !user.lockedUntil)",
+       "text": "temp locked is true, or (locked is true, and user locked until is not set)"
+      }
+     ],
+     "status": 403,
+     "message": "Your account is locked. Please try again later.",
+     "text": "If temp locked is true, or (locked is true, and user locked until is not set), the server answers 403 Forbidden: \"Your account is locked. Please try again later.\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:loginUser:403:!isPasswordValid && attempts >= 5",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 345
+     },
+     "in": "loginUser",
+     "when": [
+      {
+       "code": "!isPasswordValid",
+       "text": "password valid is false"
+      },
+      {
+       "code": "attempts >= 5",
+       "text": "attempts is at least 5"
+      }
+     ],
+     "status": 403,
+     "message": "Too many failed attempts. Your account has been locked for 15 minutes.",
+     "text": "If password valid is false, and attempts is at least 5, the server answers 403 Forbidden: \"Too many failed attempts. Your account has been locked for 15 minutes.\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:loginUser:401:!isPasswordValid && !(attempts >= 5)",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 356
+     },
+     "in": "loginUser",
+     "when": [
+      {
+       "code": "!isPasswordValid",
+       "text": "password valid is false"
+      },
+      {
+       "code": "!(attempts >= 5)",
+       "text": "attempts is less than 5"
+      }
+     ],
+     "status": 401,
+     "message": "Invalid credentials",
+     "text": "If password valid is false, and attempts is less than 5, the server answers 401 Not Logged In: \"Invalid credentials\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "loginUser",
+     "status": 200,
+     "message": "User logged in successfully.",
+     "id": "reply:loginUser:200:",
+     "source": {
+      "file": "src/app/modules/auth/auth.controller.ts",
+      "line": 89
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"User logged in successfully.\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "user",
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "LOCKED"
+      },
+      {
+       "name": "failed login attempts",
+       "how": "set"
+      },
+      {
+       "name": "locked until",
+       "how": "set"
+      }
+     ],
+     "when": [
+      {
+       "code": "!isPasswordValid",
+       "text": "password valid is false"
+      },
+      {
+       "code": "attempts >= 5",
+       "text": "attempts is at least 5"
+      }
+     ],
+     "in": "loginUser",
+     "id": "effect:loginUser:update:user:!isPasswordValid && attempts >= 5",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 337
+     },
+     "text": "If password valid is false, and attempts is at least 5, the user is changed: status becomes LOCKED; failed login attempts is set; locked until is set."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "user",
+     "fields": [
+      {
+       "name": "failed login attempts",
+       "how": "set"
+      }
+     ],
+     "when": [
+      {
+       "code": "!isPasswordValid",
+       "text": "password valid is false"
+      },
+      {
+       "code": "!(attempts >= 5)",
+       "text": "attempts is less than 5"
+      }
+     ],
+     "in": "loginUser",
+     "id": "effect:loginUser:update:user:!isPasswordValid && !(attempts >= 5)",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 350
+     },
+     "text": "If password valid is false, and attempts is less than 5, the user is changed: failed login attempts is set."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "user",
+     "fields": [
+      {
+       "name": "failed login attempts",
+       "how": "set",
+       "value": "0"
+      },
+      {
+       "name": "locked until",
+       "how": "set",
+       "value": "empty"
+      },
+      {
+       "name": "status",
+       "how": "set",
+       "value": "ACTIVE"
+      }
+     ],
+     "when": [
+      {
+       "code": "user.failedLoginAttempts > 0 || user.status === AccountStatus.LOCKED || user.lockedUntil",
+       "text": "user failed login attempts is more than 0, or user status is LOCKED, or user locked until is set"
+      }
+     ],
+     "in": "loginUser",
+     "id": "effect:loginUser:update:user:user.failedLoginAttempts > 0 || user.status === AccountStatus.LOCKED || user.lockedUntil",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 362
+     },
+     "text": "If user failed login attempts is more than 0, or user status is LOCKED, or user locked until is set, the user is changed: failed login attempts becomes 0; locked until becomes empty; status becomes ACTIVE."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "session",
+     "fields": [
+      {
+       "name": "user id",
+       "how": "set"
+      },
+      {
+       "name": "refresh token hash",
+       "how": "set"
+      },
+      {
+       "name": "device info",
+       "how": "set"
+      },
+      {
+       "name": "ip address",
+       "how": "set"
+      },
+      {
+       "name": "expires at",
+       "how": "set"
+      },
+      {
+       "name": "last used at",
+       "how": "set",
+       "value": "the current time"
+      },
+      {
+       "name": "revoked at",
+       "how": "set",
+       "value": "empty"
+      },
+      {
+       "name": "revoked reason",
+       "how": "set",
+       "value": "empty"
+      }
+     ],
+     "when": [],
+     "in": "createSession",
+     "id": "effect:createSession:create:session:",
+     "source": {
+      "file": "src/app/modules/session/session.service.ts",
+      "line": 50
+     },
+     "text": "A new session is saved (last used at becomes the current time; revoked at becomes empty; revoked reason becomes empty)."
+    }
+   ]
+  }
+ ],
+ "frontend": true,
+ "acceptedAt": "2026-11-06T22:07:34.783Z"
+}

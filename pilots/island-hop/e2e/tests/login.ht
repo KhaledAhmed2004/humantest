@@ -1,0 +1,15 @@
+# Logging in to Island Hop with an email nobody has.
+# Safe to run anywhere: an unknown email is refused before anything is written,
+# and no real account gets a failed attempt (so none can be locked).
+
+Test: A login with an unknown email is refused
+
+  As visitor:
+    go to login page
+    type "nobody.humantest@example.com" in "Enter your email"
+    type "Wrong-password-1" in "Enter your password"
+    click "Sign In"
+    backend should receive POST /api/v1/auth/login
+    backend should reply 401 Unauthorized
+    should see "Invalid credentials"
+    should still be on login page

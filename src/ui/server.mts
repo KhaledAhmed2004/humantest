@@ -71,6 +71,186 @@ function watchProjects() {
   }
 }
 
+// ---------------- business logic (.humantest/discovery, written by `cli.mts discover`) ----------------
+
+const fileSlug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+/** Projects whose rules are being worked out right now (it reads the app's code, a few seconds). */
+const discovering = new Set<string>();
+
+/** The business rules behind one test's steps. Same file name as the runtime's trace for it. */
+function discoveryFor(ref: ProjectRef, key: string) {
+  const project = loadProject(ref.root);
+  if (!project.config.source?.backend) return { configured: false };
+  const [file, ...rest] = key.split('::');
+  const out = path.join(ref.root, '.humantest', 'discovery', `${fileSlug(`${file} ${rest.join('::')}`)}.json`);
+  const running = discovering.has(ref.id);
+  if (!fs.existsSync(out)) return { configured: true, running };
+  return { configured: true, running, at: fs.statSync(out).mtime.toISOString(), result: JSON.parse(fs.readFileSync(out, 'utf8')) };
+}
+
+/** After a run: work out the rules behind every traced step, in a separate process so the UI stays quick. */
+function runDiscovery(ref: ProjectRef) {
+  try {
+    if (!loadProject(ref.root).config.source?.backend) return;
+  } catch {
+    return;
+  }
+  discovering.add(ref.id);
+  broadcast({ type: 'discovery', project: ref.id, state: 'running' });
+  const child = spawn(process.execPath, [path.join(TOOL_ROOT, 'src', 'cli.mts'), 'discover', '--project', ref.root], {
+    cwd: TOOL_ROOT, env: { ...process.env, FORCE_COLOR: '0' },
+  });
+  let out = '';
+  child.stdout?.on('data', (d) => { out += d; });
+  child.stderr?.on('data', (d) => { out += d; });
+  child.on('close', (code) => {
+    discovering.delete(ref.id);
+    if (code) broadcast({ type: 'log', line: `Working out the business rules failed:\n${out.slice(-2000)}` });
+    broadcast({ type: 'discovery', project: ref.id, state: 'done' });
+    computeChanges(ref);
+    computeCoverage(ref);
+  });
+}
+
+// ---------------- changes in the business logic since it was accepted (e2e/logic/) ----------------
+
+interface ChangesState { computing: boolean; at?: string; tests: unknown[]; error?: string; again?: boolean }
+const changesOf = new Map<string, ChangesState>();
+
+const cli = (ref: ProjectRef, extra: string[]) =>
+  spawn(process.execPath, [path.join(TOOL_ROOT, 'src', 'cli.mts'), 'discover', ...extra, '--project', ref.root], {
+    cwd: TOOL_ROOT, env: { ...process.env, FORCE_COLOR: '0' },
+  });
+
+/** Compares the current code with each test's accepted logic, in a separate process (it reads all the code). */
+function computeChanges(ref: ProjectRef) {
+  try {
+    if (!loadProject(ref.root).config.source?.backend) return;
+  } catch {
+    return;
+  }
+  const state = changesOf.get(ref.id) ?? { computing: false, tests: [] };
+  changesOf.set(ref.id, state);
+  // Already working: do it once more afterwards, with the newest code.
+  if (state.computing) { state.again = true; return; }
+  state.computing = true;
+  const child = cli(ref, ['--changes', '--json']);
+  let out = '';
+  let err = '';
+  child.stdout?.on('data', (d) => { out += d; });
+  child.stderr?.on('data', (d) => { err += d; });
+  child.on('close', (code) => {
+    state.computing = false;
+    try {
+      // The JSON is the last line; anything before it is the CLI's own notes.
+      const last = out.trim().split(/\r?\n/).pop() ?? '';
+      state.tests = last.startsWith('[') ? JSON.parse(last) : [];
+      state.error = undefined;
+      state.at = new Date().toISOString();
+    } catch {
+      state.error = `Could not compare the business logic (exit ${code}). ${err.slice(-500)}`;
+    }
+    broadcast({ type: 'changes', project: ref.id });
+    if (state.again) { state.again = false; computeChanges(ref); }
+  });
+}
+
+// ---------------- what the tests don't cover (discover --gaps), with draft tests ----------------
+
+interface CoverageState { computing: boolean; at?: string; report?: unknown; error?: string; again?: boolean }
+const coverageOf = new Map<string, CoverageState>();
+
+/** Works out the coverage again, in a separate process (it reads all the code). */
+function computeCoverage(ref: ProjectRef) {
+  try {
+    if (!loadProject(ref.root).config.source?.backend) return;
+  } catch {
+    return;
+  }
+  const state = coverageOf.get(ref.id) ?? { computing: false };
+  coverageOf.set(ref.id, state);
+  if (state.computing) { state.again = true; return; }
+  state.computing = true;
+  broadcast({ type: 'coverage', project: ref.id });
+  const child = cli(ref, ['--gaps', '--drafts', '--json']);
+  let out = '';
+  let err = '';
+  child.stdout?.on('data', (d) => { out += d; });
+  child.stderr?.on('data', (d) => { err += d; });
+  child.on('close', (code) => {
+    state.computing = false;
+    try {
+      // The JSON starts on a line of its own; anything before it is the CLI's own notes.
+      const start = out.search(/^{/m);
+      state.report = JSON.parse(out.slice(start));
+      state.error = undefined;
+      state.at = new Date().toISOString();
+    } catch {
+      state.error = `Could not work out what the tests cover (exit ${code}). ${err.slice(-500)}`;
+    }
+    broadcast({ type: 'coverage', project: ref.id });
+    if (state.again) { state.again = false; computeCoverage(ref); }
+  });
+}
+
+/**
+ * Saves a draft test as a new file in the tests folder (tests/drafts/<name>.ht), never over an
+ * existing one, so it can be opened and finished in an editor. Says if the file needs fixing.
+ */
+function saveDraft(ref: ProjectRef, text: string) {
+  const project = loadProject(ref.root);
+  const name = text.match(/^(?:Test|Draft):\s*(.+)$/m)?.[1] ?? 'draft';
+  const dir = path.join(project.testsDir, 'drafts');
+  fs.mkdirSync(dir, { recursive: true });
+  const slug = fileSlug(name).slice(0, 60) || 'draft';
+  let file = path.join(dir, `${slug}.ht`);
+  for (let n = 2; fs.existsSync(file); n++) file = path.join(dir, `${slug}-${n}.ht`);
+  fs.writeFileSync(file, `${text.trimEnd()}\n`);
+  const rel = path.relative(ref.root, file).split(path.sep).join('/');
+  const diagnostics = check(project).parsed.find((p) => p.file === file)?.diagnostics ?? [];
+  return { file: rel, path: file, diagnostics };
+}
+
+/** Re-compare whenever someone edits the backend's code: the badge shows up within seconds of saving. */
+function watchBackends() {
+  for (const ref of projects) {
+    let dirs: string[] = [];
+    try {
+      const source = loadProject(ref.root).config.source;
+      if (!source?.backend) continue;
+      dirs = [source.backend, source.frontend].filter((d): d is string => !!d).map((d) => path.resolve(ref.root, d)).filter((d) => fs.existsSync(d));
+    } catch {
+      continue;
+    }
+    let timer: NodeJS.Timeout | undefined;
+    for (const dir of dirs) {
+      try {
+        fs.watch(dir, { recursive: true }, (_e, file) => {
+          const f = String(file ?? '');
+          if (!/\.[cm]?[jt]sx?$/.test(f) || /(^|[\\/])(node_modules|dist|build|coverage|\.next)[\\/]/.test(f)) return;
+          clearTimeout(timer);
+          timer = setTimeout(() => { computeChanges(ref); computeCoverage(ref); }, 2000);
+        });
+      } catch (e) {
+        console.warn(`Not watching ${dir} for changes: ${(e as Error).message}`);
+      }
+    }
+    computeChanges(ref);
+    computeCoverage(ref);
+  }
+}
+
+function acceptChanges(ref: ProjectRef, key: string | undefined, done: (ok: boolean, message: string) => void) {
+  const child = cli(ref, ['--accept', '--json', ...(key ? ['--key', key] : [])]);
+  let out = '';
+  child.stdout?.on('data', (d) => { out += d; });
+  child.stderr?.on('data', (d) => { out += d; });
+  child.on('close', (code) => {
+    done(code === 0, code === 0 ? 'Accepted.' : out.slice(-500));
+    computeChanges(ref);
+  });
+}
+
 // ---------------- history (per project, in .humantest/history.json) ----------------
 
 interface TestResult {
@@ -114,6 +294,7 @@ function listTests(ref: ProjectRef) {
         line: t.line,
         users: t.users.map((u) => u.name),
         state: t.state?.name,
+        ...(t.draft ? { draft: true } : {}),
         steps: t.steps.map((st) => ({ line: st.line, user: st.user, text: st.text, story: st.story?.text, title: stepTitle(st) })),
       })),
     })),
@@ -202,6 +383,7 @@ function startRun(ref: ProjectRef, opts: { key?: string; file?: string; demo: bo
     writeHistory(ref, h);
     run = undefined;
     broadcast({ type: 'run-end', code });
+    if (thisRun.done > 0) runDiscovery(ref);
   });
   return { ok: true };
 }
@@ -289,6 +471,34 @@ const server = http.createServer(async (req, res) => {
       if (!ref) return json(res, 404, { error: 'Unknown project' });
       return json(res, 200, { ...listTests(ref), history: readHistory(ref) });
     }
+    if (req.method === 'GET' && url.pathname === '/api/discovery') {
+      const ref = findProject(url.searchParams.get('project'));
+      if (!ref) return json(res, 404, { error: 'Unknown project' });
+      return json(res, 200, discoveryFor(ref, url.searchParams.get('key') ?? ''));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/changes') {
+      const ref = findProject(url.searchParams.get('project'));
+      if (!ref) return json(res, 404, { error: 'Unknown project' });
+      return json(res, 200, changesOf.get(ref.id) ?? { computing: false, tests: [] });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/coverage') {
+      const ref = findProject(url.searchParams.get('project'));
+      if (!ref) return json(res, 404, { error: 'Unknown project' });
+      return json(res, 200, coverageOf.get(ref.id) ?? { computing: false });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/draft') {
+      const body = await readBody(req);
+      const ref = findProject(body.project);
+      if (!ref) return json(res, 404, { error: 'Unknown project' });
+      if (typeof body.text !== 'string' || !/^(Test|Draft):/m.test(body.text)) return json(res, 400, { error: 'That is not a draft test.' });
+      return json(res, 200, saveDraft(ref, body.text));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/accept') {
+      const body = await readBody(req);
+      const ref = findProject(body.project);
+      if (!ref) return json(res, 404, { error: 'Unknown project' });
+      return acceptChanges(ref, typeof body.key === 'string' ? body.key : undefined, (ok, message) => json(res, ok ? 200 : 500, ok ? { ok } : { error: message }));
+    }
     if (req.method === 'POST' && url.pathname === '/api/run') {
       const body = await readBody(req);
       const ref = findProject(body.project);
@@ -322,6 +532,7 @@ const server = http.createServer(async (req, res) => {
 
 setInterval(() => { for (const c of clients) c.write(': ping\n\n'); }, 20_000).unref();
 watchProjects();
+watchBackends();
 
 server.listen(PORT, '127.0.0.1', () => {
   const link = `http://localhost:${PORT}`;

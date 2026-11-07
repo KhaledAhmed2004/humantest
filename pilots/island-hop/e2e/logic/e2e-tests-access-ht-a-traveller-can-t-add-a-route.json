@@ -1,0 +1,656 @@
+{
+ "version": 1,
+ "key": "e2e/tests/access.ht::A traveller can't add a route",
+ "test": "A traveller can't add a route",
+ "source": "e2e/tests/access.ht:4",
+ "steps": [
+  {
+   "title": "line 7 · traveller · go to \"/\"",
+   "line": 7,
+   "text": "go to \"/\"",
+   "requests": []
+  },
+  {
+   "title": "line 8 · traveller · call POST /api/v1/routes",
+   "line": 8,
+   "text": "call POST /api/v1/routes",
+   "requests": [
+    "POST /api/v1/routes"
+   ]
+  },
+  {
+   "title": "line 9 · traveller · backend should reply 403 Forbidden",
+   "line": 9,
+   "text": "backend should reply 403 Forbidden",
+   "requests": []
+  }
+ ],
+ "requests": [
+  {
+   "request": "POST /api/v1/routes",
+   "route": {
+    "method": "POST",
+    "path": "/api/v1/routes",
+    "file": "src/app/modules/route/route.route.ts",
+    "line": 25
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "createRouteZodSchema",
+     "file": "src/app/modules/route/route.validation.ts",
+     "line": 4,
+     "role": "validation",
+     "hash": "bc42bc4ce66f"
+    },
+    {
+     "name": "createRoute",
+     "file": "src/app/modules/route/route.controller.ts",
+     "line": 8,
+     "role": "controller",
+     "hash": "521f80e2df76"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "createRoute",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 18,
+     "role": "service",
+     "hash": "b124b96545b3"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/route/route.route.ts",
+      "line": 25
+     },
+     "text": "Only ADMIN can do this."
+    },
+    {
+     "kind": "check",
+     "section": "body",
+     "field": "destinationPortId",
+     "message": "Departure port and destination port cannot be the same",
+     "when": {
+      "code": "data.departurePortId === data.destinationPortId",
+      "text": "departure port id is the same as destination port id"
+     },
+     "id": "check:body.destinationPortId:Departure port and destination port cannot be the same",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 39
+     },
+     "text": "If departure port id is the same as destination port id, the request is refused (on destinationPortId): \"Departure port and destination port cannot be the same\"."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "departurePortId",
+     "facet": "required",
+     "required": true,
+     "message": "departurePortId is required",
+     "id": "field:body.departurePortId:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 7
+     },
+     "text": "departurePortId: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "departurePortId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.departurePortId:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 7
+     },
+     "text": "departurePortId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "departurePortId",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "message": "departurePortId is required",
+     "id": "field:body.departurePortId:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 7
+     },
+     "text": "departurePortId: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "destinationPortId",
+     "facet": "required",
+     "required": true,
+     "message": "destinationPortId is required",
+     "id": "field:body.destinationPortId:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 10
+     },
+     "text": "destinationPortId: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "destinationPortId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.destinationPortId:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 10
+     },
+     "text": "destinationPortId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "destinationPortId",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "message": "destinationPortId is required",
+     "id": "field:body.destinationPortId:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 10
+     },
+     "text": "destinationPortId: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "required",
+     "required": true,
+     "message": "durationMinutes must be a number",
+     "id": "field:body.durationMinutes:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 13
+     },
+     "text": "durationMinutes: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "type",
+     "type": "a whole number",
+     "id": "field:body.durationMinutes:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 13
+     },
+     "text": "durationMinutes: must be a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "durationMinutes must be at least 1 minute",
+     "id": "field:body.durationMinutes:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 13
+     },
+     "text": "durationMinutes: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "durationMinutes",
+     "facet": "max",
+     "value": 1440,
+     "unit": "number",
+     "message": "durationMinutes cannot exceed 1440 minutes (24 hours)",
+     "id": "field:body.durationMinutes:max",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 13
+     },
+     "text": "durationMinutes: at most 1440."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "basePrice",
+     "facet": "required",
+     "required": false,
+     "default": "30",
+     "id": "field:body.basePrice:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 18
+     },
+     "text": "basePrice: optional (default 30)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "basePrice",
+     "facet": "type",
+     "type": "a number",
+     "id": "field:body.basePrice:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 18
+     },
+     "text": "basePrice: must be a number."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "basePrice",
+     "facet": "min",
+     "value": 0,
+     "unit": "number",
+     "message": "basePrice cannot be negative",
+     "id": "field:body.basePrice:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 18
+     },
+     "text": "basePrice: at least 0."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "required",
+     "required": true,
+     "message": "description is required",
+     "id": "field:body.description:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 19
+     },
+     "text": "description: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.description:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 19
+     },
+     "text": "description: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "message": "description is required",
+     "id": "field:body.description:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 19
+     },
+     "text": "description: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "description",
+     "facet": "max",
+     "value": 1000,
+     "unit": "characters",
+     "message": "description cannot exceed 1000 characters",
+     "id": "field:body.description:max",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 19
+     },
+     "text": "description: at most 1000 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "amenities",
+     "facet": "required",
+     "required": false,
+     "default": "empty list",
+     "id": "field:body.amenities:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 24
+     },
+     "text": "amenities: optional (default empty list)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "amenities",
+     "facet": "type",
+     "type": "a list of text",
+     "id": "field:body.amenities:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 24
+     },
+     "text": "amenities: must be a list of text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "imageUrl",
+     "facet": "required",
+     "required": true,
+     "message": "imageUrl is required",
+     "id": "field:body.imageUrl:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 25
+     },
+     "text": "imageUrl: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "imageUrl",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.imageUrl:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 25
+     },
+     "text": "imageUrl: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "imageUrl",
+     "facet": "min",
+     "value": 1,
+     "unit": "characters",
+     "message": "imageUrl is required",
+     "id": "field:body.imageUrl:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 25
+     },
+     "text": "imageUrl: must not be empty."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "isBorderCrossing",
+     "facet": "required",
+     "required": false,
+     "default": "false",
+     "id": "field:body.isBorderCrossing:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 29
+     },
+     "text": "isBorderCrossing: optional (default false)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "isBorderCrossing",
+     "facet": "type",
+     "type": "true or false",
+     "id": "field:body.isBorderCrossing:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 29
+     },
+     "text": "isBorderCrossing: must be true or false."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "status",
+     "facet": "required",
+     "required": false,
+     "default": "ACTIVE",
+     "id": "field:body.status:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 30
+     },
+     "text": "status: optional (default ACTIVE)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "status",
+     "facet": "oneOf",
+     "values": [
+      "ACTIVE",
+      "INACTIVE"
+     ],
+     "message": "status must be ACTIVE or INACTIVE",
+     "id": "field:body.status:oneOf",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 30
+     },
+     "text": "status: one of ACTIVE or INACTIVE."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createRoute:400:dto.departurePortId === dto.destinationPortId",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 20
+     },
+     "in": "createRoute",
+     "when": [
+      {
+       "code": "dto.departurePortId === dto.destinationPortId",
+       "text": "departure port id is the same as destination port id"
+      }
+     ],
+     "status": 400,
+     "message": "Departure port and destination port cannot be the same",
+     "text": "If departure port id is the same as destination port id, the server answers 400 Bad Request: \"Departure port and destination port cannot be the same\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createRoute:404:!departurePort || !departurePort.isActive",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 32
+     },
+     "in": "createRoute",
+     "when": [
+      {
+       "code": "!departurePort || !departurePort.isActive",
+       "text": "departure port is not found, or departure port is not active"
+      }
+     ],
+     "status": 404,
+     "message": "Departure port not found or inactive: {departure port id}",
+     "text": "If departure port is not found, or departure port is not active, the server answers 404 Not Found: \"Departure port not found or inactive: {departure port id}\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createRoute:404:!destinationPort || !destinationPort.isActive",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 39
+     },
+     "in": "createRoute",
+     "when": [
+      {
+       "code": "!destinationPort || !destinationPort.isActive",
+       "text": "destination port is not found, or destination port is not active"
+      }
+     ],
+     "status": 404,
+     "message": "Destination port not found or inactive: {destination port id}",
+     "text": "If destination port is not found, or destination port is not active, the server answers 404 Not Found: \"Destination port not found or inactive: {destination port id}\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:createRoute:409:existing",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 55
+     },
+     "in": "createRoute",
+     "when": [
+      {
+       "code": "existing",
+       "text": "a matching route is found"
+      }
+     ],
+     "status": 409,
+     "message": "A route from {departure port name} to {destination port name} already exists",
+     "text": "If a matching route is found, the server answers 409 Conflict: \"A route from {departure port name} to {destination port name} already exists\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "createRoute",
+     "status": 201,
+     "message": "Route created successfully",
+     "id": "reply:createRoute:201:",
+     "source": {
+      "file": "src/app/modules/route/route.controller.ts",
+      "line": 12
+     },
+     "text": "When nothing stops it, the server answers 201 Created: \"Route created successfully\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "route",
+     "fields": [
+      {
+       "name": "departure port id",
+       "how": "set"
+      },
+      {
+       "name": "destination port id",
+       "how": "set"
+      },
+      {
+       "name": "duration minutes",
+       "how": "set"
+      },
+      {
+       "name": "base price",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "description",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "amenities",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "image url",
+       "how": "set",
+       "optional": true
+      },
+      {
+       "name": "is border crossing",
+       "how": "set",
+       "value": "false",
+       "fallback": true
+      },
+      {
+       "name": "status",
+       "how": "set",
+       "value": "ACTIVE",
+       "fallback": true
+      }
+     ],
+     "when": [],
+     "in": "createRoute",
+     "id": "effect:createRoute:create:route:",
+     "source": {
+      "file": "src/app/modules/route/route.service.ts",
+      "line": 61
+     },
+     "text": "A new route is saved (is border crossing: false unless given; status: ACTIVE unless given)."
+    }
+   ]
+  }
+ ],
+ "frontend": true,
+ "acceptedAt": "2026-11-06T22:07:34.029Z"
+}

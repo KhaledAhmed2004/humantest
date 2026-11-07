@@ -1,0 +1,56 @@
+# The operator's fleet, in Island Hop.
+# The operator is the Makana account on the login page's "Operator" demo button.
+# Every ferry these tests add is named "HumanTest test ferry"; "Start with: no test ferries"
+# removes any that a failed run left behind (see e2e/states/no-test-ferries.ts).
+
+Test: Operator adds a ferry and removes it again
+
+  Start with: no test ferries
+
+  As operator:
+    go to fleet page
+    should see "Fleet"
+    click "Add Ferry"
+    "Add New Ferry" dialog should be open
+    type "HumanTest test ferry" in "Ferry Name"
+    type "40" in "Passenger Capacity"
+    in "Add New Ferry" dialog, click "Add Ferry"
+    backend should receive POST /api/v1/ferries
+    backend should reply 201 Created
+    should see "Ferry vessel registered successfully"
+    "Add New Ferry" dialog should be closed
+    in "HumanTest test ferry" row, click "Remove Ferry"
+    in "Remove Ferry" dialog, click "Yes, Remove Ferry"
+    backend should receive DELETE /api/v1/ferries/:id
+    backend should reply 200 OK
+    should see "Vessel permanently deleted"
+
+
+# The page lets 1 seat through (min="1"); the server wants at least 5.
+Test: A ferry with fewer than 5 seats is refused by the server
+
+  Start with: no test ferries
+
+  As operator:
+    go to fleet page
+    click "Add Ferry"
+    type "HumanTest test ferry" in "Ferry Name"
+    type "3" in "Passenger Capacity"
+    in "Add New Ferry" dialog, click "Add Ferry"
+    backend should receive POST /api/v1/ferries
+    backend should reply 400 Bad Request
+    should see "Capacity must be at least 5 seats"
+    "Add New Ferry" dialog should be open
+
+
+# Only spaces get past the browser's own "required", so the page's own check is what stops it.
+Test: The ferry form stops before sending when the name is only spaces
+
+  As operator:
+    go to fleet page
+    click "Add Ferry"
+    type "   " in "Ferry Name"
+    in "Add New Ferry" dialog, click "Add Ferry"
+    should see "Please provide a Ferry Name."
+    backend should not receive any request
+    "Add New Ferry" dialog should be open

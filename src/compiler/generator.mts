@@ -3,7 +3,7 @@
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { emitStep } from './steps.mts';
+import { ACTION_KINDS, emitStep } from './steps.mts';
 import type { ParsedFile } from './parser.mts';
 import type { Project } from './project.mts';
 
@@ -45,7 +45,7 @@ export function generate(project: Project, parsed: ParsedFile): string {
   lines.push(`import path from 'node:path';`);
   lines.push(`import { test } from '@playwright/test';`);
   lines.push(`import { humantest } from ${s(relImport(outDir, RUNTIME))};`);
-  for (const [file, id] of stateImports) lines.push(`import ${id} from ${s(relImport(outDir, file))};`);
+  for (const [file, id] of stateImports) lines.push(`import * as ${id} from ${s(relImport(outDir, file))};`);
   lines.push('');
   lines.push(`const project = {`);
   lines.push(`  configPath: path.join(__dirname, ${s(posix(path.relative(outDir, project.configPath)))}),`);
@@ -58,7 +58,8 @@ export function generate(project: Project, parsed: ParsedFile): string {
 
     lines.push('');
     lines.push(`// ${parsed.relFile}:${t.line}`);
-    lines.push(`test(${s(t.name)}, async ({ browser }, testInfo) => {`);
+    // A draft is listed but not run: it does what another test does, up to where its rule should happen.
+    lines.push(`test${t.draft ? '.skip' : ''}(${s(t.name)}, async ({ browser }, testInfo) => {`);
     lines.push(`  await humantest({ browser, testInfo, line: ${t.line}, ...project }, async (ht) => {`);
     if (t.state) {
       lines.push(`    await ht.startWith(${t.state.line}, ${s(t.state.name)}, ${s(t.state.args)}, ${stateImports.get(t.state.file)});`);
@@ -75,7 +76,8 @@ export function generate(project: Project, parsed: ParsedFile): string {
         lastHeading = heading;
       }
       const label = st.story ? `${st.story.text} › ${st.text}` : st.text;
-      lines.push(`    await ${vars.get(st.user)}.step(${st.line}, ${s(label)}, (u) => ${emitStep(st.def, st.args)});`);
+      const check = ACTION_KINDS.has(st.def.kind) ? '' : ', { check: true }';
+      lines.push(`    await ${vars.get(st.user)}.step(${st.line}, ${s(label)}, (u) => ${emitStep(st.def, st.args)}${check});`);
     }
     lines.push(`  });`);
     lines.push(`});`);

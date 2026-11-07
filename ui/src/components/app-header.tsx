@@ -7,8 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { HumanTest } from '@/lib/use-humantest'
+import { cn } from '@/lib/utils'
 
-export function AppHeader({ ht, demo, onDemoChange }: { ht: HumanTest; demo: boolean; onDemoChange: (on: boolean) => void }) {
+export type View = 'tests' | 'logic' | 'coverage'
+const VIEW_LABEL: Record<View, string> = { tests: 'Tests', logic: 'Business logic', coverage: 'Coverage' }
+
+export function AppHeader({ ht, demo, onDemoChange, view, onViewChange }: {
+  ht: HumanTest; demo: boolean; onDemoChange: (on: boolean) => void; view: View; onViewChange: (v: View) => void
+}) {
   const { resolvedTheme, setTheme } = useTheme()
 
   return (
@@ -25,6 +31,17 @@ export function AppHeader({ ht, demo, onDemoChange }: { ht: HumanTest; demo: boo
           {ht.projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
         </SelectContent>
       </Select>
+
+      {/* Tests, or what they cover. */}
+      <nav aria-label="View" className="flex rounded-lg bg-muted p-0.5">
+        {(['tests', 'logic', 'coverage'] as const).map((v) => (
+          <button key={v} type="button" onClick={() => onViewChange(v)} aria-current={view === v ? 'page' : undefined}
+            className={cn('rounded-md px-3 py-1 text-sm font-medium text-foreground/70 transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+              view === v && 'bg-background text-foreground shadow-sm')}>
+            {VIEW_LABEL[v]}
+          </button>
+        ))}
+      </nav>
 
       <div className="flex-1" />
 

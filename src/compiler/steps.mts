@@ -63,6 +63,14 @@ export const STEP_DEFS: StepDef[] = [
     emit: (a) => `u.choose(${s(a.option)}, ${s(a.field)})`,
   },
   {
+    kind: 'upload',
+    template: 'upload "cover.jpg" to "Route Cover Photo"',
+    re: rx(`(?:uploads?|attach(?:es)?)\\s+"([^"]+)"(?:\\s+(?:to|in|into|for|as)\\s+(?:the\\s+)?(?:"([^"]+)"|(.+?))(?:\\s+(?:field|input|box|area))?)?`),
+    parse: (m) => ({ file: m[1], field: m[2] ?? m[3] }),
+    explain: (a) => `choose the file e2e/files/${a.file} in ${a.field ? `the file input for "${a.field}"` : 'the file input'}`,
+    emit: (a) => `u.upload(${s(a.file)}${a.field ? `, ${s(a.field)}` : ''})`,
+  },
+  {
     kind: 'key',
     template: 'press Escape',
     re: rx(`(?:press(?:es)?|hits?)\\s+(?:the\\s+)?(Escape|Esc|Enter|Tab|Space|Backspace|Delete|ArrowUp|ArrowDown|ArrowLeft|ArrowRight)(?:\\s+key)?`),
@@ -234,6 +242,13 @@ export const STEP_DEFS: StepDef[] = [
     emit: (a) => `u.wait(${a.seconds})`,
   },
 ];
+
+/**
+ * Steps that make the app do something, and so cause API calls. Every other step only checks,
+ * waits or sets up a simulation; calls sent while it runs were caused by the action before it
+ * (a page load's data fetches usually land during the next "should see").
+ */
+export const ACTION_KINDS = new Set(['goTo', 'reload', 'type', 'typeToday', 'choose', 'upload', 'key', 'click', 'call']);
 
 // "in "Selected tooth", click "Add issue""  /  "in the "Add issue" dialog: choose ..."
 const SCOPE = /^(?:in|inside|within)\s+(?:the\s+)?"([^"]+)"(?:\s+(dialog|panel|section|region|form|table|row|menu|list))?\s*[,:]\s*(.+)$/i;

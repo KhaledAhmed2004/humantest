@@ -1,0 +1,147 @@
+# The admin's route form, in Island Hop.
+# The photos come from e2e/files/.
+# Don't check whether "Create Route" is enabled here: the form picks the first two ports only
+# when they have loaded before it opens, so the answer depends on timing.
+
+Test: Admin opens the form for a new route
+
+  As admin:
+    go to routes page
+    should see "Routes Management"
+    click "Add Route"
+    "Add New Ferry Route" dialog should be open
+    in "Add New Ferry Route" dialog, should see "Estimated Travel Time"
+    in "Add New Ferry Route" dialog, should see "Route Cover Photo"
+    press Escape
+    "Add New Ferry Route" dialog should be closed
+
+
+Test: The route form stops before sending when the cover photo is missing
+
+  As admin:
+    go to routes page
+    click "Add Route"
+    in "Add New Ferry Route" dialog, should not see "Loading ports..."
+    press Escape
+    # Opened again now that the ports have loaded, the form starts with two different ports.
+    # (An empty description is stopped by the browser itself, with no message on the page.)
+    click "Add Route"
+    type "A quick test crossing" in "Route Description"
+    click "Create Route"
+    should see "Route cover photo is required. Please upload an image."
+    backend should not receive any request
+    "Add New Ferry Route" dialog should be open
+
+
+Test: The route form refuses a file that isn't a photo
+
+  As admin:
+    go to routes page
+    click "Add Route"
+    upload "notes.txt" to "Route Cover Photo"
+    should see "Invalid file format. Please upload a PNG, JPG, or WEBP image."
+    backend should not receive any request
+    in "Add New Ferry Route" dialog, should see "Click to upload route photo"
+
+
+Test: Admin saves a new route and deletes it again
+
+  # A run that fails half way leaves its route behind; this removes it first.
+  # Only routes described exactly "HumanTest test route" are removed (see e2e/states/no-test-routes.ts).
+  Start with: no test routes
+
+  As admin:
+    go to routes page
+    click "Add Route"
+    in "Add New Ferry Route" dialog, should not see "Loading ports..."
+    press Escape
+    click "Add Route"
+    in "Add New Ferry Route" dialog, choose "Blowing Point, Anguilla" for "From"
+    in "Add New Ferry Route" dialog, choose "Fort Bay Harbor, Saba" for "To"
+    type "HumanTest test route" in "Route Description"
+    upload "cover.png" to "Route Cover Photo"
+    in "Add New Ferry Route" dialog, "Replace" button should be visible
+    click "Create Route"
+    backend should receive POST /api/v1/routes
+    backend should reply 201 Created
+    should see "Route created successfully"
+    "Add New Ferry Route" dialog should be closed
+    in "Blowing Point, Anguilla to Fort Bay Harbor, Saba" row, click "Open menu"
+    click "Delete route"
+    in "Delete Ferry Route" dialog, click "Delete Route"
+    backend should receive DELETE /api/v1/routes/:id
+    backend should reply 200 OK
+    should see "Route deleted successfully"
+
+
+# Made from the draft that "npm run ht -- discover --gaps --drafts" wrote for the server's 409.
+# Blowing Point to Marigot already exists, so nothing is saved. (If it ever were, the state removes it.)
+Test: A route that already exists is refused
+
+  Start with: no test routes
+
+  As admin:
+    go to routes page
+    click "Add Route"
+    in "Add New Ferry Route" dialog, should not see "Loading ports..."
+    press Escape
+    click "Add Route"
+    in "Add New Ferry Route" dialog, choose "Blowing Point, Anguilla" for "From"
+    in "Add New Ferry Route" dialog, choose "Marigot, Saint Martin" for "To"
+    type "HumanTest test route" in "Route Description"
+    upload "cover.png" to "Route Cover Photo"
+    in "Add New Ferry Route" dialog, "Replace" button should be visible
+    click "Create Route"
+    backend should receive POST /api/v1/routes
+    backend should reply 409 Conflict
+    should see "A route from Blowing Point, Anguilla to Marigot, Saint Martin already exists"
+    "Add New Ferry Route" dialog should be open
+
+# Made from a draft (Coverage page). Only spaces get past the browser's own "required", so the
+# page's own check is what stops it.
+Test: The route form stops before sending when the description is only spaces
+
+  Start with: no test routes
+
+  As admin:
+    go to routes page
+    click "Add Route"
+    in "Add New Ferry Route" dialog, should not see "Loading ports..."
+    press Escape
+    click "Add Route"
+    in "Add New Ferry Route" dialog, choose "Blowing Point, Anguilla" for "From"
+    in "Add New Ferry Route" dialog, choose "Marigot, Saint Martin" for "To"
+    type "   " in "Route Description"
+    upload "cover.png" to "Route Cover Photo"
+    in "Add New Ferry Route" dialog, "Replace" button should be visible
+    click "Create Route"
+    should see "Route description is required."
+    backend should not receive any request
+
+
+# The state adds an open test route from Blowing Point to Fort Bay Harbor (Saba), a pair no real
+# route uses, so pausing it changes nothing a traveller can book.
+Test: Admin pauses a route and opens it again
+
+  Start with: one test route
+
+  As admin:
+    go to routes page
+    in "Blowing Point, Anguilla to Fort Bay Harbor, Saba" row, click "Open menu"
+    click "Pause route"
+    backend should receive PATCH /api/v1/routes/:id
+    backend should reply 200 OK
+    should see "Route updated successfully"
+    click "Paused"
+    in "Blowing Point, Anguilla to Fort Bay Harbor, Saba" row, click "Open menu"
+    click "Activate route"
+    backend should receive PATCH /api/v1/routes/:id
+    backend should reply 200 OK
+    # Open again, it leaves the "Paused" list.
+    should not see "Blowing Point, Anguilla to Fort Bay Harbor, Saba"
+    click "All"
+    in "Blowing Point, Anguilla to Fort Bay Harbor, Saba" row, click "Open menu"
+    click "Delete route"
+    in "Delete Ferry Route" dialog, click "Delete Route"
+    backend should receive DELETE /api/v1/routes/:id
+    backend should reply 200 OK

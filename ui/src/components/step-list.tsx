@@ -1,12 +1,47 @@
 import { Fragment } from 'react'
 import { StatusIcon } from '@/components/status-icon'
-import type { PlannedStep, TestResult } from '@/lib/api'
+import type { PlannedStep, StepCall, TestResult } from '@/lib/api'
 import { cleanError, formatDuration } from '@/lib/format'
 import { humanize } from '../../../src/humanize'
 import type { LiveState } from '@/lib/use-humantest'
 import { cn } from '@/lib/utils'
 
-interface Mark { state: string; duration?: number; error?: string }
+interface Mark { state: string; duration?: number; error?: string; calls?: StepCall[] }
+
+const STATUS_WORDS: Record<number, string> = {
+  200: 'OK', 201: 'Created', 204: 'No Content', 400: 'Bad Request', 401: 'Not Logged In', 403: 'Forbidden',
+  404: 'Not Found', 409: 'Conflict', 422: 'Invalid', 500: 'Server Error', 503: 'Unavailable',
+}
+
+/** The server calls a step made, one per line: "POST /api/v1/routes → 201 Created". Repeats are counted. */
+function StepCalls({ calls }: { calls: StepCall[] }) {
+  const rows: { call: StepCall; count: number }[] = []
+  for (const c of calls) {
+    const same = rows.find((r) => r.call.method === c.method && r.call.path === c.path && r.call.status === c.status && !!r.call.simulated === !!c.simulated)
+    if (same) same.count++
+    else rows.push({ call: c, count: 1 })
+  }
+  return (
+    <ul className="col-start-2 col-end-4 space-y-0.5 font-mono text-xs text-muted-foreground" aria-label="Server calls in this step">
+      {rows.map(({ call: c, count }, i) => {
+        const failed = c.status === undefined || c.status >= 400
+        const fields = [...c.query.map((q) => `?${q}`), ...c.bodyKeys].join(' ')
+        return (
+          <li key={i} className="flex flex-wrap items-baseline gap-x-1.5" title={fields ? `Fields sent: ${fields}` : undefined}>
+            <span className="font-semibold text-foreground/80">{c.method}</span>
+            <span className="break-all">{c.path}</span>
+            <span aria-hidden="true">→</span>
+            <span className={cn(failed ? 'text-red-700 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400')}>
+              {c.status === undefined ? 'no reply' : `${c.status}${STATUS_WORDS[c.status] ? ` ${STATUS_WORDS[c.status]}` : ''}`}
+            </span>
+            {c.simulated && <span>(simulated)</span>}
+            {count > 1 && <span>×{count}</span>}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
 
 /** For each planned step, what happened to it. Steps are matched to results by their title, in order. */
 function stepMarks(steps: PlannedStep[], result?: TestResult, live?: LiveState): Mark[] {
@@ -30,7 +65,7 @@ function stepMarks(steps: PlannedStep[], result?: TestResult, live?: LiveState):
     const i = pool.findIndex((r) => r.title === st.title)
     if (i < 0) return { state: 'notrun' }
     const r = pool.splice(i, 1)[0]
-    return { state: r.status, duration: r.duration, error: r.error }
+    return { state: r.status, duration: r.duration, error: r.error, calls: r.calls }
   })
 }
 
@@ -84,6 +119,7 @@ export function StepList({ steps, result, live }: { steps: PlannedStep[]; result
                 {h.where && <span className="block text-xs text-muted-foreground">in {h.where}</span>}
               </span>
               <span className="pt-0.5 text-xs text-muted-foreground tabular-nums">{formatDuration(m.duration)}</span>
+              {m.calls && m.calls.length > 0 && <StepCalls calls={m.calls} />}
               {m.error && (
                 <pre className="col-start-2 col-end-4 rounded-md bg-red-100/60 px-2 py-1.5 font-mono text-xs whitespace-pre-wrap text-red-700 dark:bg-red-950/60 dark:text-red-400">{cleanError(m.error)}</pre>
               )}
