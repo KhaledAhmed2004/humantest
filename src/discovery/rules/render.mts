@@ -91,6 +91,8 @@ function writtenField(f: WrittenField, saySent = true): string {
   if (f.fallback) return `${f.name}: ${f.value} unless given`;
   const what = f.how === 'increment' ? `${f.name} goes up by ${f.value ?? 'some'}`
     : f.how === 'decrement' ? `${f.name} goes down by ${f.value ?? 'some'}`
+    : f.how === 'add' ? (f.value !== undefined ? `${f.value} is added to ${f.name}` : `an item is added to ${f.name}`)
+    : f.how === 'remove' ? (f.value !== undefined ? `${f.value} is taken out of ${f.name}` : `an item is taken out of ${f.name}`)
     : f.value !== undefined ? `${f.name} becomes ${f.value}` : `${f.name} is set`;
   return f.optional && saySent ? `${what} (only when given)` : what;
 }

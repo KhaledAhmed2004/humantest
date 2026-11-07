@@ -96,8 +96,11 @@ export interface UiFileRule {
 /** One field a database write sets: `availableSeats: { decrement: seats }`, `status: RouteStatus.ACTIVE`. */
 export interface WrittenField {
   name: string;
-  /** How: set to `value`, or made larger / smaller by `value`. Missing value: set from the code. */
-  how: 'set' | 'increment' | 'decrement';
+  /**
+   * How: set to `value`, made larger / smaller by `value`, or (a list) `value` added to it / taken
+   * out of it (Mongoose's $push, $addToSet, $pull). Missing value: from the code.
+   */
+  how: 'set' | 'increment' | 'decrement' | 'add' | 'remove';
   value?: string;
   /** `value` is only used when nothing else is given (`dto.status ?? RouteStatus.ACTIVE`). */
   fallback?: boolean;

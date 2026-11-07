@@ -5,6 +5,7 @@
 // - demo mode (HUMANTEST_DEMO=1) slows things down and shows captions for readable videos
 
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
 import { encodeFrames, hasFfmpeg, sideBySide, toMp4, writeReplay, type Frame, type ReplayStep } from './replay';
 import path from 'node:path';
@@ -30,6 +31,12 @@ interface Config {
     endpoint: string;
     /** For apps that keep the token in a cookie they set themselves: where the token is in the reply. */
     tokenCookie?: { name: string; from: string };
+    /**
+     * Keep logins between runs, in .humantest/sessions.json (never commit it), so running the tests
+     * again soon doesn't log everyone in again. A login is kept until its token expires, at most
+     * 10 minutes. Off unless set.
+     */
+    keepBetweenRuns?: boolean;
   };
   users: Record<string, { email?: string; password?: string }>;
   elements?: Record<string, string>;
@@ -61,6 +68,58 @@ interface Session { cookies: Awaited<ReturnType<BrowserContext['cookies']>>; tok
 // One login per user per run (per Playwright worker). Access tokens usually live 15 minutes or more.
 const SESSIONS = new Map<string, Session>();
 const SESSION_REUSE_MS = 10 * 60_000;
+/** A kept login must still work for this long, or HumanTest logs in again. */
+const TOKEN_MARGIN_MS = 2 * 60_000;
+const SESSIONS_FILE = () => path.join(process.cwd(), '.humantest', 'sessions.json');
+
+/** When a JWT expires (its `exp`), or undefined when the token isn't a JWT. */
+function tokenExpiry(token?: string): number | undefined {
+  try {
+    const exp = JSON.parse(Buffer.from(token!.split('.')[1], 'base64url').toString('utf8')).exp;
+    return typeof exp === 'number' ? exp * 1000 : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Whether a login can still be used: not older than SESSION_REUSE_MS, and its token not about to expire. */
+function fresh(s: Session): boolean {
+  const exp = tokenExpiry(s.token);
+  return Date.now() - s.at < SESSION_REUSE_MS && (exp === undefined || exp - Date.now() > TOKEN_MARGIN_MS);
+}
+
+/** The key a login is kept under on disk: a hash, so the file never holds a password. */
+const diskKey = (key: string) => createHash('sha256').update(key).digest('hex');
+
+/** Logins kept by earlier runs (`login.keepBetweenRuns`). Unreadable or missing: none. */
+function readKept(): Record<string, Session> {
+  try {
+    return JSON.parse(fs.readFileSync(SESSIONS_FILE(), 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+/** Writes the file whole (to a temporary file, then renamed), so a parallel worker never reads half of it. */
+function writeKept(kept: Record<string, Session>) {
+  const file = SESSIONS_FILE();
+  const live = Object.fromEntries(Object.entries(kept).filter(([, s]) => fresh(s)));
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    // The file holds working logins: git must never pick it up, even where .humantest isn't ignored.
+    const ignore = path.join(path.dirname(file), '.gitignore');
+    if (!fs.existsSync(ignore)) fs.writeFileSync(ignore, 'sessions.json\n');
+    const tmp = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(live));
+    fs.renameSync(tmp, file);
+  } catch {
+    /* Keeping logins only saves time; a run never fails over it. */
+  }
+}
+
+function forgetKept() {
+  try { fs.rmSync(SESSIONS_FILE(), { force: true }); } catch { /* nothing kept */ }
+}
 
 interface Options { browser: Browser; testInfo: TestInfo; configPath: string; source: string; line: number }
 
@@ -206,7 +265,10 @@ export class Scenario {
         };
         await fn({ api, args, token });
         // After it: the logins from before it (and from inside it) may no longer work.
-        if (typeof state !== 'function' && state.logsOut) SESSIONS.clear();
+        if (typeof state !== 'function' && state.logsOut) {
+          SESSIONS.clear();
+          forgetKept();
+        }
       } catch (e) {
         rec.status = 'failed';
         const err = this.humanError(line, 'setup', `Start with: ${name}`, e);
@@ -258,7 +320,8 @@ export class Scenario {
 
   /**
    * Log a user in, once per run: later tests (and states) reuse the session, because backends
-   * often allow only a few logins a minute. Kept in memory only, never written to disk.
+   * often allow only a few logins a minute. Kept in memory, and with `login.keepBetweenRuns` also in
+   * .humantest/sessions.json for the next runs (the token and cookies, never the password).
    */
   async login(name: string): Promise<Session> {
     const creds = this.config.users[name] ?? {};
@@ -267,7 +330,15 @@ export class Scenario {
     const url = new URL(endpoint, this.config.baseURL).toString();
     const key = `${url}|${creds.email}|${creds.password}`;
     const cached = SESSIONS.get(key);
-    if (cached && Date.now() - cached.at < SESSION_REUSE_MS) return cached;
+    if (cached && fresh(cached)) return cached;
+    const keep = !!this.config.login?.keepBetweenRuns;
+    if (keep) {
+      const kept = readKept()[diskKey(key)];
+      if (kept && fresh(kept)) {
+        SESSIONS.set(key, kept);
+        return kept;
+      }
+    }
     if (!this.allowsHost(url)) throw new Error(this.blockedError(url, 'login'));
 
     const api = await apiRequest.newContext();
@@ -294,6 +365,7 @@ export class Scenario {
       }
       const session: Session = { cookies, token, at: Date.now() };
       SESSIONS.set(key, session);
+      if (keep) writeKept({ ...readKept(), [diskKey(key)]: session });
       return session;
     } finally {
       await api.dispose();
@@ -320,6 +392,11 @@ export class Scenario {
       if (shown.length) {
         parts.push('', activity.length ? '   Backend activity during this step:' : '   Latest backend activity:');
         for (const e of shown) parts.push(`      ${e.method} ${e.path} → ${e.status ?? 'no reply'}${e.mocked ? ' (simulated)' : ''}`);
+      }
+      // A login kept from an earlier run stops working when the backend forgets it (a fresh database, a new secret).
+      if (this.config.login?.keepBetweenRuns && u.log.some((e) => e.status === 401)) {
+        parts.push('', `   This login may be one kept from an earlier run that the backend no longer accepts.`,
+          `   Delete .humantest/sessions.json and run again to log in afresh.`);
       }
     }
     parts.push('', `   📄 ${this.opts.source}:${line}`);
@@ -860,10 +937,33 @@ export class User {
     // A custom dropdown (Radix, shadcn, Headless UI ...): open it, then pick the option, which may render outside the section.
     if (DEMO) await this.highlight(loc);
     await loc.click();
-    const opt = this.page.getByRole('option', { name: option, exact: true });
-    await expect(opt, `The "${field}" dropdown opened, but it has no option called "${option}".`).toBeVisible();
+    const opt = await this.option(option, field);
     if (DEMO) await this.highlight(opt);
     await opt.click();
+  }
+
+  /**
+   * The option called `name` in an open dropdown. When none is called exactly that, the one option
+   * that starts with it: "Blowing Point ➔ Marigot" picks "Blowing Point ➔ Marigot • 20 mins trip",
+   * so a test doesn't break over the details an option adds (a trip length, a seat count).
+   */
+  private async option(name: string, field: string): Promise<Locator> {
+    const exact = this.page.getByRole('option', { name, exact: true });
+    try {
+      await expect(exact).toBeVisible({ timeout: 2000 });
+      return exact;
+    } catch { /* look for one that starts with it */ }
+    const lead = new RegExp(`^\\s*${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
+    const starts = this.page.getByRole('option', { name: lead });
+    // The options may still be loading.
+    await starts.first().waitFor({ timeout: 5000 }).catch(() => {});
+    const n = await starts.count();
+    if (n === 1) return starts;
+    const all = (await this.page.getByRole('option').allInnerTexts()).map((t) => t.trim()).filter(Boolean);
+    const shown = all.length ? `\nIts options: ${all.slice(0, 8).map((t) => `"${t}"`).join(', ')}${all.length > 8 ? ` and ${all.length - 8} more` : ''}.` : '';
+    throw new Error(n > 1
+      ? `The "${field}" dropdown has ${n} options that start with "${name}". Write more of the one you mean.${shown}`
+      : `The "${field}" dropdown opened, but it has no option called "${name}".${shown}`);
   }
 
   /**

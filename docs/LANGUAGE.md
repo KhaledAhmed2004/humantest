@@ -39,7 +39,7 @@ Test: New user signup shows up on the admin dashboard
 | `reload the page` | `refresh` |
 | `type "text" in email` | `enter`/`write` … `into` … `field` |
 | `click "Sign up"` | `press`, `tap`, `click "Sign up" button`, `click Sign up button` |
-| `choose "Caries" for Condition` | `select`/`pick` … `from`/`in`. Works for native `<select>` and custom dropdowns (Radix, shadcn) |
+| `choose "Caries" for Condition` | `select`/`pick` … `from`/`in`. Works for native `<select>` and custom dropdowns (Radix, shadcn). In a custom dropdown, when no option is called exactly that, the one option that starts with it is chosen: `choose "Royal Alpha" for Ferry` picks "Royal Alpha • 112 Seats" |
 | `upload "cover.jpg" to "Route Cover Photo"` | `attach … to/for …`. The file comes from `e2e/files/`. Finds the file input by its label, or the one in the same block as those words (upload widgets often hide it). Without `to …`, the only file input on the page. |
 | `press Escape` | `Enter`, `Tab`, `Space`, arrow keys |
 | `wait 2 seconds` | |
@@ -110,7 +110,9 @@ Two settings in `humantest.config.json` for apps with a separate backend:
 - `apiHosts`: the only hosts the page may send API calls to. A call anywhere else is blocked and fails the test, so a frontend that still points at a real server can't change its data. The login endpoint and `call …` steps are checked too.
 - `login.tokenCookie`: for apps that read the token from a cookie the frontend sets itself. After logging in, HumanTest takes the token from the reply (`from` is a path like `data.accessToken`) and sets the cookie `name` on the app's address.
 
-Each user logs in once per run, and the next tests reuse that login (in memory only), because backends often allow only a few logins a minute. A `Start with:` state that resets the users or their sessions (a fresh database) says so with `export const logsOut = true`; after it runs, users log in again. A state can use the same login for its own calls: `` headers: { Authorization: `Bearer ${await token('admin')}` } ``.
+- `login.keepBetweenRuns`: `true` keeps the logins for the next runs too, in `.humantest/sessions.json` (the token and cookies; never the password). A kept login is used until its token is about to expire, and for 10 minutes at most. HumanTest writes `.humantest/.gitignore` so git never picks the file up. If the backend forgets the logins (a fresh database), delete the file.
+
+Each user logs in once per run, and the next tests reuse that login (in memory, or on disk with `keepBetweenRuns`), because backends often allow only a few logins a minute. A `Start with:` state that resets the users or their sessions (a fresh database) says so with `export const logsOut = true`; after it runs, users log in again. A state can use the same login for its own calls: `` headers: { Authorization: `Bearer ${await token('admin')}` } ``.
 
 ## Business logic behind the tests
 
