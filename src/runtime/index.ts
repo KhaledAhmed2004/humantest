@@ -92,7 +92,7 @@ const short = (v: unknown, max = 300) => {
  * test machine, as YYYY-MM-DD. Tests that need "a day with trips" keep working as days pass.
  */
 export function withDates(text: string): string {
-  return text.replace(/{(today|tomorrow|yesterday|in (d+) days?|(d+) days? ago)}/gi, (_m, word: string, ahead?: string, back?: string) => {
+  return text.replace(/{(today|tomorrow|yesterday|in (\d+) days?|(\d+) days? ago)}/gi, (_m, word: string, ahead?: string, back?: string) => {
     const shift = ahead ? Number(ahead) : back ? -Number(back) : ({ today: 0, tomorrow: 1, yesterday: -1 } as Record<string, number>)[word.toLowerCase()];
     const d = new Date();
     d.setDate(d.getDate() + shift);
