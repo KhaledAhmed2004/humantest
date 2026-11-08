@@ -1,26 +1,26 @@
 # The admin's ports, in Island Hop.
-# Every port these tests add is named "HumanTest test port"; "Start with: no test ports"
-# removes any that a failed run left behind (see e2e/states/no-test-ports.ts).
+# A port a test adds is called "HumanTest port {unique}", and removed again when the test ends
+# (even a failed one) with "at the end, call DELETE …".
 
 Test: Admin adds a port and deletes it again
-
-  Start with: no test ports
 
   As admin:
     go to ports page
     click "Add Port"
     "Add New Port" dialog should be open
-    type "HumanTest test port" in "Port Name"
+    type "HumanTest port {unique}" in "Port Name"
     choose "America/Anguilla" for "Time Zone"
     click "Create Port"
     backend should receive POST /api/v1/ports
     backend should reply 201 Created
+    remember data.id as port
+    at the end, call DELETE /api/v1/ports/{port}
     should see "Port created successfully"
     "Add New Port" dialog should be closed
-    in "HumanTest test port" row, click "Open menu"
+    in "HumanTest port {unique}" row, click "Open menu"
     click "Delete port"
     in "Delete Port" dialog, click "Delete"
-    backend should receive DELETE /api/v1/ports/:id
+    backend should receive DELETE /api/v1/ports/{port}
     backend should reply 200 OK
     should see "Port permanently deleted"
 

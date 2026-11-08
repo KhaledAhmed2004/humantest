@@ -15,6 +15,8 @@ export interface Line {
   ids: string[];
   /** Set by the caller when a step of the test checks this line (sees its message). */
   checked?: boolean;
+  /** How the test checks it: it sees the message, or it checks the status the request answered. */
+  checkedBy?: 'message' | 'status';
 }
 
 export interface Group { title: string; lines: Line[] }
@@ -85,6 +87,25 @@ export function present(rules: Rule[]): Group[] {
  * that status. A status shared by several rules says nothing about which one it was, so none of them
  * counts; except a 401 or 403, which is the "who can do it" rule's when the request has one.
  */
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Whether a text the test looks for (`should see "…"`, lower case) shows this message: the whole
+ * message ("{…}" placeholders stand for any text), or most of it. A few words of it are not enough:
+ * `should see "Fleet"` is a heading, not "Fleet retrieved successfully".
+ */
+export function seesMessage(message: string, seen: string): boolean {
+  const m = message.toLowerCase().trim();
+  const whole = new RegExp(escape(m).replace(/\\\{[^}]*\\\}/g, '.*'));
+  if (whole.test(seen)) return true;
+  // Part of it: two or more whole words of the message, at least half of them (placeholders left
+  // out). One word alone is more likely a heading or a name on the page.
+  const words = (s: string) => s.split(/[^\p{L}\p{N}']+/u).filter(Boolean).length;
+  const part = seen.replace(/[\s.!:,"]+$/g, '');
+  const n = words(part);
+  return n >= 2 && n * 2 >= words(m.replace(/\{[^}]*\}/g, ' ')) && new RegExp(`(^|\\W)${escape(part)}(\\W|$)`).test(m);
+}
+
 export function markChecked(groups: Group[], seen: string[], statuses: number[] = []) {
   const texts = seen.map((s) => s.toLowerCase()).filter((s) => s.length >= 4);
   const lines = groups.flatMap((g) => g.lines.map((l) => ({ l, access: g.title === 'Who can do it' })));
@@ -95,10 +116,9 @@ export function markChecked(groups: Group[], seen: string[], statuses: number[] 
     for (const x of access.length ? access : same.length === 1 ? same : []) byStatus.add(x.l);
   }
   for (const { l } of lines) {
-    l.checked = byStatus.has(l) || l.messages.some((m) => {
-      // "{…}" placeholders in a message stand for any text.
-      const re = new RegExp(m.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{[^}]*\\\}/g, '.*'));
-      return texts.some((t) => re.test(t) || m.toLowerCase().includes(t));
-    });
+    const bySeen = l.messages.some((m) => texts.some((t) => seesMessage(m, t)));
+    l.checked = bySeen || byStatus.has(l);
+    if (l.checked) l.checkedBy = bySeen ? 'message' : 'status';
+    else delete l.checkedBy;
   }
 }

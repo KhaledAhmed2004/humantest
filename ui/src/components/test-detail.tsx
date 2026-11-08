@@ -9,8 +9,14 @@ import { StepList } from '@/components/step-list'
 import { BusinessLogic } from '@/components/business-logic'
 import { cleanError, errorHeading, formatDuration, formatWhen, friendlyFile, friendlyProblem } from '@/lib/format'
 import type { HumanTest, TestRow } from '@/lib/use-humantest'
+import { testType, typeInfo } from '@/lib/test-type'
 
-export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
+function TypeBadge({ steps }: { steps: TestRow['steps'] }) {
+  const { label, hint, icon: Icon } = typeInfo(testType(steps))
+  return <Badge variant="secondary" className="gap-1" title={hint}><Icon className="size-3" />{label}</Badge>
+}
+
+export function TestDetail({ ht, test, demo }: { ht: HumanTest; test: TestRow; demo: boolean }) {
   const file = ht.files.find((f) => f.file === test.file)
   const result = ht.history.last[test.key]
   const live = ht.live[test.key]
@@ -25,18 +31,15 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
           <h1 className="text-xl leading-snug font-semibold">{test.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1 text-xs" title={`${test.file}, line ${test.line}`}><FileTextIcon className="size-3.5" />{friendlyFile(test.file)}</span>
+            <TypeBadge steps={test.steps} />
             {test.users.map((u) => <Badge key={u} variant="outline" className="gap-1"><UserIcon className="size-3" />{u}</Badge>)}
             {test.state && <Badge variant="secondary">Starts with {test.state}</Badge>}
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button disabled={ht.running || test.fileHasProblems} onClick={() => ht.run({ key: test.key }, false)}>
-            <PlayIcon /> Run
-          </Button>
-          <Button variant="outline" disabled={ht.running || test.fileHasProblems} onClick={() => ht.run({ key: test.key }, true)}>
-            <VideoIcon /> Run with video
-          </Button>
-        </div>
+        {/* Follows the Video switch in the header, like every other Run button. */}
+        <Button disabled={ht.running || test.fileHasProblems} onClick={() => ht.run({ key: test.key }, demo)}>
+          {demo ? <VideoIcon /> : <PlayIcon />} Run test
+        </Button>
       </div>
 
       {file && file.diagnostics.length > 0 && (
@@ -103,7 +106,10 @@ export function TestDetail({ ht, test }: { ht: HumanTest; test: TestRow }) {
         // A short note, not a big box: on a failed run the steps below matter more.
         <p className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
           <VideoOffIcon className="size-4 shrink-0" />
-          No video for this run. Use “Run with video” to record one.
+          <span className="flex-1">No video for this run.</span>
+          <Button size="sm" variant="outline" disabled={ht.running || test.fileHasProblems} onClick={() => ht.run({ key: test.key }, true)}>
+            <VideoIcon /> Record a video
+          </Button>
         </p>
       )}
 

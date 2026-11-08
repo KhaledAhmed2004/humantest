@@ -9,6 +9,7 @@
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { explainStep } from './compiler/steps.mts';
+import { VERDICT_LABEL, clearReports, reportsDir, writeBugReports } from './bugreport.mts';
 import { build, check, loadPhrases, loadProject, listTestFiles, parseFile, rel, type Diagnostic } from './compiler/index.mts';
 import type { Project } from './compiler/project.mts';
 import {
@@ -429,19 +430,22 @@ function main() {
       const r = build(project);
       if (r.diagnostics.length) { printDiagnostics(r.diagnostics); process.exit(1); }
       if (demo) console.log(c.cyan('🎬 Demo mode: slow, captioned, with a video per user (saved in humantest-videos/).'));
+      clearReports(project);
       const res = spawnSync('npx', ['playwright', 'test', ...pwArgs], {
         cwd: project.root,
         stdio: 'inherit',
         shell: true,
         env: { ...process.env, ...(demo ? { HUMANTEST_DEMO: '1' } : {}) },
       });
+      const flag = pi >= 0 ? ` --project ${path.relative(process.cwd(), projectDir).split(path.sep).join('/') || '.'}` : '';
+      /** What changed in the code behind each test since its baseline, for the bug reports' verdicts. */
+      let codeChanges: TestChange[] | undefined;
       if (project.config.source?.backend) {
         // The business rules behind what the tests just did, for `discover` and the UI.
         try {
           const backend = openBackend(project);
           const fe = frontendOf(project);
           const traces = readTraces(project);
-          const flag = pi >= 0 ? ` --project ${path.relative(process.cwd(), projectDir).split(path.sep).join('/') || '.'}` : '';
           let lines = 0, checked = 0;
           for (const t of traces) {
             const d = writeDiscovery(project, backend, t, fe);
@@ -462,9 +466,24 @@ function main() {
             for (const t of changed) printChange(project, t);
             console.log(c.yellow(`If that is intended: npm run ht -- discover --accept${flag}`));
           }
+          codeChanges = changes(project, backend, fe);
         } catch (e) {
           console.log(c.yellow(`⚠ Could not work out the business rules: ${(e as Error).message}`));
         }
+      }
+      // A ready-to-file report for each test that failed or had watchdog warnings.
+      try {
+        // --grep takes a regular expression: the title's own special characters must match as written.
+        const grep = (title: string) => JSON.stringify(title.replace(/[.*+?^${}()|[\]\\]/g, (ch) => `\\${ch}`));
+        const reports = writeBugReports(project, codeChanges, (title) => `npm test --${flag} --grep ${grep(title)}`);
+        if (reports.length) {
+          console.log(c.bold(`\n📝 Bug reports (${reports.length}): ${path.relative(process.cwd(), path.join(reportsDir(project), 'README.md'))}`));
+          for (const r of reports) {
+            console.log(`   ${VERDICT_LABEL[r.verdict.kind]} · ${r.test}  ${c.dim(path.relative(process.cwd(), r.file))}`);
+          }
+        }
+      } catch (e) {
+        console.log(c.yellow(`⚠ Could not write the bug reports: ${(e as Error).message}`));
       }
       process.exit(res.status ?? 1);
     }

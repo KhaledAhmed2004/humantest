@@ -1,0 +1,33 @@
+# Signing up to Island Hop, and verifying the email with the code the app sends.
+# The app's email goes to HumanTest's test mailbox ("email" in humantest.config.json), never out;
+# the addresses are on .test, a domain that can't receive email anyway.
+# The account is made by a phrase (e2e/phrases/accounts.ht) and deleted again when the test ends.
+
+Test: A new traveller verifies their email with the code they get
+
+  Given new traveller signs up as "traveller.{unique}@humantest.test"
+
+  As new traveller:
+    "traveller.{unique}@humantest.test" should get an email "Verify Your Email"
+    the email should contain "This code will expire in 15 minutes"
+    the email should not contain "Test@12345"
+    remember the code in the email as otp
+    should still be on "/verify-email"
+    # Six digits send the code by themselves; there is nothing to click.
+    type "{otp}" in "Verification code"
+    backend should receive POST /api/v1/auth/verify-email
+    backend should reply 200 OK
+    should see "Email Verified!"
+
+
+Test: A wrong code doesn't verify the email
+
+  Given new traveller signs up as "traveller.{unique}@humantest.test"
+
+  As new traveller:
+    "traveller.{unique}@humantest.test" should get an email "Verify Your Email"
+    type "000000" in "Verification code"
+    backend should receive POST /api/v1/auth/verify-email
+    backend should reply 400 Bad Request
+    should see "Invalid email or OTP"
+    should not see "Email Verified!"

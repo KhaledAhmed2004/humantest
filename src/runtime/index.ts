@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
+import { allMail, startMailbox, waitForMail, type Email } from './mailbox';
 import { encodeFrames, hasFfmpeg, sideBySide, toMp4, writeReplay, type Frame, type ReplayStep } from './replay';
 import path from 'node:path';
 import {
@@ -18,6 +19,18 @@ import {
 const DEMO = !!process.env.HUMANTEST_DEMO;
 // What "type …" and "choose …" can fill in. Radix's hidden native <select> only mirrors the real dropdown.
 const FIELD_CSS = 'input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]), textarea, select:not([aria-hidden=true]), [role=combobox]';
+
+/**
+ * Slow networks, with the numbers Chrome DevTools uses for its presets: the delay added to every
+ * request (ms) and the speed down and up (bytes per second). `slower` is how much longer steps may
+ * wait for the page to show something before they fail.
+ */
+export const NETWORKS = {
+  'slow 3G': { latency: 2000, down: 50_000, up: 50_000, slower: 4 },
+  '3G': { latency: 562.5, down: 180_000, up: 84_375, slower: 2 },
+  '4G': { latency: 165, down: 1_012_500, up: 168_750, slower: 1.5 },
+} as const;
+export type NetworkName = keyof typeof NETWORKS;
 
 interface Config {
   baseURL: string;
@@ -43,6 +56,13 @@ interface Config {
   watchdog?: { failTestOnWarning?: boolean; slowApiMs?: number };
   demo?: { pauseAfterStepMs?: number; typingDelayMs?: number };
   accessibility?: { tags?: string[]; ignoreRules?: string[]; ignoreWhenModalOpen?: string[] };
+  /**
+   * A test mailbox: HumanTest catches the app's email on this SMTP port (no TLS, any login), so
+   * steps can read it and nothing is really sent. Point the app's SMTP host at localhost and this port.
+   * `waitSeconds`: how long "should get an email" waits (10). `quietSeconds`: how long
+   * "should not get an email" watches (3).
+   */
+  email?: { port: number; waitSeconds?: number; quietSeconds?: number };
 }
 
 export interface StateContext {
@@ -126,6 +146,10 @@ interface Options { browser: Browser; testInfo: TestInfo; configPath: string; so
 export async function humantest(opts: Options, body: (ht: Scenario) => Promise<void>) {
   const config = JSON.parse(fs.readFileSync(opts.configPath, 'utf8')) as Config;
   const ht = new Scenario(opts, config);
+  if (config.email?.port) {
+    await startMailbox(config.email.port);
+    ht.mailFrom = allMail().length;
+  }
   opts.testInfo.annotations.push({ type: 'source', description: `${opts.source}:${opts.line}` });
   let passed = false;
   try {
@@ -159,12 +183,37 @@ export function withDates(text: string): string {
   });
 }
 
+/** {name} in a step: a remembered value, {unique} or a date. JSON's own braces never match. */
+const PLACEHOLDER = /\{([a-z][\w ]*?)\}/gi;
+/** A {name} standing on its own as a JSON value, not inside quotes. */
+const LONE_PLACEHOLDER = /(^|[:[,]\s*)\{([a-z][\w ]*?)\}(?=\s*[,\]}]|\s*$)/gi;
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** `a.b[0].c` inside a parsed JSON reply. */
-const pick = (obj: unknown, dotted: string) =>
-  dotted.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean).reduce<any>((v, k) => (v == null ? undefined : v[k]), obj);
+/**
+ * One value inside a parsed JSON reply: `a.b[0].c`, or an item of a list found by its fields:
+ * `data.items[name="Royal Alpha"].id`, `routes[departurePort.name="A", destinationPort.name="B"].id`.
+ */
+export function pick(obj: unknown, path: string): unknown {
+  const part = /\s*(?:\.?([A-Za-z_$][\w$]*)|\[\s*(\d+)\s*\]|\[([^\]]*)\])/y;
+  let v: any = obj;
+  for (let i = 0; i < path.length && v != null;) {
+    part.lastIndex = i;
+    const m = part.exec(path);
+    if (!m) throw new Error(`I can't read the field "${path}" (at "${path.slice(i)}").`);
+    i = part.lastIndex;
+    if (m[1] !== undefined) v = v[m[1]];
+    else if (m[2] !== undefined) v = v[Number(m[2])];
+    else {
+      const conds = [...m[3].matchAll(/([\w$.]+)\s*=\s*(?:"([^"]*)"|([^,\s]+))/g)].map((c) => ({ field: c[1], value: c[2] ?? c[3] }));
+      if (!conds.length) throw new Error(`I can't read [${m[3]}] in "${path}". Write it like [name="Royal Alpha"].`);
+      v = Array.isArray(v) ? v.find((item) => conds.every((c) => String(pick(item, c.field)) === c.value)) : undefined;
+    }
+  }
+  return v;
+}
 
-interface Warning { line: number; user: string; message: string }
+export interface Warning { line: number; user: string; message: string }
 
 /** One API call, as written to the trace file. Only names of query and body fields, never their values. */
 export interface TraceCall {
@@ -190,6 +239,29 @@ export interface TraceStep {
   pageUrl?: string;
 }
 
+/**
+ * What a bug report is made from (humantest-reports/<test>/report.json), written when a test fails
+ * or passes with watchdog warnings. `npm test` turns it into bug-report.md.
+ */
+export interface BugReportData {
+  version: 1;
+  test: string;
+  source: string;
+  status: 'passed' | 'failed';
+  at: string;
+  baseURL: string;
+  browser: string;
+  steps: { user: string; line: number; text: string; status: 'passed' | 'failed'; error?: string; page?: string; calls: TraceCall[] }[];
+  warnings: Warning[];
+  /** Next to report.json. */
+  screenshot?: string;
+  /** Playwright's trace of the failed run (kept on failure), for `npx playwright show-trace`. */
+  playwrightTrace?: string;
+  replay?: string;
+  /** What {unique} and each remembered {name} stood for in this run, so the steps read as they ran. */
+  values?: Record<string, unknown>;
+}
+
 export interface Trace { version: 1; test: string; source: string; status: 'passed' | 'failed'; steps: TraceStep[] }
 
 export class Scenario {
@@ -202,6 +274,12 @@ export class Scenario {
   /** When each user's video started recording (ms since epoch). */
   readonly videoStarts = new Map<string, number>();
   currentLine = 0;
+  /** Email that arrived before this test started isn't this test's. */
+  mailFrom = 0;
+  /** The email the last "should get an email" found, for "the email should contain …" and co. */
+  email?: Email;
+  /** Emails a step already found, so the next "should get an email" finds a new one. */
+  readonly mailTaken = new Set<number>();
   /** Set when an API call went to a host outside `apiHosts`. The test fails at the end of the step. */
   blocked?: string;
   /** The page (path) each step ended on, by index into `records`: discovery finds the page's code from it. */
@@ -243,6 +321,63 @@ export class Scenario {
     return `${who === 'call' ? 'This step' : 'The page'} tried to call ${url}, which is ${allowed}.\n` +
       `The call was blocked, so nothing changed there. Point the frontend at your local backend, ` +
       `or add the host to "apiHosts" in humantest.config.json if it is safe to change.`;
+  }
+
+  /** Values kept with "remember … as <name>", used as {name} in later steps (by any user). */
+  readonly vars = new Map<string, unknown>();
+  /** {unique}: the same short random text all through one test, different in every run. */
+  readonly unique = Math.random().toString(36).slice(2, 8);
+  /** "at the end, call …": run when the test ends, last one first, even when the test failed. */
+  readonly cleanups: { user: User; line: number; method: string; path: string; data?: unknown }[] = [];
+
+  /** The value behind {name}: a remembered value (keeping its type), {unique}, or a date. */
+  value(raw: string): unknown {
+    const key = raw.trim().toLowerCase();
+    if (this.vars.has(key)) return this.vars.get(key);
+    if (key === 'unique') return this.unique;
+    const date = withDates(`{${raw}}`);
+    if (date !== `{${raw}}`) return date;
+    const known = [...this.vars.keys()].map((k) => `{${k}}`).join(', ');
+    throw new Error(`{${raw}} has no value yet.\nAdd a line like  remember data.id as ${key}  after the reply it comes from.` +
+      (known ? `\nRemembered so far: ${known}` : ''));
+  }
+
+  /** {today}, {unique}, {ferry} … in a step's text, filled in. */
+  fill(text: string): string {
+    return text.replace(PLACEHOLDER, (_all, raw: string) => String(this.value(raw)));
+  }
+
+  /**
+   * A JSON body with its {placeholders} filled in. A placeholder on its own keeps its type, so
+   * {"ferryId": {ferry}} sends a number when the id is a number; inside quotes it becomes text.
+   */
+  fillBody(text: string): unknown {
+    const marked = text.replace(LONE_PLACEHOLDER, (_m, pre: string, raw: string) => `${pre}"\\u0001${raw}"`);
+    const walk = (v: unknown): unknown => {
+      if (typeof v === 'string') return v.startsWith('\u0001') ? this.value(v.slice(1)) : this.fill(v);
+      if (Array.isArray(v)) return v.map(walk);
+      if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+      return v;
+    };
+    return walk(JSON.parse(marked));
+  }
+
+  /** Undo what the test set up ("at the end, call …"), newest first. A failure here is a warning. */
+  private async cleanUp() {
+    for (const c of this.cleanups.splice(0).reverse()) {
+      await test.step(`line ${c.line} · ${c.user.name} · clean up: ${c.method} ${c.path}`, async () => {
+        this.currentLine = c.line;
+        try {
+          const res = await c.user.send(c.method, c.path, c.data);
+          // Already gone (the test deleted it itself) is fine.
+          if (res.status() >= 400 && res.status() !== 404) {
+            this.warn(c.user.name, `Cleaning up with ${c.method} ${c.path} failed: ${res.status()} ${short(await res.text().catch(() => ''))}`);
+          }
+        } catch (e) {
+          this.warn(c.user.name, `Cleaning up with ${c.method} ${c.path} failed: ${(e as Error).message}`);
+        }
+      }, { box: true });
+    }
   }
 
   warn(user: string, message: string) {
@@ -407,6 +542,11 @@ export class Scenario {
 
   async finish(passed: boolean) {
     const info = this.opts.testInfo;
+    // What the page looked like when it failed, before anything is cleaned up or closed.
+    const reportDir = path.join(process.cwd(), 'humantest-reports', fileSlug(`${this.opts.source} ${info.title}`));
+    const screenshot = passed ? undefined : await this.failureScreenshot(reportDir);
+    // Before the browsers close: the clean-up calls go with the users' logins.
+    await this.cleanUp();
     this.dropExpected();
     const videoDir = path.join(process.cwd(), 'humantest-videos', fileSlug(info.title));
     const saved: { user: string; file: string; started: number; burnedCaptions?: boolean }[] = [];
@@ -473,6 +613,7 @@ export class Scenario {
     }
 
     this.writeTrace(passed);
+    if (!passed || this.warnings.length) this.writeReport(reportDir, passed, screenshot);
 
     for (const w of this.warnings) {
       info.annotations.push({ type: 'watchdog', description: `line ${w.line} · ${w.user} · ${w.message}` });
@@ -502,8 +643,51 @@ export class Scenario {
    * Writes .humantest/traces/<test>.json: every step with the API calls it caused.
    * Written on every run (not only demo runs), so other tools can see what each step touched.
    */
-  private writeTrace(passed: boolean) {
+  /** A screenshot of the page of the user whose step failed. */
+  private async failureScreenshot(dir: string): Promise<string | undefined> {
+    const failed = [...this.records].reverse().find((r) => r.status === 'failed');
+    const u = this.users.find((x) => x.name === failed?.user) ?? this.users[0];
+    if (!u) return undefined;
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      await u.page.screenshot({ path: path.join(dir, 'screenshot.png'), timeout: 5000 });
+      return 'screenshot.png';
+    } catch {
+      return undefined; // the page was already gone
+    }
+  }
+
+  private writeReport(dir: string, passed: boolean, screenshot?: string) {
     const info = this.opts.testInfo;
+    const calls = this.callsPerRecord();
+    const report: BugReportData = {
+      version: 1,
+      test: info.title,
+      source: `${this.opts.source}:${this.opts.line}`,
+      status: passed ? 'passed' : 'failed',
+      at: new Date().toISOString(),
+      baseURL: this.config.baseURL,
+      browser: `${this.opts.browser.browserType().name()} ${this.opts.browser.version()}`,
+      steps: this.records.map((r, i) => ({
+        user: r.user, line: r.line, text: r.text, status: r.status,
+        ...(r.error ? { error: r.error } : {}),
+        ...(this.stepPages[i] ? { page: this.stepPages[i] } : {}),
+        calls: calls.get(i) ?? [],
+      })),
+      warnings: this.warnings,
+      values: { unique: this.unique, ...Object.fromEntries(this.vars) },
+      ...(screenshot ? { screenshot } : {}),
+      ...(passed ? {} : { playwrightTrace: path.relative(process.cwd(), path.join(info.outputDir, 'trace.zip')) }),
+      ...(info.annotations.find((a) => a.type === 'replay') ? { replay: info.annotations.find((a) => a.type === 'replay')!.description } : {}),
+    };
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'report.json'), JSON.stringify(report, null, 1));
+    } catch { /* a report is extra; the run never fails over it */ }
+  }
+
+  /** Each user's API calls, by the step (index into records) that sent them. */
+  private callsPerRecord(): Map<number, TraceCall[]> {
     const calls = new Map<number, TraceCall[]>();
     for (const u of this.users) {
       for (const e of u.log) {
@@ -514,6 +698,12 @@ export class Scenario {
         calls.set(e.step, list);
       }
     }
+    return calls;
+  }
+
+  private writeTrace(passed: boolean) {
+    const info = this.opts.testInfo;
+    const calls = this.callsPerRecord();
     const trace: Trace = {
       version: 1,
       test: info.title,
@@ -620,6 +810,8 @@ export class User {
   /** Reply bodies, captured on the Node side so they survive page navigations. */
   private readonly bodies = new WeakMap<Request, string>();
   private offline = false;
+  /** A slow network for this user ("on a slow 3G network"), until it is turned off again. */
+  private network?: NetworkName;
   private caption?: string;
   /** This user's latest step (index into Scenario.records), so its API calls are counted to it. */
   private stepIndex = -1;
@@ -638,6 +830,8 @@ export class User {
         const res = await route.fetch();
         const body = await res.text();
         this.bodies.set(route.request(), body);
+        // Calls routed through Node skip Chrome's own throttling, so the slow network is added here.
+        await this.networkDelay(route.request(), body);
         await route.fulfill({ response: res, body });
       } catch {
         await route.continue().catch(() => {});
@@ -682,7 +876,7 @@ export class User {
     context.on('requestfinished', (req) => {
       if (!isApi(req) || this.mocked.has(req)) return;
       const t = req.timing();
-      if (t.responseEnd > slowMs) ht.warn(name, `${req.method()} ${new URL(req.url()).pathname} was slow: ${Math.round(t.responseEnd)} ms`);
+      if (t.responseEnd > slowMs && !this.network) ht.warn(name, `${req.method()} ${new URL(req.url()).pathname} was slow: ${Math.round(t.responseEnd)} ms`);
     });
     context.on('requestfailed', (req) => {
       const err = req.failure()?.errorText ?? '';
@@ -777,9 +971,10 @@ export class User {
   }
 
   async within(name: string, kind: string | null, fn: () => Promise<void>) {
+    name = this.ht.fill(name);
     this.scope = { name, kind };
     try {
-      await expect(this.root as Locator, `I can't find a ${kind ?? 'section'} called "${name}" on the page.`).toBeVisible();
+      await this.expect(this.root as Locator, `I can't find a ${kind ?? 'section'} called "${name}" on the page.`).toBeVisible();
       await fn();
     } finally {
       this.scope = undefined;
@@ -847,7 +1042,7 @@ export class User {
   private async pick(candidates: Locator[], what: string, exact = candidates.length): Promise<Locator> {
     let any = candidates[0];
     for (const c of candidates.slice(1)) any = any.or(c);
-    await expect(any.first(), `I can't find ${what}.`).toBeVisible();
+    await this.expect(any.first(), `I can't find ${what}.`).toBeVisible();
     const firstVisible = async () => {
       for (const [i, c] of candidates.entries()) {
         if (await c.first().isVisible().catch(() => false)) return i;
@@ -889,7 +1084,7 @@ export class User {
   // ---------------- browser actions ----------------
 
   async goTo(url: string) {
-    url = withDates(url);
+    url = this.ht.fill(url);
     this.mark = this.log.length;
     await this.page.goto(url);
   }
@@ -900,13 +1095,16 @@ export class User {
   }
 
   async type(value: string, field: string) {
-    value = withDates(value);
+    value = this.ht.fill(value);
     const loc = await this.field(field);
     await this.noteFocus(loc);
     this.mark = this.log.length;
-    if (DEMO) {
+    // A code split over one-digit boxes (maxlength="1"): fill() would keep only the first digit.
+    // Typed key by key like a person, each key goes to the box the page moved the focus to.
+    const max = await loc.evaluate((el) => (el as HTMLInputElement).maxLength ?? -1).catch(() => -1);
+    if (DEMO || (max > 0 && value.length > max)) {
       await loc.fill('');
-      await loc.pressSequentially(value, { delay: this.ht.config.demo?.typingDelayMs ?? 60 });
+      await loc.pressSequentially(value, { delay: DEMO ? this.ht.config.demo?.typingDelayMs ?? 60 : 30 });
     } else {
       await loc.fill(value);
     }
@@ -925,7 +1123,7 @@ export class User {
   }
 
   async choose(option: string, field: string) {
-    option = withDates(option);
+    option = this.ht.fill(option);
     const loc = await this.field(field);
     await this.noteFocus(loc);
     this.mark = this.log.length;
@@ -950,7 +1148,7 @@ export class User {
   private async option(name: string, field: string): Promise<Locator> {
     const exact = this.page.getByRole('option', { name, exact: true });
     try {
-      await expect(exact).toBeVisible({ timeout: 2000 });
+      await this.expect(exact).toBeVisible({ timeout: 2000 });
       return exact;
     } catch { /* look for one that starts with it */ }
     const lead = new RegExp(`^\\s*${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
@@ -980,11 +1178,11 @@ export class User {
     if (!loc && field) {
       const labelled = r.getByLabel(field).and(inputs);
       const near = this.near(field, 'input[type=file]');
-      await expect(labelled.or(near).first(), `I can't find a file input for "${field}"${where}.`).toBeAttached();
+      await this.expect(labelled.or(near).first(), `I can't find a file input for "${field}"${where}.`).toBeAttached();
       loc = (await labelled.count()) ? labelled.first() : near.first();
     }
     if (!loc) {
-      await expect(inputs.first(), `I can't find a file input${where}.`).toBeAttached();
+      await this.expect(inputs.first(), `I can't find a file input${where}.`).toBeAttached();
       const n = await inputs.count();
       if (n > 1) throw new Error(`There are ${n} file inputs${where}. Say which one: upload "${file}" to "<the text next to it>".`);
       loc = inputs.first();
@@ -1000,6 +1198,7 @@ export class User {
   }
 
   async click(name: string, role?: string) {
+    name = this.ht.fill(name);
     const loc = await this.clickable(name, role);
     await this.noteFocus(loc);
     if (DEMO) await this.highlight(loc);
@@ -1009,9 +1208,9 @@ export class User {
   }
 
   async see(text: string) {
-    text = withDates(text);
+    text = this.ht.fill(text);
     try {
-      await expect(this.root.getByText(text).first(), `"${text}" should be visible${this.scope ? ` inside "${this.scope.name}"` : ' on the page'}, but it isn't.`).toBeVisible();
+      await this.expect(this.root.getByText(text).first(), `"${text}" should be visible${this.scope ? ` inside "${this.scope.name}"` : ' on the page'}, but it isn't.`).toBeVisible();
       await this.noteFocus(this.root.getByText(text).first());
     } catch (e) {
       const similar = await this.similarText(text);
@@ -1036,8 +1235,8 @@ export class User {
   }
 
   async notSee(text: string) {
-    text = withDates(text);
-    await expect(this.root.getByText(text).first(), `"${text}" should NOT be visible, but it is.`).toBeHidden();
+    text = this.ht.fill(text);
+    await this.expect(this.root.getByText(text).first(), `"${text}" should NOT be visible, but it is.`).toBeHidden();
   }
 
   async onPage(pathname: string) {
@@ -1045,6 +1244,7 @@ export class User {
   }
 
   async shouldBe(name: string, state: 'enabled' | 'disabled' | 'visible' | 'hidden' | 'focused', role?: string) {
+    name = this.ht.fill(name);
     const candidates = role === 'field' ? this.fieldCandidates(name) : this.clickableCandidates(name, role);
     const msg = `"${name}"${role ? ` ${role}` : ''} should be ${state}.`;
     if (state === 'hidden') {
@@ -1056,9 +1256,9 @@ export class User {
     }
     const loc = role === 'field' ? await this.field(name) : await this.clickable(name, role);
     await this.noteFocus(loc);
-    if (state === 'enabled') await expect(loc, msg).toBeEnabled();
-    if (state === 'disabled') await expect(loc, msg).toBeDisabled();
-    if (state === 'focused') await expect(loc, msg).toBeFocused();
+    if (state === 'enabled') await this.expect(loc, msg).toBeEnabled();
+    if (state === 'disabled') await this.expect(loc, msg).toBeDisabled();
+    if (state === 'focused') await this.expect(loc, msg).toBeFocused();
   }
 
   async wait(seconds: number) {
@@ -1093,6 +1293,7 @@ export class User {
   }
 
   async backendReceives(method: string, pathname: string, timeoutMs = 5000) {
+    pathname = this.ht.fill(pathname);
     const deadline = Date.now() + timeoutMs;
     let entry: LogEntry | undefined;
     // ":id" (or any ":name") stands for one part of the path that changes from run to run.
@@ -1121,19 +1322,56 @@ export class User {
     if (seen.length) throw new Error(`Expected no backend request, but the page sent: ${seen.join(', ')}`);
   }
 
-  async call(method: string, pathname: string) {
-    this.mark = this.log.length;
+  /** An API call as this user, with their login. `data` is sent as JSON. */
+  async send(method: string, pathname: string, data?: unknown) {
     const url = this.ht.apiURL(pathname);
     if (!this.ht.allowsHost(url.toString())) throw new Error(this.ht.blockedError(url.toString(), 'call'));
     // The login's cookies go with it; its token too, the way the page sends it (many APIs read only the header).
     const token = this.ht.config.users[this.name]?.email ? (await this.ht.login(this.name)).token : undefined;
-    const res = await this.context.request.fetch(url.toString(), { method, ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}) });
-    const body = res.text().catch(() => null);
-    this.log.push({
-      method, path: pathname, line: this.ht.currentLine, at: Date.now(), status: res.status(), body,
-      step: this.stepIndex, query: [...new Set(url.searchParams.keys())], bodyKeys: [],
+    return this.context.request.fetch(url.toString(), {
+      method,
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+      ...(data !== undefined ? { data } : {}),
     });
-    this.lastReply = { label: `${method} ${pathname}`, status: res.status(), text: () => body };
+  }
+
+  async call(method: string, pathname: string, body?: string) {
+    this.mark = this.log.length;
+    pathname = this.ht.fill(pathname);
+    const data = body !== undefined ? this.ht.fillBody(body) : undefined;
+    const res = await this.send(method, pathname, data);
+    const text = res.text().catch(() => null);
+    const url = this.ht.apiURL(pathname);
+    this.log.push({
+      method, path: url.pathname, line: this.ht.currentLine, at: Date.now(), status: res.status(), body: text,
+      step: this.stepIndex, query: [...new Set(url.searchParams.keys())],
+      bodyKeys: data && typeof data === 'object' && !Array.isArray(data) ? Object.keys(data) : [],
+    });
+    this.lastReply = { label: `${method} ${url.pathname}`, status: res.status(), text: () => text };
+  }
+
+  /** "remember data.id as ferry": keep a field of the last reply, for {ferry} in later steps. */
+  async remember(field: string, name: string) {
+    const body = await this.replyJson();
+    field = this.ht.fill(field);
+    const value = pick(body, field);
+    if (value === undefined || value === null) {
+      throw new Error(`The ${this.reply().label} reply has no ${field}.\nReply body: ${short(body)}`);
+    }
+    if (typeof value === 'object') {
+      throw new Error(`${field} in the ${this.reply().label} reply is a list or an object, not one value.\n` +
+        `Pick one field inside it, like ${field}.id\nReply body: ${short(body)}`);
+    }
+    this.ht.vars.set(name.trim().toLowerCase(), value);
+  }
+
+  /** "at the end, call DELETE /api/ferries/{ferry}": undo it when the test ends, even when it fails. */
+  async atTheEnd(method: string, pathname: string, body?: string) {
+    // Filled in now: {ferry} is the ferry of this moment, even if it is remembered again later.
+    this.ht.cleanups.push({
+      user: this, line: this.ht.currentLine, method, path: this.ht.fill(pathname),
+      data: body !== undefined ? this.ht.fillBody(body) : undefined,
+    });
   }
 
   private reply(): Reply {
@@ -1179,6 +1417,102 @@ export class User {
     }
   }
 
+  // ---------------- email ----------------
+
+  /** The address a step means: the one written in it, or this user's email from the config. */
+  private mailAddress(to?: string): string {
+    if (to) return this.ht.fill(to).trim().toLowerCase();
+    const own = this.ht.config.users[this.name]?.email;
+    if (!own) {
+      throw new Error(`${this.name} has no email in humantest.config.json, so I don't know where to look.\n` +
+        `Write the address in the step, like  "rahim@test.com" should get an email "Welcome"`);
+    }
+    return own.toLowerCase();
+  }
+
+  private mailbox(): Email[] {
+    if (!this.ht.config.email?.port) {
+      throw new Error('There is no test mailbox. Add  "email": { "port": 2525 }  to humantest.config.json, and point the app\'s SMTP settings at localhost:2525.');
+    }
+    return allMail().slice(this.ht.mailFrom) as Email[];
+  }
+
+  /** What this test's mailbox holds, for an error message. */
+  private mailSummary(): string {
+    const got = this.mailbox();
+    if (!got.length) {
+      return `No email arrived at all during this test. Is the app's SMTP set to localhost:${this.ht.config.email!.port} (no TLS)?`;
+    }
+    return `Emails this test received:\n${got.map((m) => `   • to ${m.to.join(', ')}: "${m.subject}"`).join('\n')}`;
+  }
+
+  /** "Rahim should get an email "Verify Your Email"" (or should NOT get one). */
+  async expectEmail(to: string | undefined, subject: string | undefined, negate: boolean) {
+    const address = this.mailAddress(to);
+    const want = subject ? this.ht.fill(subject).toLowerCase() : undefined;
+    const matches = (m: Email) => !this.ht.mailTaken.has(m.seq) && m.to.includes(address) && (!want || m.subject.toLowerCase().includes(want));
+    const what = `an email${subject ? ` "${this.ht.fill(subject)}"` : ''} to ${address}`;
+    const cfg = this.ht.config.email;
+    if (negate) {
+      const hit = await waitForMail(() => this.mailbox().find(matches), (cfg?.quietSeconds ?? 3) * 1000);
+      if (hit) throw new Error(`${what[0].toUpperCase()}${what.slice(1)} should NOT have been sent, but it was: "${hit.subject}".`);
+      return;
+    }
+    const slower = this.network ? NETWORKS[this.network].slower : 1;
+    const hit = await waitForMail(() => this.mailbox().find(matches), (cfg?.waitSeconds ?? 10) * 1000 * slower);
+    if (!hit) throw new Error(`${what[0].toUpperCase()}${what.slice(1)} never arrived (waited ${(cfg?.waitSeconds ?? 10) * slower}s).\n${this.mailSummary()}`);
+    this.ht.mailTaken.add(hit.seq);
+    this.ht.email = hit;
+  }
+
+  private currentEmail(): Email {
+    if (!this.ht.email) throw new Error('There is no email to look at yet.\nAdd a line like  Rahim should get an email "Welcome"  before this one.');
+    return this.ht.email;
+  }
+
+  async emailContains(text: string, negate: boolean) {
+    const m = this.currentEmail();
+    const want = this.ht.fill(text);
+    const flat = (s: string) => s.replace(/\s+/g, ' ').toLowerCase();
+    const found = flat(`${m.subject}\n${m.text}`).includes(flat(want));
+    if (found === negate) {
+      throw new Error(`The email "${m.subject}" ${negate ? 'should NOT contain' : 'should contain'} "${want}", but it ${found ? 'does' : "doesn't"}.\n` +
+        `Its text: ${short(m.text, 400)}`);
+    }
+  }
+
+  /** "remember the code in the email as otp" / "remember the "Verify" link in the email as link". */
+  async rememberFromEmail(what: 'code' | 'link', name: string, linkText?: string) {
+    const m = this.currentEmail();
+    let value: string | undefined;
+    if (what === 'code') {
+      // A 6-digit code first (the usual OTP), then any other 4 to 8 digits.
+      const hay = `${m.subject}\n${m.text}`;
+      value = /(?<![\d-])\d{6}(?![\d-])/.exec(hay)?.[0] ?? /(?<![\d-])\d{4,8}(?![\d-])/.exec(hay)?.[0];
+      if (!value) throw new Error(`I can't find a code (4 to 8 digits) in the email "${m.subject}".\nIts text: ${short(m.text, 400)}`);
+    } else {
+      value = this.emailLink(m, linkText).href;
+    }
+    this.ht.vars.set(name.trim().toLowerCase(), value);
+  }
+
+  private emailLink(m: Email, linkText?: string) {
+    const want = linkText ? this.ht.fill(linkText).toLowerCase() : undefined;
+    const link = want ? m.links.find((l) => l.text.toLowerCase().includes(want)) : m.links[0];
+    if (!link) {
+      const all = m.links.map((l) => `"${l.text}" → ${l.href}`).join('\n   ');
+      throw new Error(`The email "${m.subject}" has no link${want ? ` with the words "${linkText}"` : ''}.` +
+        (all ? `\nIts links:\n   ${all}` : ''));
+    }
+    return link;
+  }
+
+  /** "open the link in the email" / "click "Verify my email" in the email": go where it points. */
+  async openEmailLink(linkText?: string) {
+    const link = this.emailLink(this.currentEmail(), linkText);
+    await this.page.goto(link.href);
+  }
+
   // ---------------- simulate problems ----------------
 
   private async intercept(method: string, pathname: string, handle: (route: import('@playwright/test').Route) => Promise<void>) {
@@ -1193,6 +1527,7 @@ export class User {
     await this.intercept(method, pathname, async (route) => {
       const text = JSON.stringify(body ?? { error: `Simulated ${status} from HumanTest` });
       this.bodies.set(route.request(), text);
+      await this.networkDelay(route.request(), text);
       await route.fulfill({ status, contentType: 'application/json', body: text });
     });
   }
@@ -1208,6 +1543,45 @@ export class User {
   async setOffline(off: boolean) {
     this.offline = off;
     await this.context.setOffline(off);
+    // Playwright resets Chrome's network settings for this, so a slow network is put back.
+    if (this.network) await this.setNetwork(this.network);
+  }
+
+  /** Make this user's internet as slow as a mobile network (or normal again with `undefined`). */
+  async setNetwork(name: NetworkName | undefined) {
+    const browser = this.ht.opts.browser.browserType().name();
+    if (browser !== 'chromium') throw new Error(`A slow network can only be simulated in Chromium (this test runs in ${browser}).`);
+    this.network = name;
+    const n = name ? NETWORKS[name] : undefined;
+    // Pages, scripts, styles and images: Chrome slows them down itself.
+    for (const page of this.context.pages()) {
+      const cdp = await this.context.newCDPSession(page);
+      await cdp.send('Network.enable');
+      await cdp.send('Network.emulateNetworkConditions', n
+        ? { offline: this.offline, latency: n.latency, downloadThroughput: n.down, uploadThroughput: n.up }
+        : { offline: this.offline, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      await cdp.detach();
+    }
+    // Everything takes longer, so the test may too.
+    const info = this.ht.opts.testInfo;
+    if (n && info.timeout > 0) info.setTimeout(Math.max(info.timeout, Math.round(info.project.timeout * n.slower * 1.5)));
+  }
+
+  /** How long an API call takes on this user's slow network: the delay, then the bytes sent and received. */
+  private async networkDelay(req: Request, body: string | null) {
+    if (!this.network) return;
+    const n = NETWORKS[this.network];
+    const sent = req.postDataBuffer()?.length ?? 0;
+    const received = Buffer.byteLength(body ?? '');
+    await sleep(n.latency + (sent / n.up + received / n.down) * 1000);
+  }
+
+  /** `expect`, waiting longer on a slow network: the page is slower to show things. */
+  private get expect() {
+    if (!this.network) return expect;
+    // The config's expect.timeout is on the project at run time, though Playwright's types leave it out.
+    const base = (this.ht.opts.testInfo.project as { expect?: { timeout?: number } }).expect?.timeout ?? 5000;
+    return expect.configure({ timeout: Math.round(base * NETWORKS[this.network].slower) });
   }
 
   // ---------------- demo mode visuals ----------------
@@ -1258,7 +1632,4 @@ function deepHas(v: unknown, key: string): boolean {
   return Object.entries(v as Record<string, unknown>).some(([k, x]) => k === key || deepHas(x, key));
 }
 
-function getPath(v: unknown, p: string): unknown {
-  return p.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean)
-    .reduce<any>((acc, k) => (acc == null ? undefined : acc[k]), v);
-}
+const getPath = (v: unknown, p: string): unknown => pick(v, p);

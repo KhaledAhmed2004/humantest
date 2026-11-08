@@ -17,10 +17,73 @@ export interface StepDef {
 
 const s = (v: unknown) => JSON.stringify(v);
 const METHOD = '(GET|POST|PUT|PATCH|DELETE)';
-const PATH = '(\\/\\S*)';
+// A path, where a {placeholder} may have spaces: /api/v1/users/{new account}
+const PATH = '(\\/(?:\\{[^}]*\\}|\\S)*)';
 const rx = (src: string) => new RegExp(`^${src}$`, 'i');
+/** `with {"name": "Sea Star"}`: a JSON body on the same line. */
+const BODY = '(?:\\s+with\\s+(\\{.*\\}|\\[.*\\]))?';
+
+/** {name} in a step: a remembered value, {unique} or a date. JSON's own braces never match. */
+export const PLACEHOLDER = /\{([a-z][\w ]*?)\}/gi;
+const DATE_WORD = /^(today|tomorrow|yesterday|in \d+ days?|\d+ days? ago)$/i;
+
+/** The {names} a step uses that must be remembered first (not {unique} or a date). */
+export function placeholdersIn(args: StepArgs): string[] {
+  const out: string[] = [];
+  const visit = (v: unknown) => {
+    if (typeof v === 'string') {
+      for (const m of v.matchAll(PLACEHOLDER)) {
+        const key = m[1].trim().toLowerCase();
+        if (key !== 'unique' && !DATE_WORD.test(key)) out.push(key);
+      }
+    } else if (v && typeof v === 'object') Object.values(v).forEach(visit);
+  };
+  visit(args);
+  return out;
+}
+
+/** Why a `with {…}` body isn't valid JSON (a {name} on its own counts as a value), or undefined. */
+export function bodyProblem(body: string): string | undefined {
+  const marked = body.replace(/(^|[:[,]\s*)\{([a-z][\w ]*?)\}(?=\s*[,\]}]|\s*$)/gi, '$1"x"');
+  try { JSON.parse(marked); return undefined; } catch (e) { return (e as Error).message; }
+}
 
 export const STEP_DEFS: StepDef[] = [
+  // ---------------- email (the test mailbox, "email" in the config) ----------------
+  // First, so `click "Verify" in the email` isn't taken for a click on the page.
+  {
+    kind: 'emailArrives',
+    template: 'should get an email "Verify Your Email"',
+    re: rx(`(?:"([^"]+@[^"]+)"\\s+)?should\\s+(not\\s+)?(?:get|receive)\\s+(?:an?\\s+|any\\s+)?e-?mails?(?:\\s+(?:with\\s+(?:the\\s+)?subject\\s+|called\\s+|about\\s+)?"([^"]+)")?`),
+    parse: (m) => ({ to: m[1], negate: !!m[2], subject: m[3] }),
+    explain: (a) => `${a.negate ? 'check that no' : 'wait for an'} email${a.subject ? ` with "${a.subject}" in its subject` : ''} ${a.negate ? 'arrives for' : 'to'} ${a.to ?? 'this user\'s address (from the config)'}`,
+    emit: (a) => `u.expectEmail(${a.to ? s(a.to) : 'undefined'}, ${a.subject ? s(a.subject) : 'undefined'}, ${a.negate})`,
+  },
+  {
+    kind: 'emailContains',
+    template: 'the email should contain "15 minutes"',
+    re: rx(`(?:the\\s+)?e-?mail\\s+should\\s+(not\\s+)?(?:contain|say|mention|include)\\s+"([^"]+)"`),
+    parse: (m) => ({ negate: !!m[1], text: m[2] }),
+    explain: (a) => `check that the email ${a.negate ? 'does NOT contain' : 'contains'} "${a.text}"`,
+    emit: (a) => `u.emailContains(${s(a.text)}, ${a.negate})`,
+  },
+  {
+    kind: 'rememberEmail',
+    template: 'remember the code in the email as otp',
+    re: rx(`remember\\s+the\\s+(?:"([^"]+)"\\s+)?(code|otp|link)\\s+(?:in|from)\\s+the\\s+e-?mail\\s+as\\s+(?:"([^"]+)"|([A-Za-z][\\w ]*))`),
+    parse: (m) => ({ what: m[2].toLowerCase() === 'link' ? 'link' : 'code', linkText: m[1], name: (m[3] ?? m[4]).trim().toLowerCase() }),
+    explain: (a) => `keep the ${a.what === 'code' ? 'code (a 6-digit OTP, or any 4 to 8 digits)' : `${a.linkText ? `"${a.linkText}" ` : ''}link`} in the email as {${a.name}}`,
+    emit: (a) => `u.rememberFromEmail(${s(a.what)}, ${s(a.name)}${a.linkText ? `, ${s(a.linkText)}` : ''})`,
+  },
+  {
+    kind: 'openEmailLink',
+    template: 'open the link in the email',
+    re: rx(`(?:(?:open|follow|click)s?\\s+(?:on\\s+)?the\\s+link\\s+in\\s+the\\s+e-?mail|(?:click|press|tap|open|follow)s?\\s+(?:on\\s+)?"([^"]+)"(?:\\s+link)?\\s+in\\s+the\\s+e-?mail)`),
+    parse: (m) => ({ linkText: m[1] }),
+    explain: (a) => `open the ${a.linkText ? `"${a.linkText}" ` : 'first '}link in the email, in this user's browser`,
+    emit: (a) => `u.openEmailLink(${a.linkText ? s(a.linkText) : ''})`,
+  },
+
   // ---------------- browser actions ----------------
   {
     kind: 'goTo',
@@ -184,10 +247,27 @@ export const STEP_DEFS: StepDef[] = [
   {
     kind: 'call',
     template: 'call GET /api/admin/users',
-    re: rx(`call\\s+${METHOD}\\s+${PATH}`),
-    parse: (m) => ({ method: m[1].toUpperCase(), path: m[2] }),
-    explain: (a) => `call ${a.method} ${a.path} directly as this user (with their login) and remember the reply`,
-    emit: (a) => `u.call(${s(a.method)}, ${s(a.path)})`,
+    re: rx(`call\\s+${METHOD}\\s+${PATH}${BODY}`),
+    parse: (m) => ({ method: m[1].toUpperCase(), path: m[2], ...(m[3] ? { body: m[3] } : {}) }),
+    explain: (a) => `call ${a.method} ${a.path} directly as this user (with their login)${a.body ? `, sending ${a.body}` : ''}, and remember the reply`,
+    emit: (a) => `u.call(${s(a.method)}, ${s(a.path)}${a.body ? `, ${s(a.body)}` : ''})`,
+  },
+  {
+    kind: 'remember',
+    template: 'remember data.id as ferry',
+    // data.id  /  data.items[0].id  /  data.items[name="Royal Alpha"].id
+    re: rx(`remember\\s+(?:the\\s+)?(?:reply(?:'s)?\\s+)?([A-Za-z_$](?:[\\w$.]|\\[[^\\]]*\\])*)\\s+as\\s+(?:"([^"]+)"|([A-Za-z][\\w ]*))`),
+    parse: (m) => ({ field: m[1], name: (m[2] ?? m[3]).trim().toLowerCase() }),
+    explain: (a) => `keep the last reply's ${a.field} as {${a.name}}, for later steps`,
+    emit: (a) => `u.remember(${s(a.field)}, ${s(a.name)})`,
+  },
+  {
+    kind: 'atTheEnd',
+    template: 'at the end, call DELETE /api/v1/ferries/{ferry}',
+    re: rx(`(?:at\\s+the\\s+end(?:\\s+of\\s+the\\s+test)?|when\\s+the\\s+test\\s+ends|afterwards)\\s*,?\\s+call\\s+${METHOD}\\s+${PATH}${BODY}`),
+    parse: (m) => ({ method: m[1].toUpperCase(), path: m[2], ...(m[3] ? { body: m[3] } : {}) }),
+    explain: (a) => `when the test ends (even if it failed), call ${a.method} ${a.path}${a.body ? ` with ${a.body}` : ''} to clean up`,
+    emit: (a) => `u.atTheEnd(${s(a.method)}, ${s(a.path)}${a.body ? `, ${s(a.body)}` : ''})`,
   },
 
   // ---------------- simulate problems ----------------
@@ -224,6 +304,20 @@ export const STEP_DEFS: StepDef[] = [
     emit: (a) => `u.simulateReply(${s(a.method)}, ${s(a.path)}, 200, [])`,
   },
   {
+    kind: 'network',
+    template: 'on a slow 3G network',
+    re: rx(`(?:when\\s+)?(?:(?:the\\s+)?internet\\s+is\\s+(slow|normal(?:\\s+again)?)|on\\s+(?:a\\s+)?(slow\\s+3G|fast\\s+3G|3G|4G|normal)\\s+(?:network|internet|connection))`),
+    parse: (m) => {
+      const w = (m[1] ?? m[2]).toLowerCase().replace(/\s+/g, ' ');
+      const network = w === 'slow' || w === 'slow 3g' ? 'slow 3G' : w === '3g' || w === 'fast 3g' ? '3G' : w === '4g' ? '4G' : undefined;
+      return { network };
+    },
+    explain: (a) => (a.network
+      ? `from now on, this user's internet is as slow as ${a.network} (every request waits longer, pages load slowly)`
+      : 'turn this user\'s internet back to normal speed'),
+    emit: (a) => `u.setNetwork(${a.network ? s(a.network) : 'undefined'})`,
+  },
+  {
     kind: 'offline',
     template: 'when the internet is off',
     re: rx(`when\\s+(?:the\\s+)?internet\\s+is\\s+(off|back(?:\\s+on)?|on)`),
@@ -248,7 +342,7 @@ export const STEP_DEFS: StepDef[] = [
  * waits or sets up a simulation; calls sent while it runs were caused by the action before it
  * (a page load's data fetches usually land during the next "should see").
  */
-export const ACTION_KINDS = new Set(['goTo', 'reload', 'type', 'typeToday', 'choose', 'upload', 'key', 'click', 'call']);
+export const ACTION_KINDS = new Set(['goTo', 'reload', 'type', 'typeToday', 'choose', 'upload', 'key', 'click', 'call', 'openEmailLink']);
 
 // "in "Selected tooth", click "Add issue""  /  "in the "Add issue" dialog: choose ..."
 const SCOPE = /^(?:in|inside|within)\s+(?:the\s+)?"([^"]+)"(?:\s+(dialog|panel|section|region|form|table|row|menu|list))?\s*[,:]\s*(.+)$/i;

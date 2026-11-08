@@ -1,0 +1,1133 @@
+{
+ "version": 1,
+ "key": "e2e/tests/signup.ht::A wrong code doesn't verify the email",
+ "test": "A wrong code doesn't verify the email",
+ "source": "e2e/tests/signup.ht:23",
+ "steps": [
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › go to signup page",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › go to signup page",
+   "requests": []
+  },
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › type \"HumanTest Traveller\" in \"Full Name\"",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › type \"HumanTest Traveller\" in \"Full Name\"",
+   "requests": []
+  },
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › click \"Next Step\"",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › click \"Next Step\"",
+   "requests": []
+  },
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › type \"traveller.{unique}@humantest.test\" in \"Email Address\"",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › type \"traveller.{unique}@humantest.test\" in \"Email Address\"",
+   "requests": []
+  },
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › type \"+8801712345678\" in \"Phone Number\"",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › type \"+8801712345678\" in \"Phone Number\"",
+   "requests": []
+  },
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › click \"Next Step\"",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › click \"Next Step\"",
+   "requests": []
+  },
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › type \"Test@12345\" in \"Create Password\"",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › type \"Test@12345\" in \"Create Password\"",
+   "requests": []
+  },
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › type \"Test@12345\" in \"Confirm Password\"",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › type \"Test@12345\" in \"Confirm Password\"",
+   "requests": []
+  },
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › click \"Complete Registration\"",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › click \"Complete Registration\"",
+   "requests": [
+    "POST /api/v1/auth/register"
+   ]
+  },
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › backend should receive POST /api/v1/auth/register",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › backend should receive POST /api/v1/auth/register",
+   "requests": []
+  },
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › backend should reply 201 Created",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › backend should reply 201 Created",
+   "requests": []
+  },
+  {
+   "title": "line 25 · new traveller · new traveller signs up as \"traveller.{unique}@humantest.test\" › remember data.userId as new account",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › remember data.userId as new account",
+   "requests": []
+  },
+  {
+   "title": "line 25 · admin · new traveller signs up as \"traveller.{unique}@humantest.test\" › at the end, call DELETE /api/v1/users/{new account}",
+   "line": 25,
+   "text": "new traveller signs up as \"traveller.{unique}@humantest.test\" › at the end, call DELETE /api/v1/users/{new account}",
+   "requests": []
+  },
+  {
+   "title": "line 28 · new traveller · \"traveller.{unique}@humantest.test\" should get an email \"Verify Your Email\"",
+   "line": 28,
+   "text": "\"traveller.{unique}@humantest.test\" should get an email \"Verify Your Email\"",
+   "requests": []
+  },
+  {
+   "title": "line 29 · new traveller · type \"000000\" in \"Verification code\"",
+   "line": 29,
+   "text": "type \"000000\" in \"Verification code\"",
+   "requests": [
+    "POST /api/v1/auth/verify-email"
+   ]
+  },
+  {
+   "title": "line 30 · new traveller · backend should receive POST /api/v1/auth/verify-email",
+   "line": 30,
+   "text": "backend should receive POST /api/v1/auth/verify-email",
+   "requests": []
+  },
+  {
+   "title": "line 31 · new traveller · backend should reply 400 Bad Request",
+   "line": 31,
+   "text": "backend should reply 400 Bad Request",
+   "requests": []
+  },
+  {
+   "title": "line 32 · new traveller · should see \"Invalid email or OTP\"",
+   "line": 32,
+   "text": "should see \"Invalid email or OTP\"",
+   "requests": []
+  },
+  {
+   "title": "line 33 · new traveller · should not see \"Email Verified!\"",
+   "line": 33,
+   "text": "should not see \"Email Verified!\"",
+   "requests": []
+  }
+ ],
+ "requests": [
+  {
+   "request": "POST /api/v1/auth/register",
+   "route": {
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "file": "src/app/modules/auth/auth.route.ts",
+    "line": 12
+   },
+   "functions": [
+    {
+     "name": "rateLimitMiddleware",
+     "file": "src/app/middlewares/rateLimit.ts",
+     "line": 16,
+     "role": "middleware",
+     "hash": "0b63ebf06afc"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "registerUserZodSchema",
+     "file": "src/app/modules/auth/auth.validation.ts",
+     "line": 9,
+     "role": "validation",
+     "hash": "e0f2a29f78c2"
+    },
+    {
+     "name": "passwordRegex",
+     "file": "src/app/modules/auth/auth.validation.ts",
+     "line": 5,
+     "role": "validation",
+     "hash": "94cd819082e8"
+    },
+    {
+     "name": "phoneRegex",
+     "file": "src/app/modules/auth/auth.validation.ts",
+     "line": 4,
+     "role": "validation",
+     "hash": "aa1f0520e42c"
+    },
+    {
+     "name": "registerUser",
+     "file": "src/app/modules/auth/auth.controller.ts",
+     "line": 39,
+     "role": "controller",
+     "hash": "471befc58dde"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "registerUser",
+     "file": "src/app/modules/auth/auth.service.ts",
+     "line": 31,
+     "role": "service",
+     "hash": "1db6452fe4d6"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "generateNumericOtp",
+     "file": "src/app/modules/auth/auth.service.ts",
+     "line": 23,
+     "role": "service",
+     "hash": "b0d6c2132146"
+    },
+    {
+     "name": "EmailService.sendEmail",
+     "file": "src/helpers/email/email.service.ts",
+     "line": 28,
+     "role": "service",
+     "hash": "cfc1234a1e5c"
+    },
+    {
+     "name": "transporter",
+     "file": "src/helpers/email/email.service.ts",
+     "line": 14,
+     "role": "service",
+     "hash": "2cebd9117e43"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "check",
+     "section": "body",
+     "field": "businessName",
+     "message": "businessName is required for registration validation",
+     "when": {
+      "code": "isBusinessOwner && !data.businessName",
+      "text": "business owner is true, and business name is empty"
+     },
+     "id": "check:body.businessName:businessName is required for registration validation",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 49
+     },
+     "text": "If business owner is true, and business name is empty, the request is refused (on businessName): \"businessName is required for registration validation\"."
+    },
+    {
+     "kind": "check",
+     "section": "body",
+     "field": "companyName",
+     "message": "companyName is required for operator registration",
+     "when": {
+      "code": "!(isBusinessOwner) && isOperator && !data.companyName && !data.businessName",
+      "text": "business owner is false, and operator is true, and company name is empty, and business name is empty"
+     },
+     "id": "check:body.companyName:companyName is required for operator registration",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 57
+     },
+     "text": "If business owner is false, and operator is true, and company name is empty, and business name is empty, the request is refused (on companyName): \"companyName is required for operator registration\"."
+    },
+    {
+     "kind": "check",
+     "section": "body",
+     "field": "contactPersonName",
+     "message": "contactPersonName is required for operator registration",
+     "when": {
+      "code": "!(isBusinessOwner) && isOperator && !data.contactPersonName && !data.name",
+      "text": "business owner is false, and operator is true, and contact person name is empty, and name is empty"
+     },
+     "id": "check:body.contactPersonName:contactPersonName is required for operator registration",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 64
+     },
+     "text": "If business owner is false, and operator is true, and contact person name is empty, and name is empty, the request is refused (on contactPersonName): \"contactPersonName is required for operator registration\"."
+    },
+    {
+     "kind": "check",
+     "section": "body",
+     "field": "name",
+     "message": "name is required for user registration",
+     "when": {
+      "code": "!(isBusinessOwner) && !(isOperator) && !data.name || !data.name.trim()",
+      "text": "business owner is false, and operator is false, and name is empty or only spaces"
+     },
+     "id": "check:body.name:name is required for user registration",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 72
+     },
+     "text": "If business owner is false, and operator is false, and name is empty or only spaces, the request is refused (on name): \"name is required for user registration\"."
+    },
+    {
+     "kind": "check",
+     "section": "body",
+     "field": "phoneNumber",
+     "message": "phoneNumber is required",
+     "when": {
+      "code": "!data.phone && !data.phoneNumber",
+      "text": "phone is empty, and phone number is empty"
+     },
+     "id": "check:body.phoneNumber:phoneNumber is required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 81
+     },
+     "text": "If phone is empty, and phone number is empty, the request is refused (on phoneNumber): \"phoneNumber is required\"."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "name",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.name:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 12
+     },
+     "text": "name: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "name",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.name:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 12
+     },
+     "text": "name: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "required",
+     "required": true,
+     "message": "Email is required",
+     "id": "field:body.email:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 13
+     },
+     "text": "email: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.email:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 13
+     },
+     "text": "email: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "format",
+     "format": "email",
+     "message": "Invalid email address",
+     "id": "field:body.email:format:email",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 13
+     },
+     "text": "email: must be a valid email address."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "required",
+     "required": true,
+     "message": "Password is required",
+     "id": "field:body.password:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 17
+     },
+     "text": "password: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.password:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 17
+     },
+     "text": "password: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "min",
+     "value": 8,
+     "unit": "characters",
+     "message": "Password must be at least 8 characters long",
+     "id": "field:body.password:min",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 17
+     },
+     "text": "password: at least 8 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "max",
+     "value": 128,
+     "unit": "characters",
+     "message": "Password cannot exceed 128 characters",
+     "id": "field:body.password:max",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 17
+     },
+     "text": "password: at most 128 characters."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "password",
+     "facet": "format",
+     "format": "regex",
+     "message": "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
+     "id": "field:body.password:format:regex",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 17
+     },
+     "text": "password: must match a set pattern."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "phone",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.phone:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 25
+     },
+     "text": "phone: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "phone",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.phone:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 25
+     },
+     "text": "phone: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "phone",
+     "facet": "format",
+     "format": "regex",
+     "message": "Invalid phone number format",
+     "id": "field:body.phone:format:regex",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 25
+     },
+     "text": "phone: must match a set pattern."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "phoneNumber",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.phoneNumber:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 26
+     },
+     "text": "phoneNumber: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "phoneNumber",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.phoneNumber:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 26
+     },
+     "text": "phoneNumber: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "phoneNumber",
+     "facet": "format",
+     "format": "regex",
+     "message": "Invalid phone number format",
+     "id": "field:body.phoneNumber:format:regex",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 26
+     },
+     "text": "phoneNumber: must match a set pattern."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "role",
+     "facet": "required",
+     "required": false,
+     "default": "USER",
+     "id": "field:body.role:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 27
+     },
+     "text": "role: optional (default USER)."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "role",
+     "facet": "oneOf",
+     "values": [
+      "USER",
+      "OPERATOR",
+      "ADMIN",
+      "PROMOTER",
+      "BUSINESS_OWNER"
+     ],
+     "id": "field:body.role:oneOf",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 27
+     },
+     "text": "role: one of USER, OPERATOR, ADMIN, PROMOTER or BUSINESS_OWNER."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "companyName",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.companyName:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 37
+     },
+     "text": "companyName: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "companyName",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.companyName:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 37
+     },
+     "text": "companyName: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "contactPersonName",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.contactPersonName:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 38
+     },
+     "text": "contactPersonName: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "contactPersonName",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.contactPersonName:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 38
+     },
+     "text": "contactPersonName: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "businessName",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.businessName:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 39
+     },
+     "text": "businessName: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "businessName",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.businessName:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 39
+     },
+     "text": "businessName: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "profilePicture",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.profilePicture:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 40
+     },
+     "text": "profilePicture: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "profilePicture",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.profilePicture:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 40
+     },
+     "text": "profilePicture: must be text."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:registerUser:409:existingUser",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 41
+     },
+     "in": "registerUser",
+     "when": [
+      {
+       "code": "existingUser",
+       "text": "a matching user is found"
+      }
+     ],
+     "status": 409,
+     "message": "Email already in use",
+     "text": "If a matching user is found, the server answers 409 Conflict: \"Email already in use\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "registerUser",
+     "status": 201,
+     "message": "Registration successful. Please check your email for the verification OTP.",
+     "id": "reply:registerUser:201:",
+     "source": {
+      "file": "src/app/modules/auth/auth.controller.ts",
+      "line": 43
+     },
+     "text": "When nothing stops it, the server answers 201 Created: \"Registration successful. Please check your email for the verification OTP.\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "user",
+     "fields": [
+      {
+       "name": "name",
+       "how": "set"
+      },
+      {
+       "name": "email",
+       "how": "set"
+      },
+      {
+       "name": "phone number",
+       "how": "set"
+      },
+      {
+       "name": "password hash",
+       "how": "set"
+      },
+      {
+       "name": "role",
+       "how": "set"
+      },
+      {
+       "name": "status",
+       "how": "set",
+       "value": "UNVERIFIED"
+      },
+      {
+       "name": "is email verified",
+       "how": "set",
+       "value": "false"
+      }
+     ],
+     "when": [],
+     "in": "registerUser",
+     "id": "effect:registerUser:create:user:",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 63
+     },
+     "text": "A new user is saved (status becomes UNVERIFIED; is email verified becomes false)."
+    },
+    {
+     "kind": "effect",
+     "effect": "create",
+     "model": "verification token",
+     "fields": [
+      {
+       "name": "user id",
+       "how": "set"
+      },
+      {
+       "name": "token hash",
+       "how": "set"
+      },
+      {
+       "name": "type",
+       "how": "set",
+       "value": "EMAIL_VERIFICATION"
+      },
+      {
+       "name": "expires at",
+       "how": "set"
+      }
+     ],
+     "when": [],
+     "in": "registerUser",
+     "id": "effect:registerUser:create:verification token:",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 94
+     },
+     "text": "A new verification token is saved (type becomes EMAIL_VERIFICATION)."
+    },
+    {
+     "kind": "effect",
+     "effect": "email",
+     "what": "Verify Your Email",
+     "when": [],
+     "in": "registerUser",
+     "bestEffort": true,
+     "id": "effect:registerUser:email:Verify Your Email:",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 105
+     },
+     "text": "An email \"Verify Your Email\" is sent. If that fails, the request still goes on."
+    }
+   ]
+  },
+  {
+   "request": "POST /api/v1/auth/verify-email",
+   "route": {
+    "method": "POST",
+    "path": "/api/v1/auth/verify-email",
+    "file": "src/app/modules/auth/auth.route.ts",
+    "line": 32
+   },
+   "functions": [
+    {
+     "name": "rateLimitMiddleware",
+     "file": "src/app/middlewares/rateLimit.ts",
+     "line": 16,
+     "role": "middleware",
+     "hash": "0b63ebf06afc"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "verifyOtpSchema",
+     "file": "src/app/modules/auth/auth.validation.ts",
+     "line": 91,
+     "role": "validation",
+     "hash": "cdc103df756c"
+    },
+    {
+     "name": "verifyEmail",
+     "file": "src/app/modules/auth/auth.controller.ts",
+     "line": 51,
+     "role": "controller",
+     "hash": "29774241a35b"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "verifyEmail",
+     "file": "src/app/modules/auth/auth.service.ts",
+     "line": 132,
+     "role": "service",
+     "hash": "91b4c116be09"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "check",
+     "section": "body",
+     "field": "otp",
+     "message": "OTP is required",
+     "when": {
+      "code": "code === undefined || String(code).trim().length === 0"
+     },
+     "id": "check:body.otp:OTP is required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 105
+     },
+     "text": "If `code === undefined || String(code).trim().length === 0`, the request is refused (on otp): \"OTP is required\"."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "required",
+     "required": true,
+     "message": "Email is required",
+     "id": "field:body.email:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 94
+     },
+     "text": "email: required."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "type",
+     "type": "text",
+     "id": "field:body.email:type",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 94
+     },
+     "text": "email: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "email",
+     "facet": "format",
+     "format": "email",
+     "message": "Invalid email address",
+     "id": "field:body.email:format:email",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 94
+     },
+     "text": "email: must be a valid email address."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "otp",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.otp:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 98
+     },
+     "text": "otp: optional."
+    },
+    {
+     "kind": "field",
+     "section": "body",
+     "field": "oneTimeCode",
+     "facet": "required",
+     "required": false,
+     "id": "field:body.oneTimeCode:required",
+     "source": {
+      "file": "src/app/modules/auth/auth.validation.ts",
+      "line": 99
+     },
+     "text": "oneTimeCode: optional."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:verifyEmail:400:!user",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 142
+     },
+     "in": "verifyEmail",
+     "when": [
+      {
+       "code": "!user",
+       "text": "user is not found"
+      }
+     ],
+     "status": 400,
+     "message": "Invalid email or OTP",
+     "text": "If user is not found, the server answers 400 Bad Request: \"Invalid email or OTP\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:verifyEmail:403:user.deletedAt",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 146
+     },
+     "in": "verifyEmail",
+     "when": [
+      {
+       "code": "user.deletedAt",
+       "text": "user is deleted"
+      }
+     ],
+     "status": 403,
+     "message": "Account has been deleted",
+     "text": "If user is deleted, the server answers 403 Forbidden: \"Account has been deleted\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:verifyEmail:403:user.status === AccountStatus.SUSPENDED",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 150
+     },
+     "in": "verifyEmail",
+     "when": [
+      {
+       "code": "user.status === AccountStatus.SUSPENDED",
+       "text": "user status is SUSPENDED"
+      }
+     ],
+     "status": 403,
+     "message": "Your account has been suspended. Please contact support.",
+     "text": "If user status is SUSPENDED, the server answers 403 Forbidden: \"Your account has been suspended. Please contact support.\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:verifyEmail:403:user.status === AccountStatus.DEACTIVATED",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 157
+     },
+     "in": "verifyEmail",
+     "when": [
+      {
+       "code": "user.status === AccountStatus.DEACTIVATED",
+       "text": "user status is DEACTIVATED"
+      }
+     ],
+     "status": 403,
+     "message": "Your account has been deactivated. Please contact support.",
+     "text": "If user status is DEACTIVATED, the server answers 403 Forbidden: \"Your account has been deactivated. Please contact support.\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:verifyEmail:400:user.status !== AccountStatus.UNVERIFIED && user.isEmailVerified",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 164
+     },
+     "in": "verifyEmail",
+     "when": [
+      {
+       "code": "user.status !== AccountStatus.UNVERIFIED && user.isEmailVerified",
+       "text": "user status is not UNVERIFIED, and user is email verified"
+      }
+     ],
+     "status": 400,
+     "message": "Email is already verified",
+     "text": "If user status is not UNVERIFIED, and user is email verified, the server answers 400 Bad Request: \"Email is already verified\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:verifyEmail:400:!tokenRecord || tokenRecord.expiresAt < new Date()",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 176
+     },
+     "in": "verifyEmail",
+     "when": [
+      {
+       "code": "!tokenRecord || tokenRecord.expiresAt < new Date()",
+       "text": "no matching verification token is found, or token record expires at is in the past"
+      }
+     ],
+     "status": 400,
+     "message": "OTP has expired or is invalid",
+     "text": "If no matching verification token is found, or token record expires at is in the past, the server answers 400 Bad Request: \"OTP has expired or is invalid\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:verifyEmail:400:!isValid",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 181
+     },
+     "in": "verifyEmail",
+     "when": [
+      {
+       "code": "!isValid",
+       "text": "valid is false"
+      }
+     ],
+     "status": 400,
+     "message": "Invalid email or OTP",
+     "text": "If valid is false, the server answers 400 Bad Request: \"Invalid email or OTP\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "verifyEmail",
+     "status": 200,
+     "message": "Email verified successfully. You can now log in.",
+     "id": "reply:verifyEmail:200:",
+     "source": {
+      "file": "src/app/modules/auth/auth.controller.ts",
+      "line": 55
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Email verified successfully. You can now log in.\"."
+    },
+    {
+     "kind": "effect",
+     "effect": "update",
+     "model": "user",
+     "fields": [
+      {
+       "name": "status",
+       "how": "set",
+       "value": "ACTIVE"
+      },
+      {
+       "name": "is email verified",
+       "how": "set",
+       "value": "true"
+      }
+     ],
+     "when": [],
+     "in": "verifyEmail",
+     "id": "effect:verifyEmail:update:user:",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 185
+     },
+     "text": "The user is changed: status becomes ACTIVE; is email verified becomes true."
+    },
+    {
+     "kind": "effect",
+     "effect": "delete",
+     "model": "verification token",
+     "when": [],
+     "in": "verifyEmail",
+     "id": "effect:verifyEmail:delete:verification token:",
+     "source": {
+      "file": "src/app/modules/auth/auth.service.ts",
+      "line": 197
+     },
+     "text": "The verification token is deleted."
+    }
+   ]
+  }
+ ],
+ "frontend": true,
+ "acceptedAt": "2026-11-08T07:13:36.267Z"
+}

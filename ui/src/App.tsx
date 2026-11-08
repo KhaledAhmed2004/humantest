@@ -49,7 +49,7 @@ export default function App() {
           {/* shadcn ScrollArea instead of the browser's own scrollbar. */}
           <ScrollArea className="h-full">
           <main>
-            {test ? <TestDetail ht={ht} test={test} /> : (
+            {test ? <TestDetail ht={ht} test={test} demo={demo} /> : (
               <Empty className="min-h-[70vh]">
                 <EmptyHeader>
                   <EmptyMedia variant="icon"><ListChecksIcon /></EmptyMedia>

@@ -1,0 +1,63 @@
+# Test data for Island Hop, set up through its API in one line of a test.
+# Everything made here is removed again when the test ends, even when the test failed
+# ("at the end, call DELETE …"), so no test leaves data behind and no clean-up state is needed.
+# Names carry {unique}, so a run never trips over data from another run.
+
+Phrase: a test ferry "<name>" with <seats> seats
+  As operator:
+    call POST /api/v1/ferries with {"name": "<name>", "capacity": <seats>}
+    backend should reply 201 Created
+    remember data.id as ferry
+    at the end, call DELETE /api/v1/ferries/{ferry}
+
+
+Phrase: a test port "<name>"
+  As admin:
+    call POST /api/v1/ports with {"name": "<name>", "timeZone": "America/Anguilla"}
+    backend should reply 201 Created
+    remember data.id as port
+    at the end, call DELETE /api/v1/ports/{port}
+
+
+# Open for trips. It borrows the photo of an existing route (the API wants one).
+Phrase: a test route from "<from>" to "<to>"
+  As admin:
+    call GET /api/v1/ports?limit=100
+    remember data.data[name="<from>"].id as from port
+    remember data.data[name="<to>"].id as to port
+    call GET /api/v1/routes?limit=1
+    remember data.routes[0].imageUrl as route photo
+    call POST /api/v1/routes with {"departurePortId": {from port}, "destinationPortId": {to port}, "durationMinutes": 60, "description": "HumanTest route {unique}", "imageUrl": {route photo}}
+    backend should reply 201 Created
+    remember data.id as route
+    at the end, call DELETE /api/v1/routes/{route}
+
+
+# Test trips leave far ahead (300 days or more) with an adult fare of $77, so no traveller books one by chance.
+# The times are Anguilla time, like the operator's form.
+# Don't use this one in a test: it doesn't undo itself. Use one of the two below.
+Phrase: a new trip on "<ferry>" from "<from>" to "<to>", <leaves> to <arrives>, in <days> days
+  As operator:
+    call GET /api/v1/ferries?limit=100
+    remember data.items[name="<ferry>"].id as trip ferry
+    call GET /api/v1/routes?limit=100
+    remember data.routes[departurePort.name="<from>", destinationPort.name="<to>"].id as trip route
+    call POST /api/v1/operator/schedules with {"routeId": {trip route}, "ferryId": {trip ferry}, "departureTime": "{in <days> days}T<leaves>", "arrivalTime": "{in <days> days}T<arrives>", "adultFare": 77}
+    backend should reply 201 Created
+    remember data.id as trip
+
+
+# Deleted when the test ends.
+Phrase: a test trip on "<ferry>" from "<from>" to "<to>", <leaves> to <arrives>, in <days> days
+  a new trip on "<ferry>" from "<from>" to "<to>", <leaves> to <arrives>, in <days> days
+  As operator:
+    at the end, call DELETE /api/v1/operator/schedules/{trip}
+
+
+# For a test that books it: Island Hop never deletes a trip that has (or had) a booking, even a
+# cancelled one ("Please cancel the trip instead"), so this trip is cancelled when the test ends.
+# A cancelled trip doesn't block its ferry, so the next run can schedule the same time again.
+Phrase: a test trip to book on "<ferry>" from "<from>" to "<to>", <leaves> to <arrives>, in <days> days
+  a new trip on "<ferry>" from "<from>" to "<to>", <leaves> to <arrives>, in <days> days
+  As operator:
+    at the end, call PATCH /api/v1/operator/schedules/{trip}/status with {"status": "CANCELLED"}

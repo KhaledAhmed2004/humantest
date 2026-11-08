@@ -1,0 +1,19 @@
+# Accounts made by a test. Each one is deleted by the admin when the test ends (Island Hop only
+# marks it deleted, so it stays in the table, hidden); {unique} keeps every run's address new.
+
+Phrase: <user> signs up as "<email>"
+  As <user>:
+    go to signup page
+    type "HumanTest Traveller" in "Full Name"
+    click "Next Step"
+    type "<email>" in "Email Address"
+    type "+8801712345678" in "Phone Number"
+    click "Next Step"
+    type "Test@12345" in "Create Password"
+    type "Test@12345" in "Confirm Password"
+    click "Complete Registration"
+    backend should receive POST /api/v1/auth/register
+    backend should reply 201 Created
+    remember data.userId as new account
+  As admin:
+    at the end, call DELETE /api/v1/users/{new account}

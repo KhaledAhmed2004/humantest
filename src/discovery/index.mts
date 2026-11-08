@@ -13,6 +13,8 @@ import { matchStep } from '../compiler/steps.mts';
 import { check } from '../compiler/index.mts';
 import { actionRules, uploadRules } from './frontend/actions.mts';
 import { pageFor, type Frontend } from './frontend/next.mts';
+import { draftable, draftFor } from './draft.mts';
+import type { GapLine } from './gaps.mts';
 export { openFrontend, type Frontend } from './frontend/next.mts';
 
 export interface Backend { ts: TsProject; table: RouteTable }
@@ -128,6 +130,7 @@ export function writeDiscovery(project: Project, backend: Backend, t: { file: st
     if (page) markChecked(page.groups, seen);
     return { title: s.title, line: s.line, text: s.text, calls, ...(page ? { page } : {}) };
   });
+  addDrafts(project, t.trace, steps, path.basename(backend.ts.root), fe ? path.basename(fe.ts.root) : '');
   const out = path.join(project.root, '.humantest', 'discovery', path.basename(t.file));
   const result: DiscoveryFile = {
     test: t.trace.test, source: t.trace.source, file: out, codeRoot: path.basename(backend.ts.root),
@@ -136,6 +139,33 @@ export function writeDiscovery(project: Project, backend: Backend, t: { file: st
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, JSON.stringify({ ...result, file: undefined }, (k, v) => (k === 'decl' || k === 'node' ? undefined : v), 1));
   return result;
+}
+
+/**
+ * A draft test for each rule this test reaches but doesn't check, where a test could look for its
+ * message: this test's own lines up to the first step that reaches it, then what to see.
+ */
+function addDrafts(project: Project, trace: TraceFile, steps: DiscoveryFile['steps'], codeRoot: string, frontRoot: string) {
+  const file = trace.source.replace(/:\d+$/, '');
+  const testLine = Number(trace.source.match(/:(\d+)$/)?.[1] ?? 0);
+  steps.forEach((s, i) => {
+    const by = { test: trace.test, file, testLine, stepLine: s.line };
+    const each = (request: string, root: string, groups: Group[], status?: number) => {
+      const req = { request, area: '', root, reachedBy: [{ ...by, ...(status !== undefined ? { status } : {}) }], lines: [] };
+      for (const g of groups) for (const l of g.lines) {
+        // The same request's rules are shared by every step that makes it: the first step's draft is the shortest.
+        if ((l as GapLine).draft !== undefined) continue;
+        const line = { ...l, group: g.title };
+        const d = draftable(line) ? draftFor(project, req, line, 'this test does not check') : undefined;
+        if (d) (l as GapLine).draft = d;
+      }
+    };
+    if (s.page) each(pageActionKey(s.page.action, s.page.label, s.page.page), frontRoot, s.page.groups);
+    for (const c of s.calls) {
+      if (!('groups' in c)) continue;
+      each(c.request, codeRoot, c.groups, trace.steps[i]?.calls.find((x) => `${x.method} ${x.path}` === c.request)?.status);
+    }
+  });
 }
 
 /**

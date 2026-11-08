@@ -2,12 +2,13 @@
 // rules, which ones a test checks. Plus, for a rule with a message that no test checks, a draft test:
 // the lines of a test that reaches it, then what to see. Read from the last run and the code; no AI.
 
-import fs from 'node:fs';
 import path from 'node:path';
 import type { Project } from '../compiler/project.mts';
 import { discover, readTraces, writeDiscovery, type Backend, type Frontend } from './index.mts';
 import type { RouteEntry } from './backend/express.mts';
 import type { Line } from './rules/present.mts';
+import { draftable, draftFor } from './draft.mts';
+export { draftable, draftFor } from './draft.mts';
 
 /** A test that reaches a request; `status`: what the request answered in that test's last run. */
 export interface ReachedBy { test: string; file: string; testLine: number; stepLine: number; status?: number }
@@ -18,9 +19,6 @@ export interface GapLine extends Line {
   /** A draft test for it (see draftFor), when `withDrafts` added one. */
   draft?: string;
 }
-
-/** A refusal or page stop with a message: a test can look for it, so a draft can be made. */
-export const draftable = (l: GapLine) => !l.checked && l.messages.length > 0 && /says no|On the page/.test(l.group);
 
 /** Adds a draft test to every unchecked line that can have one. */
 export function withDrafts(project: Project, report: GapReport): GapReport {
@@ -75,7 +73,8 @@ export function gaps(project: Project, backend: Backend, fe?: Frontend): GapRepo
   const add = (key: string, area: string, root: string, groups: { title: string; lines: Line[] }[], by: ReachedBy) => {
     let r = reached.get(key);
     if (!r) {
-      r = { request: key, area, root, reachedBy: [], lines: groups.flatMap((g) => g.lines.map((l) => ({ ...l, group: g.title, checked: false }))) };
+      // One test's own draft and "how checked" don't hold across tests: withDrafts makes the drafts here.
+      r = { request: key, area, root, reachedBy: [], lines: groups.flatMap((g) => g.lines.map(({ draft: _d, checkedBy: _c, ...l }: Line & { draft?: string }) => ({ ...l, group: g.title, checked: false }))) };
       reached.set(key, r);
     }
     if (!r.reachedBy.some((x) => x.test === by.test)) r.reachedBy.push(by);
@@ -172,41 +171,6 @@ function titleFromPath(method: string, p: string): string | undefined {
     case 'DELETE': return `Delete ${one}`;
     default: return undefined;
   }
-}
-
-/**
- * A draft test for a rule no test checks: the lines of a test that reaches it, up to the step that
- * gets there, then what has to be true and what to see. It is a start, not a finished test: making
- * the condition true (another port, a full trip) is for whoever writes it.
- */
-export function draftFor(project: Project, req: GapRequest, line: GapLine): string | undefined {
-  const message = line.messages[0];
-  // A test that got through (2xx), else one that at least got past who may (not 401/403): one turned
-  // away at the door never reaches the rules inside.
-  const rank = (b: ReachedBy) => (b.status === undefined ? 1 : b.status < 300 ? 0 : b.status === 401 || b.status === 403 ? 3 : 2);
-  const by = [...req.reachedBy].sort((a, b) => rank(a) - rank(b))[0];
-  if (!message || !by) return undefined;
-  const file = path.join(project.root, by.file);
-  if (!fs.existsSync(file)) return undefined;
-  const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
-  // From the test's own header to the step that reached this request.
-  const body = lines.slice(by.testLine, by.stepLine).filter((l) => !/^\s*#/.test(l));
-  while (body.length && !body.at(-1)!.trim()) body.pop();
-  const indent = body.at(-1)?.match(/^\s*/)?.[0] ?? '    ';
-  // A message with {placeholders}: look for its longest fixed part.
-  const seen = message.split(/\{[^}]*\}/).map((x) => x.trim()).sort((a, b) => b.length - a.length)[0] || message;
-  const why = line.text.replace(/,? (the server answers|the page stops|the request is refused).*$/, '').replace(/^If /, '');
-  const name = `${line.status ? `${line.status} ` : ''}${seen.replace(/[."]+$/, '')}`.slice(0, 70);
-  return [
-    `# Draft from "${by.test}" (${by.file}:${by.testLine}), for this rule no test checks:`,
-    `#   ${line.text}`,
-    `#   ${req.root}/${line.source.file}:${line.source.line}`,
-    `# Change the steps so that this is true before the last one: ${why}`,
-    `# It is not run while it says "Draft:". When the steps are right, change that to "Test:".`,
-    `Draft: ${name}`,
-    ...body,
-    `${indent}should see "${seen}"`,
-  ].join('\n');
 }
 
 /** The order people read a request's rules in (as present.mts groups them). */
