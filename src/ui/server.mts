@@ -47,7 +47,10 @@ function discoverProjects(): ProjectRef[] {
   return out;
 }
 
-const projects = discoverProjects();
+/** For now the UI only shows these projects. Empty the list to show every project again. */
+const ONLY_PROJECTS: string[] = ['island-hop'];
+
+const projects = discoverProjects().filter((p) => !ONLY_PROJECTS.length || ONLY_PROJECTS.includes(p.id));
 const findProject = (id: unknown) => projects.find((p) => p.id === id);
 
 /** Tell the page when someone edits a .ht file (tests or phrases) or the config, so the list updates by itself. */
@@ -85,7 +88,44 @@ function discoveryFor(ref: ProjectRef, key: string) {
   const out = path.join(ref.root, '.humantest', 'discovery', `${fileSlug(`${file} ${rest.join('::')}`)}.json`);
   const running = discovering.has(ref.id);
   if (!fs.existsSync(out)) return { configured: true, running };
-  return { configured: true, running, at: fs.statSync(out).mtime.toISOString(), result: JSON.parse(fs.readFileSync(out, 'utf8')) };
+  // Where the code is on this computer, so a rule's place can open in the editor.
+  const dir = (d?: string) => (d ? path.resolve(ref.root, d).split(path.sep).join('/') : undefined);
+  const dirs = { codeDir: dir(project.config.source.backend), frontDir: dir(project.config.source.frontend) };
+  const result = JSON.parse(fs.readFileSync(out, 'utf8')) as SavedDiscovery;
+  markCheckedElsewhere(ref, out, result);
+  return { configured: true, running, at: fs.statSync(out).mtime.toISOString(), result: { ...result, ...dirs } };
+}
+
+interface SavedLine { source: { file: string; line: number }; ids: string[]; checked?: boolean; checkedElsewhere?: string[] }
+interface SavedDiscovery { test: string; steps: { page?: { groups: { lines: SavedLine[] }[] }; calls: { groups?: { lines: SavedLine[] }[] }[] }[] }
+const savedLines = (d: SavedDiscovery) => d.steps.flatMap((s) => [...(s.page?.groups ?? []), ...s.calls.flatMap((c) => c.groups ?? [])]).flatMap((g) => g.lines);
+/** The same rule in any test: rule ids are only unique within a request, so with where it is. */
+const ruleKey = (l: SavedLine) => `${l.source.file}:${l.source.line}:${l.ids.join('|')}`;
+
+/**
+ * Names, on each rule this test doesn't check, the other tests that do: from their own last runs
+ * (.humantest/discovery), only of tests that still have a trace. So a rule isn't shown as a gap
+ * when another test covers it.
+ */
+function markCheckedElsewhere(ref: ProjectRef, own: string, result: SavedDiscovery) {
+  const dir = path.join(ref.root, '.humantest', 'discovery');
+  const traces = path.join(ref.root, '.humantest', 'traces');
+  const by = new Map<string, Set<string>>();
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith('.json') || path.join(dir, f) === own || !fs.existsSync(path.join(traces, f))) continue;
+    let other: SavedDiscovery;
+    try { other = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) } catch { continue }
+    for (const l of savedLines(other)) {
+      if (!l.checked) continue;
+      const k = ruleKey(l);
+      if (!by.has(k)) by.set(k, new Set());
+      by.get(k)!.add(other.test);
+    }
+  }
+  for (const l of savedLines(result)) {
+    const tests = !l.checked && by.get(ruleKey(l));
+    if (tests && tests.size) l.checkedElsewhere = [...tests].sort();
+  }
 }
 
 /** After a run: work out the rules behind every traced step, in a separate process so the UI stays quick. */

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileTextIcon, GitCompareArrowsIcon, PencilLineIcon, PlayIcon, SearchIcon, TriangleAlertIcon } from 'lucide-react'
+import { FileTextIcon, GitCompareArrowsIcon, PencilLineIcon, PlayIcon, SearchIcon, TriangleAlertIcon, VideoIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -9,6 +9,16 @@ import { isFailure, statusLabel } from '@/lib/status'
 import { formatDuration, friendlyFile, friendlyProblem } from '@/lib/format'
 import type { HumanTest } from '@/lib/use-humantest'
 import { cn } from '@/lib/utils'
+import { TEST_TYPES, testType, typeInfo, type TestType } from '@/lib/test-type'
+
+function TypeLabel({ type, selected }: { type: TestType; selected: boolean }) {
+  const { label, icon: Icon } = typeInfo(type)
+  return (
+    <span className={cn('mt-0.5 flex items-center gap-1 text-xs text-muted-foreground', selected && 'text-foreground/75')}>
+      <Icon className="size-3" aria-hidden="true" /> {label}
+    </span>
+  )
+}
 
 export function TestList({ ht, selected, onSelect, demo }: {
   ht: HumanTest
@@ -17,7 +27,9 @@ export function TestList({ ht, selected, onSelect, demo }: {
   demo: boolean
 }) {
   const [filter, setFilter] = useState('')
+  const [type, setType] = useState<TestType | null>(null)
   const q = filter.trim().toLowerCase()
+  const typeCount = (id: TestType) => ht.tests.filter((t) => testType(t.steps) === id).length
 
   const statuses = ht.tests.map((t) => ht.statusOf(t))
   const passed = statuses.filter((s) => s === 'passed').length
@@ -30,6 +42,34 @@ export function TestList({ ht, selected, onSelect, demo }: {
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter tests…" aria-label="Filter tests" className="pl-8" />
+        </div>
+        {/* What kind of test: worked out from the steps (lib/test-type.ts). */}
+        <div role="group" aria-label="Show tests of one kind" className="mt-2 flex flex-wrap gap-1.5">
+          {[{ id: null, plural: 'All', hint: 'Every test', icon: null }, ...TEST_TYPES].map((k) => {
+            const count = k.id ? typeCount(k.id) : ht.tests.length
+            if (k.id && !count) return null
+            const on = type === k.id
+            const Icon = k.icon
+            return (
+              <Tooltip key={k.id ?? 'all'}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setType(on && k.id ? null : k.id)}
+                    className={cn(
+                      'flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs transition-colors',
+                      on ? 'border-foreground bg-foreground text-background' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    {Icon && <Icon className="size-3" aria-hidden="true" />}
+                    {k.plural} <span className={on ? 'opacity-70' : 'opacity-60'}>{count}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{k.hint}</TooltipContent>
+              </Tooltip>
+            )
+          })}
         </div>
       </div>
 
@@ -50,8 +90,8 @@ export function TestList({ ht, selected, onSelect, demo }: {
       <ScrollArea className="min-h-0 flex-1">
         <div className="pb-4">
           {ht.files.map((f) => {
-            const tests = f.tests.filter((t) => !q || t.name.toLowerCase().includes(q))
-            if (!tests.length && q) return null
+            const tests = f.tests.filter((t) => (!q || t.name.toLowerCase().includes(q)) && (!type || testType(t.steps) === type))
+            if (!tests.length && (q || type)) return null
             return (
               <section key={f.file} aria-label={friendlyFile(f.file)}>
                 <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
@@ -68,10 +108,10 @@ export function TestList({ ht, selected, onSelect, demo }: {
                         disabled={ht.running || f.diagnostics.length > 0}
                         onClick={() => ht.run({ file: f.file }, demo)}
                       >
-                        <PlayIcon className="size-3.5" />
+                        {demo ? <VideoIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Run these tests</TooltipContent>
+                    <TooltipContent>{demo ? 'Run every test in this file, with video' : 'Run every test in this file'}</TooltipContent>
                   </Tooltip>
                 </div>
 
@@ -93,6 +133,7 @@ export function TestList({ ht, selected, onSelect, demo }: {
                       <StatusIcon status={status} className="mt-0.5" />
                       <span className="break-words">
                         {t.name}
+                        <TypeLabel type={testType(t.steps)} selected={t.key === selected} />
                         {t.draft && (
                           <span className="mt-1 flex w-fit items-center gap-1 rounded-md bg-muted px-1.5 py-px text-xs font-medium text-muted-foreground">
                             <PencilLineIcon className="size-3" aria-hidden="true" /> Draft, not run

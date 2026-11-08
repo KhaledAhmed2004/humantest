@@ -61,17 +61,17 @@ export function AppHeader({ ht, demo, onDemoChange, view, onViewChange }: {
           <div className="flex items-center gap-2">
             <Switch id="demo" checked={demo} onCheckedChange={onDemoChange} />
             <Label htmlFor="demo" className="flex cursor-pointer items-center gap-1.5 text-muted-foreground">
-              <VideoIcon className="size-4" /> Record video
+              <VideoIcon className="size-4" /> Video
             </Label>
           </div>
         </TooltipTrigger>
-        <TooltipContent>Runs a little slower and records a video of each test</TooltipContent>
+        <TooltipContent>Every run records a video of each test (a little slower)</TooltipContent>
       </Tooltip>
 
       {ht.running ? (
         <Button variant="destructive" onClick={ht.stop}><SquareIcon /> Stop</Button>
       ) : (
-        <Button onClick={() => ht.run({}, demo)} disabled={!ht.project}><PlayIcon /> Run all tests</Button>
+        <Button onClick={() => ht.run({}, demo)} disabled={!ht.project}>{demo ? <VideoIcon /> : <PlayIcon />} Run all tests</Button>
       )}
 
       <Button

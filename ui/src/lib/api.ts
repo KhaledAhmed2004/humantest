@@ -51,6 +51,12 @@ export interface RuleLine {
   status?: number
   ids: string[]
   checked?: boolean
+  /** How the test checks it: it sees the message, or it checks the status the request answered. */
+  checkedBy?: 'message' | 'status'
+  /** Other tests that check it, when this test doesn't (added by the server from their last runs). */
+  checkedElsewhere?: string[]
+  /** A draft test that would check it, when it isn't checked and has a message to look for. */
+  draft?: string
 }
 export interface RuleGroup { title: string; lines: RuleLine[] }
 export type DiscoveredCall =
@@ -63,6 +69,9 @@ export interface DiscoveryResult {
   source: string
   codeRoot?: string
   frontRoot?: string
+  /** The backend and frontend folders on this computer (forward slashes), to open a rule in the editor. */
+  codeDir?: string
+  frontDir?: string
   steps: { title: string; line: number; text: string; calls: DiscoveredCall[]; page?: PageRules }[]
 }
 export interface DiscoveryResponse { configured: boolean; running?: boolean; at?: string; result?: DiscoveryResult }
@@ -90,7 +99,10 @@ export interface GapReport { areas: GapArea[]; reached: GapRequest[]; unreached:
 export interface CoverageResponse { computing: boolean; at?: string; report?: GapReport; error?: string }
 
 export async function getCoverage(project: string): Promise<CoverageResponse> {
-  return (await fetch(`/api/coverage?project=${encodeURIComponent(project)}`)).json()
+  const r = await fetch(`/api/coverage?project=${encodeURIComponent(project)}`)
+  // A server started before this page was built doesn't know the request.
+  if (r.status === 404) return { computing: false, error: 'The HumanTest server running now is older than this page. Stop it (Ctrl+C) and run "npm run ui" again.' }
+  return r.json()
 }
 
 /** Saves a draft test as a new .ht file in the tests folder. */

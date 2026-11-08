@@ -1,10 +1,39 @@
-import { useEffect, useState } from 'react'
-import { CheckCircle2Icon, CheckIcon, ChevronRightIcon, CircleIcon, CodeIcon, GitCompareArrowsIcon, LoaderCircleIcon, MousePointerClickIcon } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { CheckCircle2Icon, CheckIcon, ChevronRightIcon, CircleIcon, CodeIcon, CornerLeftUpIcon, GitCompareArrowsIcon, LoaderCircleIcon, MousePointerClickIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { getDiscovery, type DiscoveredCall, type DiscoveryResponse, type PageRules, type RuleLine, type TestChange } from '@/lib/api'
+import { DraftButton } from '@/components/draft-button'
+import { editorLink } from '@/lib/editor'
+import { getDiscovery, type DiscoveredCall, type DiscoveryResponse, type PageRules, type RuleGroup, type RuleLine, type TestChange } from '@/lib/api'
 import { humanize } from '../../../src/humanize'
 import { cn } from '@/lib/utils'
+
+/** The same request (by its route, not the ids in its path) or the same click: its rules are the same. */
+const callKey = (c: DiscoveredCall) => ('route' in c ? `${c.route.method} ${c.route.path}` : c.request)
+const pageKey = (p: PageRules) => `page ${p.component} "${p.label}"`
+/** Rules whose breaking lets the wrong person in, lets bad data through, or loses data. */
+const IMPORTANT = new Set(['Who can do it', 'When the server says no', 'What it changes'])
+
+/** Checked by this test, by another test only, or by none (an important gap, or a minor one). */
+type RuleState = 'this' | 'other' | 'gap-important' | 'gap'
+const stateOf = (l: RuleLine, group: string): RuleState =>
+  l.checked ? 'this' : l.checkedElsewhere?.length ? 'other' : IMPORTANT.has(group) ? 'gap-important' : 'gap'
+const isGap = (s: RuleState) => s === 'gap' || s === 'gap-important'
+const statesOf = (groups: RuleGroup[]) => groups.flatMap((g) => g.lines.map((l) => stateOf(l, g.title)))
+
+interface Tally { total: number; mine: number; other: number; gaps: number; important: number }
+function tallyOf(states: RuleState[]): Tally {
+  const n = (s: RuleState) => states.filter((x) => x === s).length
+  return { total: states.length, mine: n('this'), other: n('other'), gaps: states.filter(isGap).length, important: n('gap-important') }
+}
+
+/** One field's rules ("name is required, must be text…"): many and minor, so they are folded. */
+const isFieldLine = (l: RuleLine, group: string) => group === 'What the request must contain' && l.ids.every((id) => id.startsWith('field:'))
+/** `field:query.search:required` → "search". */
+const fieldName = (l: RuleLine) => l.ids[0]?.split(':')[1]?.split('.').pop() ?? '?'
+
+/** Where a rule's code is, and the folder on this computer to open it from. */
+interface Where { root?: string; dir?: string }
 
 /**
  * The business rules behind each step: what the app's code does for the API calls the step made.
@@ -15,6 +44,7 @@ export function BusinessLogic({ project, testKey, version, running, change, onAc
   change?: TestChange; onAccept: () => Promise<void>
 }) {
   const [data, setData] = useState<DiscoveryResponse | null>(null)
+  const [onlyGaps, setOnlyGaps] = useState(false)
 
   useEffect(() => {
     let current = true
@@ -27,20 +57,45 @@ export function BusinessLogic({ project, testKey, version, running, change, onAc
   // A click with no rules of its own (it only opens something) isn't worth a row.
   const hasPageRules = (s: { page?: { groups: { lines: unknown[] }[] } }) => !!s.page?.groups.some((g) => g.lines.length)
   const steps = data.result?.steps.filter((s) => s.calls.length || hasPageRules(s)) ?? []
-  const lines = steps.flatMap((s) => [
-    ...(s.page ? s.page.groups.flatMap((g) => g.lines) : []),
-    ...s.calls.flatMap((c) => ('groups' in c ? c.groups.flatMap((g) => g.lines) : [])),
-  ])
-  const checked = lines.filter((l) => l.checked).length
+
+  // The first step that makes each request: later ones point back to it instead of listing its rules again.
+  const firstAt = new Map<string, number>()
+  steps.forEach((s, i) => {
+    if (s.page && hasPageRules(s) && !firstAt.has(pageKey(s.page))) firstAt.set(pageKey(s.page), i)
+    for (const c of s.calls) if (!firstAt.has(callKey(c))) firstAt.set(callKey(c), i)
+  })
+  // Every rule once, however many steps reach it.
+  const all = tallyOf(steps.flatMap((s, i) => [
+    ...(s.page && firstAt.get(pageKey(s.page)) === i ? statesOf(s.page.groups) : []),
+    ...s.calls.flatMap((c) => ('groups' in c && firstAt.get(callKey(c)) === i ? statesOf(c.groups) : [])),
+  ]))
+  const code: Where = { root: data.result?.codeRoot, dir: data.result?.codeDir }
+  const front: Where = { root: data.result?.frontRoot, dir: data.result?.frontDir }
+  const ctx = { project, onlyGaps }
 
   return (
     <section className="space-y-2" aria-labelledby="business-logic-title">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="business-logic-title" className="text-sm font-semibold">Business logic</h2>
-        {lines.length > 0 && (
-          <span className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1"><CheckCircle2Icon className="size-3.5 text-emerald-600 dark:text-emerald-400" />{checked} checked by this test</span>
-            <span className="inline-flex items-center gap-1"><CircleIcon className="size-3.5 text-amber-600 dark:text-amber-400" />{lines.length - checked} not checked</span>
+        {all.total > 0 && (
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1"><CheckCircle2Icon className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />{all.mine} checked by this test</span>
+            {all.other > 0 && <span className="inline-flex items-center gap-1"><CheckCircle2Icon className="size-3.5" aria-hidden="true" />{all.other} by other tests</span>}
+            <span className="inline-flex items-center gap-1">
+              <CircleIcon className="size-3.5" aria-hidden="true" />{all.gaps} by no test
+              {all.important > 0 && <span className="text-amber-700 dark:text-amber-400">({all.important} important)</span>}
+            </span>
+            {all.gaps > 0 && all.gaps < all.total && (
+              <span role="group" aria-label="Which rules to show" className="inline-flex rounded-md border p-0.5">
+                {([[false, 'All rules'], [true, 'Gaps only']] as const).map(([v, label]) => (
+                  <button key={label} type="button" aria-pressed={onlyGaps === v} onClick={() => setOnlyGaps(v)}
+                    className={cn('rounded px-2 py-0.5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                      onlyGaps === v ? 'bg-secondary font-medium text-foreground' : 'hover:text-foreground')}>
+                    {label}
+                  </button>
+                ))}
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -58,15 +113,32 @@ export function BusinessLogic({ project, testKey, version, running, change, onAc
         <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">None of the steps called the server or clicked something with rules of its own, so there is no logic to show.</p>
       ) : (
         <div className="overflow-hidden rounded-xl border bg-card">
-          {steps.map((s, i) => (
-            <div key={i} className="border-t first:border-t-0">
-              <div className="px-4 pt-2.5 pb-1 text-sm font-medium" title={`Line ${s.line} of the test: ${s.text}`}>{humanize(s.text).text}</div>
-              <div className="space-y-1 px-2 pb-2">
-                {s.page && hasPageRules(s) && <PageRulesBlock page={s.page} frontRoot={data.result?.frontRoot} />}
-                {s.calls.map((c, j) => <CallRules key={j} call={c} codeRoot={data.result?.codeRoot} />)}
+          {steps.map((s, i) => {
+            const title = (j: number) => humanize(steps[j].text).text
+            // With "only not checked", what has nothing left open (or was shown before) is left out.
+            const open = (groups: RuleGroup[]) => !onlyGaps || statesOf(groups).some(isGap)
+            const rows: ReactNode[] = []
+            if (s.page && hasPageRules(s)) {
+              const first = firstAt.get(pageKey(s.page))!
+              if (first === i) { if (open(s.page.groups)) rows.push(<PageRulesBlock key="page" page={s.page} where={front} {...ctx} />) }
+              else if (!onlyGaps) rows.push(<SameAsBefore key="page" label={<><MousePointerClickIcon className="size-3.5 shrink-0" aria-hidden="true" /><span className="font-semibold">On the page</span><span className="truncate text-muted-foreground">"{s.page.label}"</span></>} step={title(first)} {...tallyOf(statesOf(s.page.groups))} />)
+            }
+            s.calls.forEach((c, j) => {
+              const first = firstAt.get(callKey(c))!
+              // The same request twice in one step: once is enough.
+              if (s.calls.findIndex((x) => callKey(x) === callKey(c)) !== j) return
+              if (!('groups' in c)) rows.push(<CallRules key={j} call={c} where={code} {...ctx} />)
+              else if (first === i) { if (open(c.groups)) rows.push(<CallRules key={j} call={c} where={code} {...ctx} />) }
+              else if (!onlyGaps) rows.push(<SameAsBefore key={j} label={<CallLabel call={c} />} step={title(first)} {...tallyOf(statesOf(c.groups))} />)
+            })
+            if (!rows.length) return null
+            return (
+              <div key={i} className="border-t first:border-t-0">
+                <div className="px-4 pt-2.5 pb-1 text-sm font-medium" title={`Line ${s.line} of the test: ${s.text}`}>{humanize(s.text).text}</div>
+                <div className="space-y-1 px-2 pb-2">{rows}</div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </section>
@@ -125,9 +197,49 @@ function ChangeBox({ change, onAccept, codeRoot, frontRoot }: { change: TestChan
   )
 }
 
+interface RowProps { where: Where; project: string; onlyGaps: boolean }
+
+/**
+ * How many of a request's rules this test checks (and other tests). Amber only when an important
+ * rule is checked by no test; green when every rule is checked somewhere.
+ */
+function CheckedCount({ total, mine, other, important }: Tally) {
+  const tone = important > 0 ? 'text-amber-700 dark:text-amber-400'
+    : mine + other === total ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'
+  const title = `${mine} of ${total} checked by this test${other ? `, ${other} more by other tests` : ''}${important ? `; ${important} important rule${important === 1 ? '' : 's'} checked by no test` : ''}`
+  return (
+    <span className={cn('ml-auto shrink-0 tabular-nums', tone)} title={title}>
+      {mine} of {total} checked{other > 0 && <span className="text-muted-foreground"> · +{other} by other tests</span>}
+    </span>
+  )
+}
+
+/** "DELETE /api/v1/ports/:id": the route as the code names it, the path the test used in the tooltip. */
+function CallLabel({ call }: { call: DiscoveredCall }) {
+  const [method, ...rest] = call.request.split(' ')
+  const shown = 'route' in call ? call.route.path : rest.join(' ')
+  return (
+    <>
+      <span className="font-mono font-semibold">{method}</span>
+      <span className="min-w-0 truncate font-mono text-muted-foreground" title={rest.join(' ')}>{shown}</span>
+    </>
+  )
+}
+
+/** A request an earlier step already made: its rules are listed there. */
+function SameAsBefore({ label, step, ...tally }: { label: ReactNode; step: string } & Tally) {
+  return (
+    <div className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground">
+      <CornerLeftUpIcon className="size-3.5 shrink-0" aria-hidden="true" />
+      {label}
+      <span className="min-w-0 truncate italic">same rules as in "{step}"</span>
+      <CheckedCount {...tally} />
+    </div>
+  )
+}
+
 /** The page's own rules for a click: what the browser and the component check before anything is sent. */
-function PageRulesBlock({ page, frontRoot }: { page: PageRules; frontRoot?: string }) {
-  const count = page.groups.reduce((n, g) => n + g.lines.length, 0)
+function PageRulesBlock({ page, where, project, onlyGaps }: { page: PageRules } & RowProps) {
   return (
     <Collapsible>
       <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
@@ -135,59 +247,101 @@ function PageRulesBlock({ page, frontRoot }: { page: PageRules; frontRoot?: stri
         <MousePointerClickIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="font-semibold">On the page</span>
         <span className="min-w-0 truncate text-muted-foreground">"{page.label}" in {page.component}</span>
-        <span className="ml-auto shrink-0 text-muted-foreground">{count} rule{count === 1 ? '' : 's'}</span>
+        <CheckedCount {...tallyOf(statesOf(page.groups))} />
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-2.5 px-2 pt-1 pb-2 pl-7">
-        {page.groups.map((g) => (
-          <ul key={g.title} className="space-y-1">
-            {g.lines.map((l, k) => <RuleItem key={k} line={l} codeRoot={frontRoot} />)}
-          </ul>
-        ))}
+        <RuleGroups groups={page.groups} where={where} project={project} onlyGaps={onlyGaps} titles={false} />
       </CollapsibleContent>
     </Collapsible>
   )
 }
 
-function CallRules({ call, codeRoot }: { call: DiscoveredCall; codeRoot?: string }) {
+function CallRules({ call, where, project, onlyGaps }: { call: DiscoveredCall } & RowProps) {
   if ('problem' in call) {
     return <p className="px-2 py-1 text-xs text-amber-700 dark:text-amber-400"><span className="font-mono">{call.request}</span>: {call.problem}</p>
   }
-  const count = call.groups.reduce((n, g) => n + g.lines.length, 0)
-  const [method, ...rest] = call.request.split(' ')
   return (
     <Collapsible>
       <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
         <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-        <span className="font-mono font-semibold">{method}</span>
-        <span className="min-w-0 truncate font-mono text-muted-foreground">{rest.join(' ')}</span>
-        <span className="ml-auto shrink-0 text-muted-foreground">{count} rule{count === 1 ? '' : 's'}</span>
+        <CallLabel call={call} />
+        <CheckedCount {...tallyOf(statesOf(call.groups))} />
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-2.5 px-2 pt-1 pb-2 pl-7">
-        {call.groups.map((g) => (
-          <div key={g.title}>
-            <h3 className="mb-1 text-xs font-semibold text-muted-foreground">{g.title}</h3>
-            <ul className="space-y-1">
-              {g.lines.map((l, k) => <RuleItem key={k} line={l} codeRoot={codeRoot} />)}
-            </ul>
-          </div>
-        ))}
+        <RuleGroups groups={call.groups} where={where} project={project} onlyGaps={onlyGaps} titles />
       </CollapsibleContent>
     </Collapsible>
   )
 }
 
-function RuleItem({ line, codeRoot }: { line: RuleLine; codeRoot?: string }) {
+function RuleGroups({ groups, where, project, onlyGaps, titles }: { groups: RuleGroup[]; titles: boolean } & RowProps) {
+  return groups.map((g) => {
+    const shown = g.lines.map((l) => ({ l, state: stateOf(l, g.title) })).filter((x) => !onlyGaps || isGap(x.state))
+    if (!shown.length) return null
+    const fields = shown.filter((x) => isFieldLine(x.l, g.title))
+    const rest = shown.filter((x) => !isFieldLine(x.l, g.title))
+    const item = (x: { l: RuleLine; state: RuleState }, k: number) => <RuleItem key={k} line={x.l} state={x.state} where={where} project={project} />
+    return (
+      <div key={g.title}>
+        {titles && <h3 className="mb-1 text-xs font-semibold text-muted-foreground">{g.title}</h3>}
+        <ul className="space-y-1">
+          {fields.length > 0 && <FieldRules items={fields} render={item} />}
+          {rest.map(item)}
+        </ul>
+      </div>
+    )
+  })
+}
+
+/** A request's single-field rules, folded into one line that opens. */
+function FieldRules({ items, render }: { items: { l: RuleLine; state: RuleState }[]; render: (x: { l: RuleLine; state: RuleState }, k: number) => ReactNode }) {
+  const t = tallyOf(items.map((x) => x.state))
+  return (
+    <li>
+      <Collapsible>
+        <CollapsibleTrigger className="group grid w-full grid-cols-[16px_1fr] gap-2 rounded-md text-left text-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+          <ChevronRightIcon className="mt-0.5 size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+          <span className="min-w-0">
+            {items.length} rule{items.length === 1 ? '' : 's'} about single fields
+            <span className="text-muted-foreground">: {items.map((x) => fieldName(x.l)).join(', ')}</span>
+            <span className="ml-2 text-xs text-muted-foreground">{t.mine + t.other} of {t.total} checked</span>
+          </span>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <ul className="mt-1 space-y-1">{items.map(render)}</ul>
+        </CollapsibleContent>
+      </Collapsible>
+    </li>
+  )
+}
+
+function RuleItem({ line, state, where, project }: { line: RuleLine; state: RuleState; where: Where; project: string }) {
+  const place = `${where.root ? `${where.root}/` : ''}${line.source.file}:${line.source.line}`
+  const how = line.checkedBy === 'status'
+    ? `Checked: the test checks that the server answers ${line.status ?? 'this status'}`
+    : 'Checked: the test sees this message'
+  const others = line.checkedElsewhere ?? []
+  const elsewhere = others.length === 1 ? `Checked by another test: "${others[0]}"` : `Checked by ${others.length} other tests`
+  const icon = {
+    'this': <CheckCircle2Icon className="mt-0.5 size-4 text-emerald-600 dark:text-emerald-400" aria-label="Checked by this test" />,
+    'other': <CheckCircle2Icon className="mt-0.5 size-4 text-muted-foreground" aria-label="Checked by another test" />,
+    'gap-important': <CircleIcon className="mt-0.5 size-4 text-amber-600 dark:text-amber-400" aria-label="Important, checked by no test" />,
+    'gap': <CircleIcon className="mt-0.5 size-4 text-muted-foreground" aria-label="Checked by no test" />,
+  }[state]
   return (
     <li className="grid grid-cols-[16px_1fr] gap-2 text-sm">
-      {line.checked
-        ? <CheckCircle2Icon className="mt-0.5 size-4 text-emerald-600 dark:text-emerald-400" aria-label="Checked by this test" />
-        : <CircleIcon className="mt-0.5 size-4 text-amber-600 dark:text-amber-400" aria-label="Not checked by this test" />}
+      {icon}
       <span className="min-w-0">
         <span className={cn('break-words', !line.translated && 'text-foreground/90')}>{line.text}</span>
         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-          <span className="font-mono">{codeRoot ? `${codeRoot}/` : ''}{line.source.file}:{line.source.line}</span>
+          {where.dir
+            ? <a href={editorLink(where.dir, line.source.file, line.source.line)} className="font-mono break-all underline-offset-2 hover:text-foreground hover:underline" title="Open in VS Code">{place}</a>
+            : <span className="font-mono break-all">{place}</span>}
           {!line.translated && <span className="inline-flex items-center gap-1"><CodeIcon className="size-3" />condition shown as code</span>}
+          {state === 'this' && <span className="text-emerald-700 dark:text-emerald-400">{how}</span>}
+          {state === 'other' && <span title={others.join('\n')}>{elsewhere}</span>}
         </span>
+        {isGap(state) && line.draft && <DraftButton project={project} draft={line.draft} label="Test this" className="mt-1.5" />}
       </span>
     </li>
   )

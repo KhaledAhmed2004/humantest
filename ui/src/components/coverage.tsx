@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { CheckIcon, ChevronRightIcon, CircleIcon, CodeIcon, FilePlus2Icon, LoaderCircleIcon, XIcon } from 'lucide-react'
-import { toast } from 'sonner'
+import { ChevronRightIcon, CircleIcon, CodeIcon, LoaderCircleIcon, XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { saveDraft, type GapArea, type GapLine, type GapRequest } from '@/lib/api'
-import { formatWhen, friendlyProblem } from '@/lib/format'
+import { DraftButton } from '@/components/draft-button'
+import { type GapArea, type GapLine, type GapRequest } from '@/lib/api'
+import { formatWhen } from '@/lib/format'
 import type { HumanTest } from '@/lib/use-humantest'
 import { cn } from '@/lib/utils'
 
@@ -170,26 +170,6 @@ function OpenRequest({ ht, q, open }: { ht: HumanTest; q: GapRequest; open: GapL
 }
 
 function OpenLine({ ht, line, root }: { ht: HumanTest; line: GapLine; root: string }) {
-  const [state, setState] = useState<{ busy?: boolean; file?: string }>({})
-  const make = async () => {
-    if (!ht.project || !line.draft) return
-    setState({ busy: true })
-    let r: Awaited<ReturnType<typeof saveDraft>>
-    try { r = await saveDraft(ht.project, line.draft) } catch (e) { r = { error: String(e) } }
-    if (r.error || !r.file) {
-      setState({})
-      toast.error('Could not save the draft.', { description: r.error })
-      return
-    }
-    setState({ file: r.file })
-    const problems = r.diagnostics ?? []
-    toast.success(`Saved as ${r.file}`, {
-      description: problems.length
-        ? `It needs fixing before it can run: ${friendlyProblem(problems[0])}`
-        : 'It is listed with your tests but not run while it says "Draft:". Change its steps, then change "Draft:" to "Test:".',
-      ...(r.path ? { action: { label: 'Open in VS Code', onClick: () => { window.location.href = `vscode://file/${r.path!.replace(/\\/g, '/')}` } } } : {}),
-    })
-  }
   return (
     <li className="grid grid-cols-[16px_1fr] gap-2 text-sm">
       <CircleIcon className="mt-0.5 size-4 text-amber-600 dark:text-amber-400" aria-label="Not checked by any test" />
@@ -200,15 +180,7 @@ function OpenLine({ ht, line, root }: { ht: HumanTest; line: GapLine; root: stri
           <span className="font-mono break-all">{root}/{line.source.file}:{line.source.line}</span>
           {!line.translated && <span className="inline-flex items-center gap-1"><CodeIcon className="size-3" />condition shown as code</span>}
         </p>
-        {line.draft && (
-          state.file ? (
-            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400"><CheckIcon className="size-3.5" /> Draft saved as <span className="font-mono">{state.file}</span></p>
-          ) : (
-            <Button size="sm" variant="outline" className="mt-1.5" disabled={state.busy} onClick={make}>
-              {state.busy ? <LoaderCircleIcon className="animate-spin" /> : <FilePlus2Icon />} Make a draft test
-            </Button>
-          )
-        )}
+        {line.draft && <DraftButton project={ht.project} draft={line.draft} className="mt-1.5" />}
       </div>
     </li>
   )
