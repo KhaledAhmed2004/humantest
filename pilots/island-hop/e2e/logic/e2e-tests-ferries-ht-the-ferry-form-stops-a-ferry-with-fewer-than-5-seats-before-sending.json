@@ -1,0 +1,1128 @@
+{
+ "version": 1,
+ "key": "e2e/tests/ferries.ht::The ferry form stops a ferry with fewer than 5 seats before sending",
+ "test": "The ferry form stops a ferry with fewer than 5 seats before sending",
+ "source": "e2e/tests/ferries.ht:40",
+ "steps": [
+  {
+   "title": "line 43 · operator · go to fleet page",
+   "line": 43,
+   "text": "go to fleet page",
+   "requests": []
+  },
+  {
+   "title": "line 44 · operator · click \"Add Ferry\"",
+   "line": 44,
+   "text": "click \"Add Ferry\"",
+   "requests": [
+    "CLICK \"Add Ferry\" on src/app/dashboard/operator/ferries/page.tsx",
+    "GET /api/v1/user/profile",
+    "GET /api/v1/operator/settings",
+    "GET /api/v1/ferries/stats",
+    "GET /api/v1/ferries",
+    "GET /api/v1/routes"
+   ]
+  },
+  {
+   "title": "line 45 · operator · type \"HumanTest ferry {unique}\" in \"Ferry Name\"",
+   "line": 45,
+   "text": "type \"HumanTest ferry {unique}\" in \"Ferry Name\"",
+   "requests": []
+  },
+  {
+   "title": "line 46 · operator · type \"3\" in \"Passenger Capacity\"",
+   "line": 46,
+   "text": "type \"3\" in \"Passenger Capacity\"",
+   "requests": []
+  },
+  {
+   "title": "line 47 · operator · in \"Add New Ferry\" dialog, click \"Add Ferry\"",
+   "line": 47,
+   "text": "in \"Add New Ferry\" dialog, click \"Add Ferry\"",
+   "requests": [
+    "CLICK \"Add Ferry\" on src/app/dashboard/operator/ferries/page.tsx"
+   ]
+  },
+  {
+   "title": "line 48 · operator · backend should not receive any request",
+   "line": 48,
+   "text": "backend should not receive any request",
+   "requests": []
+  },
+  {
+   "title": "line 49 · operator · \"Add New Ferry\" dialog should be open",
+   "line": 49,
+   "text": "\"Add New Ferry\" dialog should be open",
+   "requests": []
+  }
+ ],
+ "requests": [
+  {
+   "request": "CLICK \"Add Ferry\" on src/app/dashboard/operator/ferries/page.tsx",
+   "ui": {
+    "url": "/dashboard/operator/ferries",
+    "label": "Add Ferry"
+   },
+   "functions": [
+    {
+     "name": "OperatorFerriesPage",
+     "file": "src/app/dashboard/operator/ferries/page.tsx",
+     "line": 76,
+     "role": "helper",
+     "hash": "ead4b9666348"
+    },
+    {
+     "name": "handleOpenAdd",
+     "file": "src/app/dashboard/operator/ferries/page.tsx",
+     "line": 178,
+     "role": "helper",
+     "hash": "02ded11bfc81"
+    }
+   ],
+   "rules": []
+  },
+  {
+   "request": "GET /api/v1/user/profile",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/user/profile",
+    "file": "src/app/modules/user/user.route.ts",
+    "line": 62
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "ALL_ROLES",
+     "file": "src/app/modules/user/user.route.ts",
+     "line": 12,
+     "role": "route",
+     "hash": "913c02cd2251"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.controller.ts",
+     "line": 22,
+     "role": "controller",
+     "hash": "1b11bbc47fa4"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getProfile",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 52,
+     "role": "service",
+     "hash": "82c23bb34c74"
+    },
+    {
+     "name": "findById",
+     "file": "src/app/modules/user/user.service.ts",
+     "line": 28,
+     "role": "service",
+     "hash": "96ee5e8a404f"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "USER",
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(...ALL_ROLES)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/user/user.route.ts",
+      "line": 62
+     },
+     "text": "Only USER, OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:getProfile:404:!user || user.deletedAt",
+     "source": {
+      "file": "src/app/modules/user/user.service.ts",
+      "line": 55
+     },
+     "in": "getProfile",
+     "when": [
+      {
+       "code": "!user || user.deletedAt",
+       "text": "user is not found, or user is deleted"
+      }
+     ],
+     "status": 404,
+     "message": "User not found",
+     "text": "If user is not found, or user is deleted, the server answers 404 Not Found: \"User not found\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getProfile",
+     "status": 200,
+     "message": "Profile retrieved successfully",
+     "id": "reply:getProfile:200:",
+     "source": {
+      "file": "src/app/modules/user/user.controller.ts",
+      "line": 27
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Profile retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/operator/settings",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/operator/settings",
+    "file": "src/app/modules/operator/operator.route.ts",
+    "line": 25
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "getOperatorSettings",
+     "file": "src/app/modules/provider/provider.controller.ts",
+     "line": 49,
+     "role": "controller",
+     "hash": "bc1babedcf6e"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getOperatorSettings",
+     "file": "src/app/modules/provider/provider.service.ts",
+     "line": 267,
+     "role": "service",
+     "hash": "e8c1c0fd9264"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/operator/operator.route.ts",
+      "line": 25
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:getOperatorSettings:404:!operatorProfile",
+     "source": {
+      "file": "src/app/modules/provider/provider.service.ts",
+      "line": 283
+     },
+     "in": "getOperatorSettings",
+     "when": [
+      {
+       "code": "!operatorProfile",
+       "text": "operator profile is not found"
+      }
+     ],
+     "status": 404,
+     "message": "Operator company profile not found for authenticated user",
+     "text": "If operator profile is not found, the server answers 404 Not Found: \"Operator company profile not found for authenticated user\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getOperatorSettings",
+     "status": 200,
+     "message": "Operator settings retrieved successfully",
+     "id": "reply:getOperatorSettings:200:",
+     "source": {
+      "file": "src/app/modules/provider/provider.controller.ts",
+      "line": 52
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Operator settings retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/ferries/stats",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/ferries/stats",
+    "file": "src/app/modules/ferry/ferry.route.ts",
+    "line": 27
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "getFerryStats",
+     "file": "src/app/modules/ferry/ferry.controller.ts",
+     "line": 46,
+     "role": "controller",
+     "hash": "4c0baa640de6"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "getFerryStats",
+     "file": "src/app/modules/ferry/ferry.service.ts",
+     "line": 237,
+     "role": "service",
+     "hash": "1344ae49411c"
+    },
+    {
+     "name": "resolveOperatorProfile",
+     "file": "src/app/modules/ferry/ferry.service.ts",
+     "line": 11,
+     "role": "service",
+     "hash": "d3e7f5aadd55"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.route.ts",
+      "line": 27
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:!operator",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.service.ts",
+      "line": 18
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "!operator",
+       "text": "no matching operator profile is found"
+      }
+     ],
+     "status": 403,
+     "message": "Operator profile not found for this user",
+     "text": "If no matching operator profile is found, the server answers 403 Forbidden: \"Operator profile not found for this user\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:operator.user && operator.user.status === 'SUSPENDED'",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.service.ts",
+      "line": 25
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "operator.user && operator.user.status === 'SUSPENDED'",
+       "text": "operator user is found, and operator user status is \"SUSPENDED\""
+      }
+     ],
+     "status": 403,
+     "message": "Suspended operators cannot perform this operation",
+     "text": "If operator user is found, and operator user status is \"SUSPENDED\", the server answers 403 Forbidden: \"Suspended operators cannot perform this operation\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "getFerryStats",
+     "status": 200,
+     "message": "Ferry fleet statistics retrieved successfully",
+     "id": "reply:getFerryStats:200:",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.controller.ts",
+      "line": 50
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Ferry fleet statistics retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/ferries",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/ferries",
+    "file": "src/app/modules/ferry/ferry.route.ts",
+    "line": 19
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listFerriesQueryZodSchema",
+     "file": "src/app/modules/ferry/ferry.validation.ts",
+     "line": 61,
+     "role": "validation",
+     "hash": "0ecc18bf2a1b"
+    },
+    {
+     "name": "validateQuery",
+     "file": "src/helpers/zodHelper.ts",
+     "line": 20,
+     "role": "helper",
+     "hash": "b4a8571e3873"
+    },
+    {
+     "name": "listFerries",
+     "file": "src/app/modules/ferry/ferry.controller.ts",
+     "line": 19,
+     "role": "controller",
+     "hash": "c2cd62b23f40"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listOperatorFerries",
+     "file": "src/app/modules/ferry/ferry.service.ts",
+     "line": 71,
+     "role": "service",
+     "hash": "8bd090843b0b"
+    },
+    {
+     "name": "resolveOperatorProfile",
+     "file": "src/app/modules/ferry/ferry.service.ts",
+     "line": 11,
+     "role": "service",
+     "hash": "d3e7f5aadd55"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "ApiError",
+     "file": "src/errors/ApiError.ts",
+     "line": 1,
+     "role": "shared",
+     "hash": "81478d5473e9"
+    },
+    {
+     "name": "dedicatedRoutesSelect",
+     "file": "src/app/modules/ferry/ferry.service.ts",
+     "line": 35,
+     "role": "service",
+     "hash": "c0ff805b8740"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.route.ts",
+      "line": 19
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.search:required",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 62
+     },
+     "text": "search: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "search",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.search:type",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 62
+     },
+     "text": "search: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.status:required",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 63
+     },
+     "text": "status: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "oneOf",
+     "values": [
+      "IN_SERVICE",
+      "MAINTENANCE"
+     ],
+     "id": "field:query.status:oneOf",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 63
+     },
+     "text": "status: one of IN_SERVICE or MAINTENANCE."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "type",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.type:required",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 64
+     },
+     "text": "type: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "type",
+     "facet": "oneOf",
+     "values": [
+      "CATAMARAN",
+      "SPEEDBOAT",
+      "TRADITIONAL_FERRY"
+     ],
+     "id": "field:query.type:oneOf",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 64
+     },
+     "text": "type: one of CATAMARAN, SPEEDBOAT or TRADITIONAL_FERRY."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "routeId",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.routeId:required",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 65
+     },
+     "text": "routeId: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "routeId",
+     "facet": "type",
+     "type": "text",
+     "id": "field:query.routeId:type",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 65
+     },
+     "text": "routeId: must be text."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "routeId",
+     "facet": "format",
+     "format": "uuid",
+     "message": "routeId must be a valid id",
+     "id": "field:query.routeId:format:uuid",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 65
+     },
+     "text": "routeId: must be a valid UUID."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 66
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 66
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 66
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "20",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 67
+     },
+     "text": "limit: optional (default 20)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 67
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 67
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.validation.ts",
+      "line": 67
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:!operator",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.service.ts",
+      "line": 18
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "!operator",
+       "text": "no matching operator profile is found"
+      }
+     ],
+     "status": 403,
+     "message": "Operator profile not found for this user",
+     "text": "If no matching operator profile is found, the server answers 403 Forbidden: \"Operator profile not found for this user\"."
+    },
+    {
+     "kind": "reject",
+     "id": "reject:resolveOperatorProfile:403:operator.user && operator.user.status === 'SUSPENDED'",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.service.ts",
+      "line": 25
+     },
+     "in": "resolveOperatorProfile",
+     "when": [
+      {
+       "code": "operator.user && operator.user.status === 'SUSPENDED'",
+       "text": "operator user is found, and operator user status is \"SUSPENDED\""
+      }
+     ],
+     "status": 403,
+     "message": "Suspended operators cannot perform this operation",
+     "text": "If operator user is found, and operator user status is \"SUSPENDED\", the server answers 403 Forbidden: \"Suspended operators cannot perform this operation\"."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listFerries",
+     "status": 200,
+     "message": "Ferries retrieved successfully",
+     "id": "reply:listFerries:200:",
+     "source": {
+      "file": "src/app/modules/ferry/ferry.controller.ts",
+      "line": 26
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Ferries retrieved successfully\"."
+    }
+   ]
+  },
+  {
+   "request": "GET /api/v1/routes",
+   "route": {
+    "method": "GET",
+    "path": "/api/v1/routes",
+    "file": "src/app/modules/route/route.route.ts",
+    "line": 33
+   },
+   "functions": [
+    {
+     "name": "auth",
+     "file": "src/app/middlewares/auth.ts",
+     "line": 154,
+     "role": "middleware",
+     "hash": "41f91d115e36"
+    },
+    {
+     "name": "USER_ROLES.OPERATOR",
+     "file": "src/enums/user.ts",
+     "line": 25,
+     "role": "helper",
+     "hash": "b1dc14afa6a3"
+    },
+    {
+     "name": "USER_ROLES.ADMIN",
+     "file": "src/enums/user.ts",
+     "line": 24,
+     "role": "helper",
+     "hash": "7699b425cca3"
+    },
+    {
+     "name": "validateRequest",
+     "file": "src/app/middlewares/validateRequest.ts",
+     "line": 5,
+     "role": "middleware",
+     "hash": "0071d3c6ac65"
+    },
+    {
+     "name": "listRoutesQueryZodSchema",
+     "file": "src/app/modules/route/route.validation.ts",
+     "line": 74,
+     "role": "validation",
+     "hash": "0b79c222436d"
+    },
+    {
+     "name": "listRoutes",
+     "file": "src/app/modules/route/route.controller.ts",
+     "line": 20,
+     "role": "controller",
+     "hash": "7bb8d08c7723"
+    },
+    {
+     "name": "catchAsync",
+     "file": "src/shared/catchAsync.ts",
+     "line": 3,
+     "role": "shared",
+     "hash": "c16c6cf53d42"
+    },
+    {
+     "name": "listRoutes",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 96,
+     "role": "service",
+     "hash": "c61d9d1beea6"
+    },
+    {
+     "name": "prisma",
+     "file": "src/shared/prisma.ts",
+     "line": 7,
+     "role": "shared",
+     "hash": "9e3d420cd69d"
+    },
+    {
+     "name": "PORT_SELECT",
+     "file": "src/app/modules/route/route.service.ts",
+     "line": 13,
+     "role": "service",
+     "hash": "970698444a30"
+    },
+    {
+     "name": "sendResponse",
+     "file": "src/shared/sendResponse.ts",
+     "line": 21,
+     "role": "shared",
+     "hash": "036a1c8013e5"
+    }
+   ],
+   "rules": [
+    {
+     "kind": "access",
+     "roles": [
+      "OPERATOR",
+      "ADMIN"
+     ],
+     "login": "required",
+     "via": "auth(USER_ROLES.OPERATOR, USER_ROLES.ADMIN)",
+     "id": "access",
+     "source": {
+      "file": "src/app/modules/route/route.route.ts",
+      "line": 33
+     },
+     "text": "Only OPERATOR or ADMIN can do this."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "required",
+     "required": false,
+     "default": "1",
+     "id": "field:query.page:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: optional (default 1)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "message": "page must be a number",
+     "id": "field:query.page:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "page",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "page must be at least 1",
+     "id": "field:query.page:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 76
+     },
+     "text": "page: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "required",
+     "required": false,
+     "default": "10",
+     "id": "field:query.limit:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: optional (default 10)."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "type",
+     "type": "a whole number",
+     "coerced": true,
+     "message": "limit must be a number",
+     "id": "field:query.limit:type",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: read as a whole number."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "min",
+     "value": 1,
+     "unit": "number",
+     "message": "limit must be at least 1",
+     "id": "field:query.limit:min",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: at least 1."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "limit",
+     "facet": "max",
+     "value": 100,
+     "unit": "number",
+     "message": "limit cannot exceed 100",
+     "id": "field:query.limit:max",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 82
+     },
+     "text": "limit: at most 100."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "required",
+     "required": false,
+     "id": "field:query.status:required",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 89
+     },
+     "text": "status: optional."
+    },
+    {
+     "kind": "field",
+     "section": "query",
+     "field": "status",
+     "facet": "oneOf",
+     "values": [
+      "ACTIVE",
+      "INACTIVE"
+     ],
+     "message": "status must be ACTIVE or INACTIVE",
+     "id": "field:query.status:oneOf",
+     "source": {
+      "file": "src/app/modules/route/route.validation.ts",
+      "line": 89
+     },
+     "text": "status: one of ACTIVE or INACTIVE."
+    },
+    {
+     "kind": "reply",
+     "when": [],
+     "in": "listRoutes",
+     "status": 200,
+     "message": "Routes retrieved successfully",
+     "id": "reply:listRoutes:200:",
+     "source": {
+      "file": "src/app/modules/route/route.controller.ts",
+      "line": 24
+     },
+     "text": "When nothing stops it, the server answers 200 OK: \"Routes retrieved successfully\"."
+    }
+   ]
+  }
+ ],
+ "frontend": true,
+ "acceptedAt": "2026-11-08T06:38:06.469Z"
+}

@@ -29,6 +29,10 @@ export default defineConfig({
     {
       command: 'npm run dev',
       cwd: path.join(appDir, 'backend'),
+      // Its email goes to HumanTest's test mailbox ("email" in humantest.config.json), never out.
+      // These win over the backend's .env (dotenv doesn't override what is already set).
+      // A backend that is already running was started without them: stop it first.
+      env: { EMAIL_HOST: 'localhost', EMAIL_PORT: String(ht.email.port) },
       url: `${api}/ports`,
       reuseExistingServer: true,
       timeout: 120_000,

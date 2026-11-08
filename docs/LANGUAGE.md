@@ -85,6 +85,9 @@ The page's API calls (anything under `apiPrefix`, default `/api`) are recorded a
 | `backend should receive POST /api/users` | Waits for the page to send this request since the last action, and remembers its reply. `:id` stands for one part of the path that changes from run to run (`DELETE /api/routes/:id`). |
 | `backend should not receive any request` | Nothing was sent since the last action (e.g. the frontend validation stopped it). |
 | `call GET /api/admin/users` | Call the API directly as this user (with their login: its cookies, and its token as `Authorization: Bearer …`). Remembers the reply. A path goes to the API host when `apiHosts` names one other host than the app's. |
+| `call POST /api/v1/ferries with {"name": "Sea Star", "capacity": 20}` | The same, sending a JSON body (on one line). |
+| `remember data.id as ferry` | Keep one field of the last reply; `{ferry}` then stands for it in any later step, for every user. |
+| `at the end, call DELETE /api/v1/ferries/{ferry}` | Clean up when the test ends, even when it failed. See [Setting up data](#setting-up-data). |
 | `backend should reply 201 Created` | Status of the remembered reply. The text after the number is optional. |
 | `reply should contain email` / `reply should not contain password` | A field name or value appears anywhere in the reply. |
 | `reply total should be 1` / `reply users[0].email should be "a@b.com"` | One field of the reply. |
@@ -113,6 +116,87 @@ Two settings in `humantest.config.json` for apps with a separate backend:
 - `login.keepBetweenRuns`: `true` keeps the logins for the next runs too, in `.humantest/sessions.json` (the token and cookies; never the password). A kept login is used until its token is about to expire, and for 10 minutes at most. HumanTest writes `.humantest/.gitignore` so git never picks the file up. If the backend forgets the logins (a fresh database), delete the file.
 
 Each user logs in once per run, and the next tests reuse that login (in memory, or on disk with `keepBetweenRuns`), because backends often allow only a few logins a minute. A `Start with:` state that resets the users or their sessions (a fresh database) says so with `export const logsOut = true`; after it runs, users log in again. A state can use the same login for its own calls: `` headers: { Authorization: `Bearer ${await token('admin')}` } ``.
+
+## Setting up data
+
+A test often needs data first: a ferry, a trip, a customer. Instead of clicking through the UI or
+writing a state file in code, set it up through the API, in sentences:
+
+| Sentence | What it does |
+|---|---|
+| `call POST /api/v1/ferries with {"name": "Sea Star", "capacity": 20}` | Sends the JSON body as this user, with their login. |
+| `remember data.id as ferry` | Keeps one field of the last reply (`data.id`, `items[0].id` …) as `{ferry}`. |
+| `remember data.items[name="Royal Alpha"].id as ferry` | Finds an item of a list by its fields: `[name="X"]`, or several, `[departurePort.name="A", destinationPort.name="B"]`. Works in `reply … should be` too. |
+| `at the end, call DELETE /api/v1/ferries/{ferry}` | Runs when the test ends, **even when it failed**, newest first. Also `when the test ends, call …`. A 404 there is fine (the test deleted it itself); other failures are watchdog warnings. |
+
+`{name}` works in every step after it: paths, JSON bodies, `type`, `click`, `should see`, `in "…" row`.
+In a body, `{ferry}` on its own keeps its type (`{"ferryId": {ferry}}` sends a number when the id
+is one); inside quotes it becomes text (`"Ferry {ferry}"`).
+
+`{unique}` is a short random text, the same all through one test and different in every run:
+`"Sea Star {unique}"` never collides with a ferry an earlier run left behind.
+
+Write the set-up once as a phrase (`e2e/phrases/data.ht`), and each test needs one line:
+
+```
+Phrase: a ferry "<name>" with <seats> seats
+  As operator:
+    call POST /api/v1/ferries with {"name": "<name>", "capacity": <seats>}
+    backend should reply 201
+    remember data.id as ferry
+    at the end, call DELETE /api/v1/ferries/{ferry}
+```
+
+```
+Test: Operator removes a ferry
+  Given a ferry "Sea Star {unique}" with 20 seats
+  As operator:
+    go to fleet page
+    in "Sea Star {unique}" row, click "Remove Ferry"
+```
+
+`npm run check` finds a body that isn't valid JSON, and a `{name}` used before it is remembered
+(`{custmer}` → *Did you mean {customer}?*). Use a `Start with:` state for what an API can't do, like
+emptying the whole database.
+
+## Email and one-time codes
+
+HumanTest can catch the app's email in a test mailbox, so a test can read a sign-up code or open a
+"verify" link, and no email ever leaves the machine. Turn it on in `humantest.config.json`:
+
+```json
+"email": { "port": 2525 }
+```
+
+and point the app's SMTP settings at it: host `localhost`, port `2525`, no TLS, any user and
+password (for a Node app with nodemailer: `EMAIL_HOST=localhost EMAIL_PORT=2525`).
+
+| Sentence | What it does |
+|---|---|
+| `"rahim.{unique}@test.com" should get an email "Verify your email"` | Waits (10 s, `email.waitSeconds`) for an email to that address with those words in its subject. The words are optional. |
+| `Rahim should get an email "Reset your password"` | The same, to Rahim's email from `users` in the config. |
+| `"x@test.com" should not get an email` | Nothing arrives for that address (watched for 3 s, `email.quietSeconds`). A subject is optional here too. |
+| `the email should contain "15 minutes"` / `should not contain "Secret123"` | Checks the subject and text of the email found last. |
+| `remember the code in the email as otp` | Keeps the one-time code (6 digits first, otherwise 4 to 8) as `{otp}`: `type "{otp}" in "Code"`. A code split over one-digit boxes (`maxlength="1"`) works too: name the first box under `elements` (`"Verification code": "input[inputmode=numeric] >> nth=0"`) and `type "{otp}" in "Verification code"`. Text longer than a field's `maxlength` is typed key by key, like a person, so the page moves from box to box. |
+| `remember the "Verify" link in the email as link` | Keeps a link's address (without the words, the first link). |
+| `open the link in the email` / `click "Verify my email" in the email` | Opens that link in this user's browser. |
+
+Each test only sees the email that arrived after it started, and each `should get an email`
+takes a new one, so two emails with the same subject are found one after the other.
+
+```
+Test: Signing up sends a code that verifies the email
+  As new visitor:
+    go to signup page
+    type "rahim.{unique}@test.com" in email
+    click "Sign up"
+    "rahim.{unique}@test.com" should get an email "Verify your email"
+    the email should not contain "Secret123"
+    remember the code in the email as otp
+    type "{otp}" in "Code"
+    click "Verify"
+    should see "Your email is verified"
+```
 
 ## Business logic behind the tests
 
@@ -169,6 +253,32 @@ Put these **before** the action that triggers the request. They last until the e
 | `when the server is slow on POST /api/users` (3s; or `by 5 seconds`) |
 | `when GET /api/products returns an empty list` |
 | `when the internet is off` / `when the internet is back` |
+| `on a slow 3G network` (or `3G`, `fast 3G`, `4G`; `when the internet is slow` = slow 3G) / `when the internet is normal again` |
+
+### Slow networks
+
+`on a slow 3G network` makes this user's internet as slow as Chrome DevTools' Network throttling presets:
+
+| Network | Delay per request | Download | Upload |
+|---|---|---|---|
+| slow 3G | 2 s | 400 kbit/s | 400 kbit/s |
+| 3G (fast 3G) | 0.56 s | 1.44 Mbit/s | 675 kbit/s |
+| 4G | 0.17 s | 8.1 Mbit/s | 1.35 Mbit/s |
+
+Pages, scripts, images and API calls are all slowed down. Use it to see what a user on a weak
+mobile connection sees: loading text, a disabled button while a form is sending, a spinner.
+
+```
+on a slow 3G network
+go to signup page
+click "Sign up"
+"Sign up" button should be disabled
+should see "Loading…"
+should see "Welcome, Rahim"
+```
+
+On a slow network, checks wait longer for the page before they fail (4× on slow 3G, 2× on 3G),
+the test may run longer, and the watchdog doesn't warn about slow API calls. Chromium only.
 
 ## Story style and phrases
 
@@ -234,6 +344,27 @@ You don't write anything for this. In every test, HumanTest also reports:
 An error the test asks for is not a hidden problem: after `backend should reply 409`, the page's own console error about that reply (one that names 409, the method and the path) is not reported.
 
 By default these are warnings. Set `"failTestOnWarning": true` to make them fail the test.
+
+## Bug reports
+
+After `npm test`, every test that failed, or passed with watchdog warnings, gets a ready-to-file
+report in `humantest-reports/<test>/bug-report.md` (with `README.md` listing them all):
+
+- **Steps to reproduce**: the test's own sentences, a phrase as one step, with `{unique}` and remembered
+  values filled in as they were in that run, up to the step that failed.
+- **Expected** (the step, and what it checks) and **actual** (what went wrong, and what the page showed).
+- The backend calls since the last action, the watchdog's warnings, a **screenshot** taken when it
+  failed, the Playwright trace to open, and the command that runs that test again.
+- A **verdict** at the top, from the business logic baselines (needs `source` in the config):
+
+| Verdict | When |
+|---|---|
+| 🐞 Likely a bug | The code behind the test is the same as when it last passed: something else broke (the app, its data, its settings). Also when the code changed but none of its rules did, like a refactor that broke it. |
+| 🔄 The test may need updating | The business logic behind it changed since it last passed. The report lists what changed, the calls made just before the failure first, with each function's last commit. Intended? Update the test and accept. Not intended? It's a bug in that change. |
+| ⚠️ Hidden problems | The test passed, but the watchdog saw problems. |
+| ❔ Can't tell | The test never passed before, or HumanTest doesn't know the app's code. |
+
+The reports of the previous run are removed when a new run starts. The folder is in `.gitignore`.
 
 ## Out of scope for v0.1 (on purpose)
 

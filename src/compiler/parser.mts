@@ -8,7 +8,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { STEP_DEFS, matchStep, type StepArgs, type StepDef } from './steps.mts';
+import { STEP_DEFS, bodyProblem, matchStep, placeholdersIn, type StepArgs, type StepDef } from './steps.mts';
 import { closest, suggestSentence } from './suggest.mts';
 import { rel, type Project } from './project.mts';
 import { expandPhrase, loadPhrases, stripComment, stripThe, type Phrase } from './phrases.mts';
@@ -45,6 +45,8 @@ export function parseFile(project: Project, file: string, loaded = loadPhrases(p
   let test: TestCase | undefined;
   let currentUser: string | undefined;
   const stepLines = new Map<TestCase, number>();
+  /** The {names} each test has remembered so far, in step order. */
+  const remembered = new Map<TestCase, Set<string>>();
 
   const report = (at: Origin, text: string, message: string, hint?: string) =>
     diagnostics.push({ file: at.file, line: at.line, text, message, hint });
@@ -91,6 +93,19 @@ export function parseFile(project: Project, file: string, loaded = loadPhrases(p
       if (!p) return true;
       hit.args.path = p;
     }
+    if (hit.args.body) {
+      const why = bodyProblem(hit.args.body);
+      if (why) report(at, text, `The body after "with" isn't valid JSON: ${why}`, 'Write it like  with {"name": "Sea Star", "capacity": 20}  (double quotes around names and text).');
+    }
+    const known = remembered.get(test) ?? new Set<string>();
+    remembered.set(test, known);
+    for (const name of placeholdersIn(hit.def.kind === 'remember' ? { field: hit.args.field } : hit.args)) {
+      if (known.has(name)) continue;
+      const near = closest(name, [...known]);
+      report(at, text, `{${name}} has no value yet at this point in the test.`,
+        near ? `Did you mean {${near}}?` : `Add a line like  remember data.id as ${name}  before this one, after the reply it comes from.`);
+    }
+    if (hit.def.kind === 'remember' || hit.def.kind === 'rememberEmail') known.add(hit.args.name);
     test.steps.push({ line, text: tidy(text), user, def: hit.def, args: hit.args, story });
     return true;
   };

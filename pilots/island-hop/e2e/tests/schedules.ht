@@ -1,11 +1,9 @@
 # The operator's timetable, in Island Hop.
-# Test trips leave in 300 days with an adult fare of $77, so no traveller books them by chance;
-# "Start with: no test trips" removes any that a failed run left behind (e2e/states/no-test-trips.ts).
+# Test trips leave in 310 days with an adult fare of $77, so no traveller books them by chance;
+# A trip a test schedules is deleted again when the test ends, even a failed one.
 # Royal Alpha must be in service: it is the only ferry the form offers.
 
 Test: Operator schedules a trip and deletes it again
-
-  Start with: no test trips
 
   As operator:
     go to schedules page
@@ -13,45 +11,40 @@ Test: Operator schedules a trip and deletes it again
     "Add Ferry Schedule" dialog should be open
     choose "Blowing Point, Anguilla ➔ Marigot, Saint Martin" for "Ferry Route"
     choose "Royal Alpha" for "Assign Ferry"
-    type "{in 300 days}T10:00" in "Departure Time"
+    type "{in 310 days}T10:00" in "Departure Time"
     type "77" in "Adult Ticket Price"
     click "Schedule Departure"
     backend should receive POST /api/v1/operator/schedules
     backend should reply 201 Created
+    remember data.id as trip
+    at the end, call DELETE /api/v1/operator/schedules/{trip}
     should see "Departure schedule slot created successfully"
     "Add Ferry Schedule" dialog should be closed
-    type "{in 300 days}" in "Filter by date"
+    type "{in 310 days}" in "Filter by date"
     in "Royal Alpha" row, click "Delete Schedule"
     in "Delete Departure Schedule" dialog, click "Delete Schedule"
-    backend should receive DELETE /api/v1/operator/schedules/:id
+    backend should receive DELETE /api/v1/operator/schedules/{trip}
     backend should reply 200 OK
     should see "Schedule slot deleted successfully"
 
 
-# The state schedules Royal Alpha at 10:00 first; a second trip at 10:10 overlaps it.
+# Royal Alpha is scheduled at 10:00 first; a second trip at 10:10 overlaps it.
 Test: A ferry can't be scheduled for two trips at the same time
 
-  Start with: one test trip
+  Given a test trip on "Royal Alpha" from "Blowing Point, Anguilla" to "Marigot, Saint Martin", 10:00 to 10:25, in 310 days
 
   As operator:
     go to schedules page
     click "Add Schedule"
     choose "Blowing Point, Anguilla ➔ Marigot, Saint Martin" for "Ferry Route"
     choose "Royal Alpha" for "Assign Ferry"
-    type "{in 300 days}T10:10" in "Departure Time"
+    type "{in 310 days}T10:10" in "Departure Time"
     type "77" in "Adult Ticket Price"
     click "Schedule Departure"
     backend should receive POST /api/v1/operator/schedules
     backend should reply 400 Bad Request
     should see "This vessel is already scheduled for another voyage during this time window"
     "Add Ferry Schedule" dialog should be open
-    press Escape
-    type "{in 300 days}" in "Filter by date"
-    in "Royal Alpha" row, click "Delete Schedule"
-    in "Delete Departure Schedule" dialog, click "Delete Schedule"
-    backend should receive DELETE /api/v1/operator/schedules/:id
-    backend should reply 200 OK
-    should see "Schedule slot deleted successfully"
 
 
 Test: The trip form stops a trip that arrives before it leaves
@@ -61,8 +54,8 @@ Test: The trip form stops a trip that arrives before it leaves
     click "Add Schedule"
     choose "Blowing Point, Anguilla ➔ Marigot, Saint Martin" for "Ferry Route"
     choose "Royal Alpha" for "Assign Ferry"
-    type "{in 300 days}T10:00" in "Departure Time"
-    type "{in 300 days}T09:30" in "Arrival Time"
+    type "{in 310 days}T10:00" in "Departure Time"
+    type "{in 310 days}T09:30" in "Arrival Time"
     type "77" in "Adult Ticket Price"
     click "Schedule Departure"
     should see "Arrival time must be later than departure time."

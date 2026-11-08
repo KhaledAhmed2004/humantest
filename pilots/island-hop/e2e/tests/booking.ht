@@ -1,12 +1,17 @@
 # A traveller books a ferry and cancels it again, in Island Hop.
 # Payments are off on a local backend (no PAYMENTS_ENABLED), so a booking is confirmed straight
-# away and nothing is charged. Cancelling gives the seats back, so the trip is as it was.
-# The traveller is a seeded account (prisma/seed.ts).
+# away and nothing is charged. The traveller is a seeded account (prisma/seed.ts).
+# Each test books its own test trip, so it never depends on the seeded timetable.
+# A trip that was booked can only be cancelled, never deleted, so it stays behind (cancelled).
+# That is why the booked one is on Samantha II on its own day: the tests that pick the
+# "Royal Alpha" row on the operator's timetable (310 days ahead) never see it.
 
 Test: A traveller books two seats and cancels the booking
 
+  Given a test trip to book on "Samantha II" from "Blowing Point, Anguilla" to "Marigot, Saint Martin", 10:00 to 10:25, in 301 days
+
   As traveller:
-    go to "/ferries?from=Blowing Point, Anguilla&to=Marigot, Saint Martin&departureDate={tomorrow}&adults=2&passengers=2 Passengers"
+    go to "/ferries?from=Blowing Point, Anguilla&to=Marigot, Saint Martin&departureDate={in 301 days}&adults=2&passengers=2 Passengers"
     click "Select Trip"
     click "Continue to Passenger Details"
     click "Continue to Payment"
@@ -22,20 +27,20 @@ Test: A traveller books two seats and cancels the booking
 
 
 # Two people at once: the traveller gets as far as paying, then the operator cancels the trip.
-# The trip is the test trip in 300 days (e2e/states/one-test-trip.ts); the operator deletes it at the end.
+# The trip is a test trip in 310 days, deleted again when the test ends.
 Test: A trip cancelled while the traveller is paying can't be booked
 
-  Start with: one test trip
+  Given a test trip on "Royal Alpha" from "Blowing Point, Anguilla" to "Marigot, Saint Martin", 10:00 to 10:25, in 310 days
 
   As traveller:
-    go to "/ferries?from=Blowing Point, Anguilla&to=Marigot, Saint Martin&departureDate={in 300 days}&adults=2&passengers=2 Passengers"
+    go to "/ferries?from=Blowing Point, Anguilla&to=Marigot, Saint Martin&departureDate={in 310 days}&adults=2&passengers=2 Passengers"
     click "Select Trip"
     click "Continue to Passenger Details"
     click "Continue to Payment"
 
   As operator:
     go to schedules page
-    type "{in 300 days}" in "Filter by date"
+    type "{in 310 days}" in "Filter by date"
     in "Royal Alpha" row, choose "Cancelled" for "Change status"
     backend should receive PATCH /api/v1/operator/schedules/:id/status
     backend should reply 200 OK
@@ -45,9 +50,3 @@ Test: A trip cancelled while the traveller is paying can't be booked
     backend should receive POST /api/v1/bookings
     backend should reply 400 Bad Request
     should see "Cannot book tickets on a departed or cancelled trip"
-
-  As operator:
-    in "Royal Alpha" row, click "Delete Schedule"
-    in "Delete Departure Schedule" dialog, click "Delete Schedule"
-    backend should receive DELETE /api/v1/operator/schedules/:id
-    backend should reply 200 OK
