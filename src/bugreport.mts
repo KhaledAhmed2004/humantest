@@ -139,6 +139,14 @@ function section(error: string | undefined, heading: RegExp): string[] {
   return out;
 }
 
+/** "Where the problem is: 🖥️ Frontend (the page)" and the reason under it, from the runtime's message. */
+function whereFrom(error: string | undefined): { label: string; why: string } | undefined {
+  const lines = (error ?? '').split('\n');
+  const i = lines.findIndex((l) => /^Where the problem is:/.test(l.trim()));
+  if (i < 0) return undefined;
+  return { label: lines[i].trim().replace(/^Where the problem is:\s*/, ''), why: section(error, /^Where the problem is:/).join(' ') };
+}
+
 /** The steps as a person would do them: a phrase is one step, and whose turn it is is said once. */
 function reproduce(steps: BugReportData['steps']): string[] {
   const out: string[] = [];
@@ -175,6 +183,8 @@ function render(d: BugReportData, verdict: Verdict, change: TestChange | undefin
     ? `# ${d.test}${headline ? `: ${headline}` : ''}`
     : `# Hidden problems in: ${d.test}`);
   L.push('');
+  const where = whereFrom(failed?.error);
+  if (where) L.push(`> **Where the problem is: ${where.label}.** ${where.why}`, '>');
   L.push(`> **${VERDICT_LABEL[verdict.kind]}.** ${verdict.why}`);
   L.push('');
   L.push('| | |', '|---|---|');

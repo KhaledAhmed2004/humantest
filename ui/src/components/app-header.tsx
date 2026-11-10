@@ -1,19 +1,16 @@
-import { MoonIcon, PlayIcon, SquareIcon, SunIcon, VideoIcon } from 'lucide-react'
+import { MoonIcon, PlayIcon, SquareIcon, SunIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { HumanTest } from '@/lib/use-humantest'
 import { cn } from '@/lib/utils'
 
 export type View = 'tests' | 'logic' | 'coverage'
 const VIEW_LABEL: Record<View, string> = { tests: 'Tests', logic: 'Business logic', coverage: 'Coverage' }
 
-export function AppHeader({ ht, demo, onDemoChange, view, onViewChange }: {
-  ht: HumanTest; demo: boolean; onDemoChange: (on: boolean) => void; view: View; onViewChange: (v: View) => void
+export function AppHeader({ ht, view, onViewChange }: {
+  ht: HumanTest; view: View; onViewChange: (v: View) => void
 }) {
   const { resolvedTheme, setTheme } = useTheme()
 
@@ -56,22 +53,10 @@ export function AppHeader({ ht, demo, onDemoChange, view, onViewChange }: {
         )}
       </span>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center gap-2">
-            <Switch id="demo" checked={demo} onCheckedChange={onDemoChange} />
-            <Label htmlFor="demo" className="flex cursor-pointer items-center gap-1.5 text-muted-foreground">
-              <VideoIcon className="size-4" /> Video
-            </Label>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>Every run records a video of each test (a little slower)</TooltipContent>
-      </Tooltip>
-
       {ht.running ? (
         <Button variant="destructive" onClick={ht.stop}><SquareIcon /> Stop</Button>
       ) : (
-        <Button onClick={() => ht.run({}, demo)} disabled={!ht.project}>{demo ? <VideoIcon /> : <PlayIcon />} Run all tests</Button>
+        <Button onClick={() => ht.run({})} disabled={!ht.project}><PlayIcon /> Run all tests</Button>
       )}
 
       <Button

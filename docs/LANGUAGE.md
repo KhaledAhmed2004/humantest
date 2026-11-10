@@ -345,6 +345,20 @@ An error the test asks for is not a hidden problem: after `backend should reply 
 
 By default these are warnings. Set `"failTestOnWarning": true` to make them fail the test.
 
+## Where the problem is
+
+Every failed step says which side to look at, in the terminal, in the UI (a coloured badge) and at
+the top of its bug report:
+
+| | When |
+|---|---|
+| 🖥️ **Frontend (the page)** | The page never sent the request; sent one it shouldn't have; has no such button or field; or the backend answered fine but the page didn't show it. |
+| 🗄️ **Backend (the server)** | A 5xx; the backend didn't answer (not running, restarting after a saved file, crashed); it refused what it should accept, or accepted what it should refuse; an email it didn't send. |
+| ⚙️ **Test setup** | Logging in failed, no email reached the test mailbox (a backend started without its settings), a server that isn't running, a host the config doesn't allow. |
+| 📝 **The test itself** | A line to fix: a dropdown option that matches more than one, a `{name}` never remembered, a missing file. |
+
+It is a pointer, not a verdict: "the page didn't show it" can also mean the test expects old text.
+
 ## Bug reports
 
 After `npm test`, every test that failed, or passed with watchdog warnings, gets a ready-to-file

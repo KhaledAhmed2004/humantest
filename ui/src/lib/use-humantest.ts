@@ -17,11 +17,14 @@ export function useHumanTest() {
   const [project, setProject] = useState<string | null>(null)
   const [files, setFiles] = useState<TestFile[]>([])
   const [problems, setProblems] = useState<Diagnostic[]>([])
+  const [roles, setRoles] = useState<string[]>([])
   const [history, setHistory] = useState<History>(EMPTY_HISTORY)
   const [live, setLive] = useState<Record<string, LiveState>>({})
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [logs, setLogs] = useState<string[]>([])
+  // The last run stopped before any test ran (browser missing, bad config, app not up…).
+  const [startFailed, setStartFailed] = useState(false)
   // Bumped when the business rules have been worked out again, so the panel re-reads them.
   const [discovery, setDiscovery] = useState<{ version: number; running: boolean }>({ version: 0, running: false })
   // What changed in each test's business logic since it was accepted, by test key.
@@ -46,6 +49,7 @@ export function useHumanTest() {
     if (projectRef.current !== id) return
     setFiles(r.files ?? [])
     setProblems(r.problems ?? [])
+    setRoles(r.roles ?? [])
     setHistory(r.history ?? EMPTY_HISTORY)
   }, [])
 
@@ -73,6 +77,7 @@ export function useHumanTest() {
   const changeProject = useCallback((id: string) => {
     setLive({})
     setLogs([])
+    setStartFailed(false)
     setProject(id)
   }, [])
 
@@ -80,7 +85,7 @@ export function useHumanTest() {
   useEffect(() => subscribe((e: ServerEvent) => {
     switch (e.type) {
       case 'run-start':
-        setRunning(true); setProgress(null); setLogs([])
+        setRunning(true); setProgress(null); setLogs([]); setStartFailed(false)
         break
       case 'progress':
         setProgress({ done: e.done, total: e.total })
@@ -100,7 +105,7 @@ export function useHumanTest() {
         setLogs((l) => [...l.slice(-799), e.line])
         break
       case 'run-end':
-        setRunning(false); setLive({}); setProgress(null)
+        setRunning(false); setLive({}); setProgress(null); setStartFailed(!!e.startFailed)
         if (projectRef.current) loadTests(projectRef.current)
         break
       case 'tests-changed':
@@ -138,9 +143,10 @@ export function useHumanTest() {
     return history.last[t.key]?.status ?? 'never'
   }, [live, history])
 
-  const run = useCallback(async (scope: RunScope, demo: boolean) => {
+  // Every run records a video: there is no switch for it.
+  const run = useCallback(async (scope: RunScope) => {
     if (!project) return
-    const r = await startRun(project, scope, demo)
+    const r = await startRun(project, scope, true)
     if (r.error) {
       toast.error(r.error, {
         description: r.diagnostics?.slice(0, 5).map((d) => friendlyProblem(d, true)).join('\n'),
@@ -151,7 +157,7 @@ export function useHumanTest() {
     setLive((l) => {
       const next = { ...l }
       for (const t of tests) {
-        if (scope.key ? t.key === scope.key : scope.file ? t.file === scope.file : true) next[t.key] = { state: 'queued', steps: [] }
+        if (scope.key ? t.key === scope.key : scope.file ? t.file === scope.file : scope.keys ? scope.keys.includes(t.key) : true) next[t.key] = { state: 'queued', steps: [] }
       }
       return next
     })
@@ -159,7 +165,7 @@ export function useHumanTest() {
   }, [project, tests])
 
   return {
-    projects, project, setProject: changeProject, files, problems, history, tests, live, running, progress, logs, discovery, changes, coverage, accept,
+    projects, project, setProject: changeProject, files, problems, roles, history, tests, live, running, progress, logs, startFailed, discovery, changes, coverage, accept,
     statusOf, run, stop: stopRun,
   }
 }

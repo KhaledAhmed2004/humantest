@@ -58,11 +58,11 @@ Test: Admin saves a new route and deletes it again
     upload "cover.png" to "Route Cover Photo"
     in "Add New Ferry Route" dialog, "Replace" button should be visible
     click "Create Route"
+    should see "Route created successfully"
     backend should receive POST /api/v1/routes
     backend should reply 201 Created
     remember data.id as route
     at the end, call DELETE /api/v1/routes/{route}
-    should see "Route created successfully"
     "Add New Ferry Route" dialog should be closed
     in "Blowing Point, Anguilla to Fort Bay Harbor, Saba" row, click "Open menu"
     click "Delete route"
