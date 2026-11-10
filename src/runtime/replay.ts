@@ -170,14 +170,17 @@ const PAGE = /* html */ `<!doctype html>
   ::-webkit-scrollbar-thumb:hover { background-color: var(--thumb-hover); }
   ::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
   @supports (-moz-appearance: none) { * { scrollbar-width: thin; scrollbar-color: var(--thumb) transparent; } }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  /* The page is a column: header, banner, main, controls. main takes what is left, so nothing slides under the controls. */
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+  header, .banner, footer { flex: none; }
   header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
   header h1 { font-size: 16px; margin: 0; font-weight: 650; }
   header .src { color: var(--muted); font-size: 12px; margin-left: auto; font-family: ui-monospace, monospace; }
   .badge { font-size: 12px; font-weight: 650; padding: 2px 10px; border-radius: 999px; }
   .badge.passed { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
   .badge.failed { background: var(--bad-soft); color: var(--bad); }
-  main { display: grid; grid-template-columns: 1fr 380px; gap: 16px; padding: 16px 20px 0; height: calc(100vh - 57px - 74px); }
+  main { display: grid; grid-template-columns: 1fr 380px; gap: 16px; padding: 16px 20px; flex: 1; min-height: 0; }
   .videos { display: grid; gap: 12px; align-content: start; overflow: auto; }
   .videos.n2, .videos.n3, .videos.n4 { grid-template-columns: repeat(2, 1fr); }
   .card { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; overflow: hidden; transition: opacity .2s, border-color .2s; }
@@ -203,9 +206,8 @@ const PAGE = /* html */ `<!doctype html>
   .cap .ln { opacity: .6; font-weight: 500; white-space: nowrap; }
   .cap:empty::before { content: '\\00a0'; }
   body.nocap .cap { display: none; }
-  :fullscreen main { height: calc(100vh - 74px); }
-  .tip { position: absolute; bottom: calc(100% + 4px); transform: translateX(-50%); background: #111827; color: #fff; font-size: 12px;
-    padding: 4px 8px; border-radius: 6px; white-space: nowrap; pointer-events: none; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
+  .tip { position: absolute; bottom: calc(100% + 6px); transform: translateX(-50%); background: rgb(17 24 39 / .92); color: #fff; font-size: 12px;
+    padding: 5px 10px; border-radius: 8px; box-shadow: 0 6px 20px rgb(0 0 0 / .35); border: 1px solid rgb(255 255 255 / .08); backdrop-filter: blur(6px); z-index: 3; white-space: nowrap; pointer-events: none; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
   .tip[hidden] { display: none; }
   aside { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: auto; }
   .aside-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 12px 16px;
@@ -217,6 +219,9 @@ const PAGE = /* html */ `<!doctype html>
   /* A row: [status] [title + status line] [time]. Rounded, so the highlight floats. */
   .row { position: relative; display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; align-items: start;
     margin: 0 8px; padding: 8px 10px 8px 6px; border-radius: 12px; cursor: pointer; transition: background .15s; }
+  .row > div { min-width: 0; }
+  /* Scrolling to a step keeps it clear of the sticky "Steps" heading. */
+  .row { scroll-margin-top: 56px; scroll-margin-bottom: 12px; }
   .row:hover { background: color-mix(in srgb, var(--muted) 9%, transparent); }
   .row.current { background: color-mix(in srgb, var(--accent) 9%, transparent); }
 
@@ -283,24 +288,97 @@ const PAGE = /* html */ `<!doctype html>
 
   .req { font: 11.5px/1.5 ui-monospace, monospace; color: var(--muted); margin-top: 2px; }
   .req.bad { color: var(--bad); }
-  .err { margin-top: 6px; font-size: 12.5px; line-height: 1.45; color: var(--bad); background: var(--bad-soft); border-radius: 8px;
-    padding: 6px 9px; white-space: pre-wrap; }
+  /* The failure, laid out in parts: headline, what the page shows, where the problem is, recent requests. */
+  .err { margin-top: 8px; font-size: 12.5px; line-height: 1.5; color: var(--text); cursor: auto;
+    background: color-mix(in srgb, var(--bad) 7%, var(--panel)); border: 1px solid color-mix(in srgb, var(--bad) 28%, var(--line));
+    border-left: 3px solid var(--bad); border-radius: 10px; padding: 10px 12px; display: grid; gap: 9px; }
+  .err-head { font-weight: 600; color: var(--bad); }
+  .err.short { padding: 7px 10px; }
+  .err-label { display: block; font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .err-p { margin: 0; color: color-mix(in srgb, var(--text) 85%, var(--panel)); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+  .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 650; padding: 2px 9px; border-radius: 999px;
+    background: color-mix(in srgb, var(--muted) 14%, transparent); color: var(--text); }
+  .pill.fe { background: color-mix(in srgb, #a855f7 16%, transparent); color: color-mix(in srgb, #a855f7 75%, var(--text)); }
+  .pill.be { background: color-mix(in srgb, #f97316 16%, transparent); color: color-mix(in srgb, #f97316 75%, var(--text)); }
+  .err-where .err-p { margin-top: 5px; }
+  .err-reqs { display: grid; gap: 2px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); padding: 4px 0; }
+  .rq { display: grid; grid-template-columns: 46px 1fr auto; gap: 8px; align-items: center; padding: 2px 9px; font: 11.5px/1.5 ui-monospace, monospace; }
+  .rq .m { color: var(--muted); font-weight: 650; }
+  .rq .p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rq .s { font-weight: 650; padding: 0 6px; border-radius: 6px; }
+  .rq .s.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+  .rq .s.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
   .warn { margin: 10px 12px 0; padding: 8px 10px; border-radius: 8px; font-size: 12.5px; line-height: 1.45;
     background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--warn); }
-  .banner { margin: 0 20px; margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: var(--bad-soft); color: var(--bad); font-family: ui-monospace, monospace; font-size: 12.5px; white-space: pre-wrap; }
-  footer { position: fixed; left: 0; right: 0; bottom: 0; height: 74px; display: flex; align-items: center; gap: 12px; padding: 0 20px; background: var(--panel); border-top: 1px solid var(--line); }
-  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
-  button:hover { border-color: var(--accent); }
-  button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-  #play { width: 44px; font-size: 16px; }
-  .track { position: relative; flex: 1; height: 34px; }
-  .track input { position: absolute; inset: 0; width: 100%; margin: 0; accent-color: var(--accent); }
-  .tick { position: absolute; top: 2px; width: 2px; height: 8px; background: var(--muted); opacity: .6; pointer-events: none; }
-  .tick.failed { background: var(--bad); opacity: 1; height: 12px; width: 3px; }
+  .banner { display: flex; align-items: center; gap: 12px; margin: 12px 20px 0; padding: 10px 12px; border-radius: 12px;
+    background: color-mix(in srgb, var(--bad) 7%, var(--panel)); border: 1px solid color-mix(in srgb, var(--bad) 28%, var(--line)); }
+  .banner[hidden] { display: none; }
+  .banner .b-ico { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700;
+    background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
+  .banner .b-txt { flex: 1; min-width: 0; }
+  .banner .b-title { font-weight: 650; color: var(--bad); }
+  .banner .b-why { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Inside the HumanTest UI the failure is already shown above the video. */
+  body.embed .banner { display: none; }
+  footer { height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: var(--panel); border-top: 1px solid var(--line); }
+  button { font: 500 13px/1 system-ui, sans-serif; height: 32px; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+    border-radius: 8px; padding: 0 11px; cursor: pointer; transition: background .15s, border-color .15s, color .15s; white-space: nowrap; }
+  button:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+  button.on { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  #play { width: 38px; height: 38px; padding: 0; border-radius: 50%; background: var(--accent); color: #fff; border-color: var(--accent);
+    display: inline-grid; place-items: center; }
+  #play:hover { filter: brightness(1.08); }
+  /* Lucide-style line icons, drawn in the button's text colour. */
+  button { display: inline-flex; align-items: center; gap: 6px; }
+  button[hidden] { display: none; }
+  .i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #play .i { width: 16px; height: 16px; fill: currentColor; stroke: none; }
+  #play .i-pause, #play.playing .i-play { display: none; }
+  #play.playing .i-pause { display: inline; }
+  #play:not(.playing) .i { transform: translateX(1px); }
+  #full { width: 32px; padding: 0; justify-content: center; }
+  #full .i-min, .is-full #full .i-max { display: none; }
+  .is-full #full .i-min { display: inline; }
+  #speeds { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--muted) 8%, transparent); }
+  #speeds button { height: 26px; border: 0; background: none; color: var(--muted); padding: 0 9px; border-radius: 7px; }
+  #speeds button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / .18), 0 0 0 1px var(--line); }
+  /* The timeline: a native range for input, drawn over by a rail, the played part, a hover preview and step notches.
+     --p is how far it has played and --h where the mouse is, both 0 to 100. */
+  .track { --p: 0; --h: 0; --rail: 4px; position: relative; flex: 1; height: 34px; cursor: pointer; }
+  .track:hover, .track:focus-within { --rail: 6px; }
+  /* Inset by half the 14px thumb, which is how far the native thumb's centre travels. */
+  .rail, .fill, .hov { position: absolute; left: 7px; top: 50%; height: var(--rail); transform: translateY(-50%); border-radius: 999px;
+    pointer-events: none; transition: height .15s ease; }
+  .rail { right: 7px; background: color-mix(in srgb, var(--muted) 24%, transparent); }
+  .hov { width: calc((100% - 14px) * var(--h) / 100); background: color-mix(in srgb, var(--text) 16%, transparent); opacity: 0; transition: height .15s ease, opacity .15s; }
+  .track:hover .hov { opacity: 1; }
+  .fill { width: calc((100% - 14px) * var(--p) / 100); background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, #a78bfa), var(--accent));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent); }
+  .track input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; background: none; -webkit-appearance: none; appearance: none;
+    cursor: pointer; z-index: 2; }
+  .track input:focus { outline: none; }
+  .track input::-webkit-slider-runnable-track { height: 100%; background: none; }
+  .track input::-moz-range-track { height: 100%; background: none; }
+  .track input::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: 10px; border-radius: 50%; background: #fff; border: 0;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent), 0 2px 6px rgb(0 0 0 / .35); transition: transform .15s ease; }
+  .track input::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 0;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent), 0 2px 6px rgb(0 0 0 / .35); transition: transform .15s ease; }
+  .track:hover input::-webkit-slider-thumb, .track input:active::-webkit-slider-thumb { transform: scale(1.2); }
+  .track:hover input::-moz-range-thumb, .track input:active::-moz-range-thumb { transform: scale(1.2); }
+  .track input:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--accent), 0 2px 6px rgb(0 0 0 / .35); }
+  /* Each step starts at a notch cut into the rail; the failed one is a red dot with a soft glow. */
+  .tick { position: absolute; top: 50%; width: 2px; height: calc(var(--rail) + 4px); transform: translate(-50%, -50%); border-radius: 1px;
+    background: var(--panel); pointer-events: none; z-index: 1; transition: height .15s ease; }
+  .tick.failed { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); border: 2px solid var(--panel);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 30%, transparent), 0 0 10px color-mix(in srgb, var(--bad) 60%, transparent); }
   #time { font-family: ui-monospace, monospace; color: var(--muted); min-width: 110px; text-align: right; }
   .note { color: var(--muted); padding: 40px; }
   @media (max-width: 900px) {
-    main { grid-template-columns: 1fr; height: auto; padding-bottom: 90px; }
+    body { height: auto; overflow: visible; }
+    main { grid-template-columns: 1fr; flex: none; }
+    footer { position: sticky; bottom: 0; overflow-x: auto; }
     .videos.n2, .videos.n3, .videos.n4 { grid-template-columns: 1fr; }
     aside { max-height: 50vh; }
   }
@@ -318,14 +396,14 @@ const PAGE = /* html */ `<!doctype html>
   <aside aria-label="Steps"><div class="aside-head"><h2>Steps</h2><span class="count" id="count"></span></div><div id="warnings"></div><ol class="tl" id="steps"></ol></aside>
 </main>
 <footer>
-  <button id="play" title="Play / pause (space)">▶</button>
-  <div class="track" id="track"><input id="seek" type="range" min="0" step="10" value="0" aria-label="Position"><div class="tip" id="tip" hidden></div></div>
+  <button id="play" title="Play / pause (space)" aria-label="Play"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path class="i-play" d="M6 4.5a1.5 1.5 0 0 1 2.26-1.3l11.5 7a1.5 1.5 0 0 1 0 2.6l-11.5 7A1.5 1.5 0 0 1 6 18.5z"/><g class="i-pause"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></g></svg></button>
+  <div class="track" id="track"><div class="rail"></div><div class="hov"></div><div class="fill"></div><input id="seek" type="range" min="0" step="10" value="0" aria-label="Position"><div class="tip" id="tip" hidden></div></div>
   <span id="time">0:00 / 0:00</span>
   <span id="speeds"></span>
-  <button id="zoom" title="Zoom in on each action (z)" aria-pressed="true">🔍 Zoom</button>
-  <button id="cc" title="Captions (c)" aria-pressed="true">CC</button>
-  <button id="side" title="Show or hide the steps (s)" aria-pressed="true">☰ Steps</button>
-  <button id="full" title="Fullscreen (f)" aria-label="Fullscreen">⛶</button>
+  <button id="zoom" title="Zoom in on each action (z)" aria-pressed="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.9-3.9M11 8v6M8 11h6"/></svg>Zoom</button>
+  <button id="cc" title="Captions (c)" aria-pressed="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/></svg>Captions</button>
+  <button id="side" title="Show or hide the steps (s)" aria-pressed="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M15 3v18"/></svg>Steps</button>
+  <button id="full" title="Fullscreen (f)" aria-label="Fullscreen"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><g class="i-max"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></g><g class="i-min"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/></g></svg></button>
 </footer>
 <script>
 const D = __DATA__;
@@ -334,7 +412,6 @@ const $ = (id) => document.getElementById(id);
 if (new URLSearchParams(location.search).has('embed')) {
   // style.display, not .hidden: the header's own "display: flex" would win over the hidden attribute.
   document.querySelector('header').style.display = 'none';
-  document.querySelector('main').style.height = 'calc(100vh - 74px)';
   document.body.classList.add('embed');
 }
 const fmt = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -365,6 +442,8 @@ const players = D.videos.map((v) => {
 if (!players.length) vbox.innerHTML = '<p class="note">No video was recorded. Run the tests with --demo to record one.</p>';
 
 // ---------- steps, in plain words ----------
+// humanize is copied from the tool's own code; some loaders (tsx, esbuild) wrap functions in __name(), which a page doesn't have.
+var __name = (f) => f;
 const humanize = __HUMANIZE__;
 const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
 const ownText = (s) => s.text.split(' › ').pop();
@@ -390,7 +469,52 @@ function details(body, s) {
   for (const r of D.requests.filter((r) => r.user === s.user && r.at >= s.start - 50 && r.at <= s.end + 50)) {
     body.append(el('div', 'req' + ((r.status ?? 0) >= 400 ? ' bad' : ''), r.method + ' ' + r.path + ' → ' + (r.status ?? '…') + (r.simulated ? ' (simulated)' : '')));
   }
-  if (s.error) body.append(el('div', 'err', cleanError(s.error)));
+  if (s.error) body.append(errorCard(s.error));
+}
+// The runtime's error text, laid out: headline, "the page shows" chips, where the problem is, recent requests.
+function errorCard(text) {
+  const box = el('div', 'err');
+  box.addEventListener('click', (e) => e.stopPropagation());
+  const lines = cleanError(text).split('\\n');
+  // Embedded in the HumanTest UI, the page around the video already lays the failure out in full,
+  // so the sidebar keeps only the headline instead of a second copy.
+  if (document.body.classList.contains('embed')) { box.classList.add('short'); box.append(el('div', 'err-head', lines[0])); return box; }
+  let reqs = null, where = null, m;
+  lines.forEach((l, i) => {
+    if (i === 0) { box.append(el('div', 'err-head', l)); return; }
+    if ((m = l.match(/^Instead, the page shows:\\s*(.*)$/))) {
+      const part = el('div');
+      part.append(el('span', 'err-label', 'Instead, the page shows'));
+      const chips = el('div', 'chips');
+      for (const q of m[1].match(/"[^"]*"/g) || [m[1]]) chips.append(el('span', 'chip', q.replace(/^"|"$/g, '')));
+      part.append(chips);
+      box.append(part); reqs = where = null; return;
+    }
+    if ((m = l.match(/^Where the problem is:\\s*(.*)$/))) {
+      where = el('div', 'err-where');
+      where.append(el('span', 'err-label', 'Where the problem is'));
+      where.append(el('span', 'pill' + (/Frontend/.test(m[1]) ? ' fe' : /Backend/.test(m[1]) ? ' be' : ''), m[1]));
+      box.append(where); reqs = null; return;
+    }
+    if (/^Latest backend activity:?$/.test(l)) {
+      const part = el('div');
+      part.append(el('span', 'err-label', 'Latest backend activity'));
+      reqs = el('div', 'err-reqs');
+      part.append(reqs); box.append(part); where = null; return;
+    }
+    if (reqs && (m = l.match(/^([A-Z]+)\\s+(\\S+)\\s+→\\s+(.+)$/))) {
+      const r = el('div', 'rq');
+      const code = parseInt(m[3], 10);
+      r.append(el('span', 'm', m[1]), el('span', 'p', m[2]), el('span', 's' + (code >= 400 ? ' bad' : code ? ' ok' : ''), m[3]));
+      r.title = l;
+      reqs.append(r); return;
+    }
+    reqs = null;
+    // The line after "Where the problem is" explains it; keep it under the badge.
+    if (where) { where.append(el('p', 'err-p', l)); where = null; return; }
+    box.append(el('p', 'err-p', l));
+  });
+  return box;
 }
 function titleWithUser(text, user) {
   const t = el('div', 'title');
@@ -502,7 +626,7 @@ function drawTicks() {
   D.steps.forEach((s) => {
     const k = document.createElement('div');
     k.className = 'tick' + (s.status === 'failed' ? ' failed' : '');
-    k.style.left = (s.start / total * 100) + '%';
+    k.style.left = 'calc(7px + (100% - 14px) * ' + (s.start / total) + ')';
     track.appendChild(k);
   });
 }
@@ -655,6 +779,7 @@ function sync(force) {
   $('count').textContent = D.steps.filter((x) => x.start <= t).length + ' of ' + D.steps.length;
   if (current >= 0 && playing) stepEls[current].scrollIntoView({ block: 'nearest' });
   seekEl.value = String(Math.round(t));
+  $('track').style.setProperty('--p', String(total ? Math.min(100, (t / total) * 100) : 0));
   $('time').textContent = fmt(t) + ' / ' + fmt(total);
 }
 
@@ -671,7 +796,8 @@ requestAnimationFrame((now) => { last = now; frame(now); });
 
 function setPlaying(on) {
   playing = on;
-  $('play').textContent = on ? '❚❚' : '▶';
+  $('play').classList.toggle('playing', on);
+  $('play').setAttribute('aria-label', on ? 'Pause' : 'Play');
   if (on && t >= total) t = 0;
   sync(true);
 }
@@ -714,12 +840,18 @@ setSteps(pref.get('steps') !== '0');
 $('cc').addEventListener('click', () => setCaptions(document.body.classList.contains('nocap')));
 $('side').addEventListener('click', () => setSteps(document.body.classList.contains('wide')));
 $('full').addEventListener('click', toggleFullscreen);
+document.addEventListener('fullscreenchange', () => {
+  document.body.classList.toggle('is-full', !!document.fullscreenElement);
+  $('full').setAttribute('aria-label', document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen');
+});
 
 // ---------- hovering the timeline names the step at that moment ----------
 const track = $('track'), tip = $('tip');
 track.addEventListener('mousemove', (e) => {
   const box = track.getBoundingClientRect();
-  const at = ((e.clientX - box.left) / box.width) * total;
+  const frac = Math.min(1, Math.max(0, (e.clientX - box.left - 7) / (box.width - 14)));
+  const at = frac * total;
+  track.style.setProperty('--h', String(frac * 100));
   const s = [...D.steps].reverse().find((x) => x.start <= at);
   if (!s) { tip.hidden = true; return; }
   tip.hidden = false;
@@ -765,8 +897,13 @@ const failed = D.steps.find((s) => s.status === 'failed');
 if (failed) {
   $('banner').hidden = false;
   const why = (failed.error || '').split('\\n').map((l) => l.trim()).filter((l) => l && l !== 'What went wrong:')[0];
-  $('banner').textContent = '✗ Failed: ' + say(failed).text + (multiUser ? ' (' + failed.user + ')' : '') + (why ? '\\n   ' + why : '');
-  setTimeout(() => { seek(Math.max(0, failed.start - 1500)); stepEls[D.steps.indexOf(failed)].scrollIntoView({ block: 'center' }); }, 300);
+  const txt = el('div', 'b-txt');
+  txt.append(el('div', 'b-title', 'Failed: ' + say(failed).text + (multiUser ? ' (' + failed.user + ')' : '')));
+  if (why) txt.append(el('div', 'b-why', why));
+  const go = el('button', null, 'Show the step');
+  go.addEventListener('click', () => { seek(Math.max(0, failed.start - 1500)); stepEls[D.steps.indexOf(failed)].scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+  $('banner').append(el('span', 'b-ico', '✕'), txt, go);
+  setTimeout(() => { seek(Math.max(0, failed.start - 1500)); stepEls[D.steps.indexOf(failed)].scrollIntoView({ block: 'start' }); }, 300);
 }
 durations();
 sync(true);

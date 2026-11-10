@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
+import { whereProblem, PART_LABEL } from './where';
 import { allMail, startMailbox, waitForMail, type Email } from './mailbox';
 import { encodeFrames, hasFfmpeg, sideBySide, toMp4, writeReplay, type Frame, type ReplayStep } from './replay';
 import path from 'node:path';
@@ -160,6 +161,16 @@ export async function humantest(opts: Options, body: (ht: Scenario) => Promise<v
   }
 }
 
+/** The "message" of a JSON reply, if it has one (waits briefly for the body). */
+async function replyMessage(body: Promise<string | null> | undefined): Promise<string | undefined> {
+  if (!body) return undefined;
+  const text = await Promise.race([body.catch(() => null), sleep(1000).then(() => null)]);
+  try {
+    const m = (JSON.parse(text ?? '') as { message?: unknown }).message;
+    return typeof m === 'string' ? m.slice(0, 200) : undefined;
+  } catch { return undefined; }
+}
+
 class HumanError extends Error {
   readonly humantest = true;
 }
@@ -189,6 +200,59 @@ const PLACEHOLDER = /\{([a-z][\w ]*?)\}/gi;
 const LONE_PLACEHOLDER = /(^|[:[,]\s*)\{([a-z][\w ]*?)\}(?=\s*[,\]}]|\s*$)/gi;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Input types that can't be typed into key by key, with the value format they take. */
+const SET_WHOLE: Record<string, { what: string; example: string }> = {
+  date: { what: 'date', example: '2027-09-25 (or {today}, {in 10 days})' },
+  time: { what: 'time', example: '09:30' },
+  'datetime-local': { what: 'date and time', example: '2027-09-25T09:30 (or {in 10 days}T09:30)' },
+  month: { what: 'month', example: '2027-09' },
+  week: { what: 'week', example: '2027-W39' },
+  color: { what: 'colour', example: '#1d4ed8' },
+  range: { what: 'slider', example: 'a number, e.g. 50' },
+};
+
+/**
+ * Runs in every page: tells Node (window.__htAppeared) the text of each element that shows up or
+ * changes, so a toast that is gone again by the time its line runs still counts as seen.
+ * HumanTest's own overlays (id "__ht…", e.g. the demo caption) are left out, and so are big
+ * chunks such as a whole page rendering: a message is short.
+ */
+const WATCH_TEXT = `(() => {
+  if (window.__htWatching) return;
+  window.__htWatching = true;
+  const pending = new Set();
+  let batchAt = 0;
+  const flush = () => {
+    const at = batchAt;
+    batchAt = 0;
+    for (const el of pending) {
+      try {
+        if (!el.isConnected || el.closest('[id^="__ht"]')) continue;
+        if ((el.textContent || '').length > 2000) continue;
+        if (el.checkVisibility && !el.checkVisibility()) continue;
+        const text = (el.innerText || '').trim();
+        if (text && text.length <= 500 && window.__htAppeared) window.__htAppeared(at, text);
+      } catch (e) { /* the page goes on */ }
+    }
+    pending.clear();
+  };
+  const watch = () => new MutationObserver((changes) => {
+    for (const c of changes) {
+      if (c.type === 'childList') {
+        for (const n of c.addedNodes) {
+          const el = n.nodeType === 1 ? n : n.parentElement;
+          if (el) pending.add(el);
+        }
+      } else if (c.target.parentElement) {
+        pending.add(c.target.parentElement);
+      }
+    }
+    if (!batchAt && pending.size) { batchAt = Date.now(); setTimeout(flush, 50); }
+  }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  if (document.documentElement) watch();
+  else document.addEventListener('DOMContentLoaded', watch);
+})();`;
 /** `a.b[0].c` inside a parsed JSON reply. */
 /**
  * One value inside a parsed JSON reply: `a.b[0].c`, or an item of a list found by its fields:
@@ -406,7 +470,7 @@ export class Scenario {
         }
       } catch (e) {
         rec.status = 'failed';
-        const err = this.humanError(line, 'setup', `Start with: ${name}`, e);
+        const err = await this.humanError(line, 'setup', `Start with: ${name}`, e);
         rec.error = err.message;
         throw err;
       } finally {
@@ -446,7 +510,7 @@ export class Scenario {
         try {
           await context.addCookies((await this.login(name)).cookies);
         } catch (e) {
-          throw this.humanError(line, name, `log in as ${name}`, e);
+          throw await this.humanError(line, name, `log in as ${name}`, e);
         }
       }, { box: true });
     }
@@ -507,7 +571,7 @@ export class Scenario {
     }
   }
 
-  humanError(line: number, user: string, text: string, err: unknown, u?: User): Error {
+  async humanError(line: number, user: string, text: string, err: unknown, u?: User): Promise<Error> {
     if ((err as any)?.humantest) return err as Error;
     const raw = stripAnsi(String((err as any)?.message ?? err)).split(/\n\s*Call log:/)[0];
     // Our own sentence explains the problem; Playwright's locator details belong in the trace, not here.
@@ -521,15 +585,23 @@ export class Scenario {
       `   What went wrong:`,
       why,
     ];
+    const activity = u ? u.log.filter((e) => e.line === line) : [];
+    const shown = u ? (activity.length ? activity : u.log.slice(-5)) : [];
+    // Which side to look at: the page, the server, how the test runs, or the test itself.
+    const where = whereProblem(text, raw, await Promise.all(shown.map(async (e) => ({
+      method: e.method, path: e.path, status: e.status,
+      reply: e.status !== undefined && e.status >= 400 ? await replyMessage(e.body) : undefined,
+      expected: this.expectedErrors.some((x) => x.user === user && x.method === e.method && x.status === e.status),
+    }))));
+    if (where) parts.push('', `   Where the problem is: ${PART_LABEL[where.part]}`, `      ${where.why}`);
     if (u) {
-      const activity = u.log.filter((e) => e.line === line);
-      const shown = activity.length ? activity : u.log.slice(-5);
       if (shown.length) {
         parts.push('', activity.length ? '   Backend activity during this step:' : '   Latest backend activity:');
         for (const e of shown) parts.push(`      ${e.method} ${e.path} → ${e.status ?? 'no reply'}${e.mocked ? ' (simulated)' : ''}`);
       }
       // A login kept from an earlier run stops working when the backend forgets it (a fresh database, a new secret).
-      if (this.config.login?.keepBetweenRuns && u.log.some((e) => e.status === 401)) {
+      if (this.config.login?.keepBetweenRuns && this.config.users[user]?.email
+        && u.log.some((e) => e.status === 401 && !this.expectedErrors.some((x) => x.user === user && x.method === e.method && x.status === 401))) {
         parts.push('', `   This login may be one kept from an earlier run that the backend no longer accepts.`,
           `   Delete .humantest/sessions.json and run again to log in afresh.`);
       }
@@ -815,9 +887,33 @@ export class User {
   private caption?: string;
   /** This user's latest step (index into Scenario.records), so its API calls are counted to it. */
   private stepIndex = -1;
+  /** When the last action (click, type, go to ...) started, in ms. */
+  private actionAt = 0;
+  /**
+   * Text that showed up on the page, with when. A toast can come and go between the action and the
+   * line that checks it (more so in demo runs, which pause after every step): "should see" counts it.
+   */
+  private appeared: { at: number; text: string }[] = [];
+
+  /** An action starts: requests and text that show up from now on belong to it. */
+  private markAction() {
+    this.mark = this.log.length;
+    this.actionAt = Date.now();
+  }
+
+  /** Did `text` show up on the page since the last action (even if it is gone again)? Matches like getByText. */
+  private appearedSinceAction(text: string) {
+    const want = text.replace(/\s+/g, ' ').trim().toLowerCase();
+    return this.appeared.some((a) => a.at >= this.actionAt && a.text.toLowerCase().includes(want));
+  }
 
   /** Route every API call through Node so we always have its reply body. Simulations are added later and run first. */
   async init() {
+    await this.context.exposeBinding('__htAppeared', (_source, at: number, text: string) => {
+      this.appeared.push({ at, text: String(text).replace(/\s+/g, ' ').trim() });
+      if (this.appeared.length > 500) this.appeared.splice(0, 100);
+    });
+    await this.context.addInitScript(WATCH_TEXT);
     const prefix = this.ht.config.apiPrefix ?? '/api';
     await this.context.route((url) => url.pathname.startsWith(prefix), async (route) => {
       const url = route.request().url();
@@ -934,7 +1030,7 @@ export class User {
         if (this.ht.blocked) throw new Error(this.ht.blocked);
       } catch (e) {
         notePage();
-        const err = this.ht.humanError(line, this.name, text, e, this);
+        const err = await this.ht.humanError(line, this.name, text, e, this);
         rec.status = 'failed';
         rec.error = err.message.split('\n').slice(2).join('\n').trim();
         rec.end = Date.now();
@@ -945,9 +1041,16 @@ export class User {
       if (this.focus) rec.box = this.focus;
       if (DEMO) {
         await this.showCaption();
-        await this.page.waitForTimeout(this.ht.config.demo?.pauseAfterStepMs ?? 700);
+        // A check that pointed at nothing on the page (backend should ..., remember, at the end ...)
+        // only needs its caption read: the full pause is for watching the page.
+        const pause = this.ht.config.demo?.pauseAfterStepMs ?? 700;
+        await this.page.waitForTimeout(opts.check && !this.focus ? Math.min(pause, 300) : pause);
       }
       rec.end = Date.now();
+      // A finished step gives its time back: the time limit stops a test that is stuck,
+      // not a long story (admin, operator and traveller one after another) that keeps moving.
+      const info = this.ht.opts.testInfo;
+      if (info.timeout > 0) info.setTimeout(info.timeout + (rec.end - rec.start));
     }, { box: true });
   }
 
@@ -1085,12 +1188,12 @@ export class User {
 
   async goTo(url: string) {
     url = this.ht.fill(url);
-    this.mark = this.log.length;
+    this.markAction();
     await this.page.goto(url);
   }
 
   async reload() {
-    this.mark = this.log.length;
+    this.markAction();
     await this.page.reload();
   }
 
@@ -1098,10 +1201,27 @@ export class User {
     value = this.ht.fill(value);
     const loc = await this.field(field);
     await this.noteFocus(loc);
-    this.mark = this.log.length;
+    this.markAction();
+    const { max, kind } = await loc.evaluate((el) => ({
+      max: (el as HTMLInputElement).maxLength ?? -1,
+      kind: el instanceof HTMLInputElement ? el.type : '',
+    })).catch(() => ({ max: -1, kind: '' }));
+    // The browser's own date, time, colour and slider inputs: always set whole, also in demo runs.
+    // Typed key by key, their parts (month, day, year ...) follow the browser's language, so
+    // "2027-09-25" leaves a date box empty, and the form then refuses to send without a word.
+    // fill() takes the one format every browser understands, and says so when the value isn't in it.
+    const format = SET_WHOLE[kind];
+    if (format) {
+      try {
+        await loc.fill(value);
+      } catch (e) {
+        if (!/malformed value/i.test(String((e as Error)?.message ?? e))) throw e;
+        throw new Error(`"${field}" is a ${format.what} input: write the value as ${format.example}, not "${value}".`);
+      }
+      return;
+    }
     // A code split over one-digit boxes (maxlength="1"): fill() would keep only the first digit.
     // Typed key by key like a person, each key goes to the box the page moved the focus to.
-    const max = await loc.evaluate((el) => (el as HTMLInputElement).maxLength ?? -1).catch(() => -1);
     if (DEMO || (max > 0 && value.length > max)) {
       await loc.fill('');
       await loc.pressSequentially(value, { delay: DEMO ? this.ht.config.demo?.typingDelayMs ?? 60 : 30 });
@@ -1118,7 +1238,7 @@ export class User {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     });
-    this.mark = this.log.length;
+    this.markAction();
     await loc.fill(today);
   }
 
@@ -1126,7 +1246,7 @@ export class User {
     option = this.ht.fill(option);
     const loc = await this.field(field);
     await this.noteFocus(loc);
-    this.mark = this.log.length;
+    this.markAction();
     const tag = await loc.evaluate((e) => e.tagName.toLowerCase());
     if (tag === 'select') {
       await loc.selectOption({ label: option });
@@ -1135,6 +1255,15 @@ export class User {
     // A custom dropdown (Radix, shadcn, Headless UI ...): open it, then pick the option, which may render outside the section.
     if (DEMO) await this.highlight(loc);
     await loc.click();
+    // Opened before its data arrived, a dropdown can stay empty until it is opened again:
+    // close it and open it again, the way a person would, until the usual wait runs out.
+    const until = Date.now() + this.expectTimeout;
+    while (Date.now() < until && !(await this.page.getByRole('option').count())) {
+      await this.page.getByRole('option').first().waitFor({ timeout: 1000 }).catch(() => {});
+      if (await this.page.getByRole('option').count()) break;
+      await this.page.keyboard.press('Escape');
+      await loc.click();
+    }
     const opt = await this.option(option, field);
     if (DEMO) await this.highlight(opt);
     await opt.click();
@@ -1188,12 +1317,12 @@ export class User {
       loc = inputs.first();
     }
     if (DEMO) await this.highlight(loc).catch(() => {});
-    this.mark = this.log.length;
+    this.markAction();
     await loc.setInputFiles(full);
   }
 
   async press(key: string) {
-    this.mark = this.log.length;
+    this.markAction();
     await this.page.keyboard.press(key);
   }
 
@@ -1202,22 +1331,29 @@ export class User {
     const loc = await this.clickable(name, role);
     await this.noteFocus(loc);
     if (DEMO) await this.highlight(loc);
-    this.mark = this.log.length;
+    this.markAction();
     await loc.click();
     this.lastClicked = loc;
   }
 
   async see(text: string) {
     text = this.ht.fill(text);
-    try {
-      await this.expect(this.root.getByText(text).first(), `"${text}" should be visible${this.scope ? ` inside "${this.scope.name}"` : ' on the page'}, but it isn't.`).toBeVisible();
-      await this.noteFocus(this.root.getByText(text).first());
-    } catch (e) {
-      const similar = await this.similarText(text);
-      if (!similar.length) throw e;
-      throw new Error(`"${text}" should be visible${this.scope ? ` inside "${this.scope.name}"` : ' on the page'}, but it isn't.\n` +
-        `Instead, ${this.scope ? 'that part of the page' : 'the page'} shows: ${similar.map((t) => `"${t}"`).join(', ')}`);
+    const loc = this.root.getByText(text).first();
+    const deadline = Date.now() + this.expectTimeout;
+    for (;;) {
+      if (await loc.isVisible().catch(() => false)) {
+        await this.noteFocus(loc);
+        return;
+      }
+      // Gone again already: a toast that showed after the last action and closed before this line ran.
+      // Not inside a section: the text was seen on the page, but where on it isn't known.
+      if (!this.scope && this.appearedSinceAction(text)) return;
+      if (Date.now() >= deadline) break;
+      await sleep(100);
     }
+    const similar = await this.similarText(text);
+    throw new Error(`"${text}" should be visible${this.scope ? ` inside "${this.scope.name}"` : ' on the page'}, but it isn't.` +
+      (similar.length ? `\nInstead, ${this.scope ? 'that part of the page' : 'the page'} shows: ${similar.map((t) => `"${t}"`).join(', ')}` : ''));
   }
 
   /** Visible lines that look like what the test expected. Helps explain failures. */
@@ -1327,16 +1463,25 @@ export class User {
     const url = this.ht.apiURL(pathname);
     if (!this.ht.allowsHost(url.toString())) throw new Error(this.ht.blockedError(url.toString(), 'call'));
     // The login's cookies go with it; its token too, the way the page sends it (many APIs read only the header).
-    const token = this.ht.config.users[this.name]?.email ? (await this.ht.login(this.name)).token : undefined;
-    return this.context.request.fetch(url.toString(), {
+    const session = this.ht.config.users[this.name]?.email ? await this.ht.login(this.name) : undefined;
+    const req = {
       method,
-      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+      ...(session?.token ? { headers: { Authorization: `Bearer ${session.token}` } } : {}),
       ...(data !== undefined ? { data } : {}),
-    });
+    };
+    try {
+      return await this.context.request.fetch(url.toString(), req);
+    } catch (e) {
+      if (!/has been closed/.test((e as Error).message)) throw e;
+      // The browser is already gone (a test that ran out of time is closed before its clean-up):
+      // the login still works without it. Not disposed, so the reply can still be read.
+      const api = await apiRequest.newContext(session ? { storageState: { cookies: session.cookies, origins: [] } } : {});
+      return api.fetch(url.toString(), req);
+    }
   }
 
   async call(method: string, pathname: string, body?: string) {
-    this.mark = this.log.length;
+    this.markAction();
     pathname = this.ht.fill(pathname);
     const data = body !== undefined ? this.ht.fillBody(body) : undefined;
     const res = await this.send(method, pathname, data);
@@ -1579,9 +1724,14 @@ export class User {
   /** `expect`, waiting longer on a slow network: the page is slower to show things. */
   private get expect() {
     if (!this.network) return expect;
+    return expect.configure({ timeout: this.expectTimeout });
+  }
+
+  /** How long a check waits (the config's expect timeout), longer on a slow network. */
+  private get expectTimeout() {
     // The config's expect.timeout is on the project at run time, though Playwright's types leave it out.
     const base = (this.ht.opts.testInfo.project as { expect?: { timeout?: number } }).expect?.timeout ?? 5000;
-    return expect.configure({ timeout: Math.round(base * NETWORKS[this.network].slower) });
+    return this.network ? Math.round(base * NETWORKS[this.network].slower) : base;
   }
 
   // ---------------- demo mode visuals ----------------

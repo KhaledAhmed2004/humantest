@@ -319,6 +319,8 @@ function writeHistory(p: ProjectRef, h: History) {
 
 // ---------------- reading tests ----------------
 
+const readText = (file: string) => { try { return fs.readFileSync(file, 'utf8'); } catch { return ''; } };
+
 function listTests(ref: ProjectRef) {
   const project = loadProject(ref.root);
   const result = check(project);
@@ -327,6 +329,9 @@ function listTests(ref: ProjectRef) {
     files: result.parsed.map((pf) => ({
       file: pf.relFile,
       spec: specFileName(project, pf.file),
+      // The .ht text, so the UI can show it beside the steps, and where it is, to open it in an editor.
+      path: pf.file,
+      source: readText(pf.file),
       diagnostics: pf.diagnostics,
       tests: pf.tests.map((t) => ({
         key: `${pf.relFile}::${t.name}`,
@@ -340,6 +345,8 @@ function listTests(ref: ProjectRef) {
     })),
     // Problems outside the test files (e.g. in phrases).
     problems: result.diagnostics.filter((d) => !byFile.has(d.file)),
+    // Every user in the config, so the UI can show which roles have no test yet.
+    roles: Object.keys(project.config.users ?? {}),
   };
 }
 
@@ -356,7 +363,7 @@ function broadcast(event: Record<string, unknown>) {
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-function startRun(ref: ProjectRef, opts: { key?: string; file?: string; demo: boolean }) {
+function startRun(ref: ProjectRef, opts: { key?: string; file?: string; keys?: string[]; demo: boolean }) {
   const project: Project = loadProject(ref.root);
   const built = build(project);
   if (built.diagnostics.length) return { error: 'Some tests need fixing before anything can run.', diagnostics: built.diagnostics };
@@ -371,6 +378,16 @@ function startRun(ref: ProjectRef, opts: { key?: string; file?: string; demo: bo
     pwArgs.push(`${escapeRegex(specFileName(project, parsed.file))}$`);
   }
   if (opts.key) pwArgs.push('--grep', `${escapeRegex(opts.key.split('::').slice(1).join('::'))}$`);
+  // A group of tests (one kind in the sidebar): their files, and only those tests in them.
+  if (!opts.key && !opts.file && opts.keys?.length) {
+    for (const f of new Set(opts.keys.map((k) => k.split('::')[0]))) {
+      const parsed = built.parsed.find((p) => p.relFile === f);
+      if (!parsed) return { error: 'That test file no longer exists. Refresh the page.' };
+      pwArgs.push(`${escapeRegex(specFileName(project, parsed.file))}$`);
+    }
+    const names = opts.keys.map((k) => escapeRegex(k.split('::').slice(1).join('::')));
+    pwArgs.push('--grep', `(${names.join('|')})$`);
+  }
 
   const child = spawn(process.execPath, [PLAYWRIGHT_CLI, ...pwArgs], {
     cwd: ref.root,
@@ -417,12 +434,14 @@ function startRun(ref: ProjectRef, opts: { key?: string; file?: string; demo: bo
   child.stderr?.on('data', (d) => d.toString().split(/\r?\n/).filter(Boolean).forEach((l: string) => broadcast({ type: 'log', line: l })));
   child.on('close', (code) => {
     if (buf) onLine(buf);
-    if (thisRun.done === 0 && code !== 0) broadcast({ type: 'log', line: `Playwright exited with code ${code} before any test ran. See the output above.` });
+    const startFailed = thisRun.done === 0 && code !== 0;
+    if (startFailed) broadcast({ type: 'log', line: `Playwright exited with code ${code} before any test ran. See the output above.` });
     const h = readHistory(ref);
     if (Object.keys(thisRun.results).length) h.runs.push({ at: new Date().toISOString(), demo: thisRun.demo, results: thisRun.results });
     writeHistory(ref, h);
     run = undefined;
-    broadcast({ type: 'run-end', code });
+    // startFailed: no test ran at all, so the only clue is in the log. The UI opens it.
+    broadcast({ type: 'run-end', code, startFailed });
     if (thisRun.done > 0) runDiscovery(ref);
   });
   return { ok: true };
@@ -544,7 +563,8 @@ const server = http.createServer(async (req, res) => {
       const ref = findProject(body.project);
       if (!ref) return json(res, 404, { error: 'Unknown project' });
       if (run) return json(res, 409, { error: 'A run is already going. Wait for it, or stop it.' });
-      const r = startRun(ref, { key: body.key, file: body.file, demo: !!body.demo });
+      const keys = Array.isArray(body.keys) ? body.keys.filter((k: unknown): k is string => typeof k === 'string') : undefined;
+      const r = startRun(ref, { key: body.key, file: body.file, keys, demo: !!body.demo });
       return json(res, 'error' in r ? 400 : 200, r);
     }
     if (req.method === 'POST' && url.pathname === '/api/stop') {

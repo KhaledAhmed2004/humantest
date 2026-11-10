@@ -15,7 +15,8 @@ export interface TestInfo {
   steps: PlannedStep[]
 }
 
-export interface TestFile { file: string; spec: string; diagnostics: Diagnostic[]; tests: TestInfo[] }
+/** `source` is the .ht text, `path` where the file is on disk. */
+export interface TestFile { file: string; spec: string; path?: string; source?: string; diagnostics: Diagnostic[]; tests: TestInfo[] }
 
 /** An API call a step caused. Only the names of query and body fields are kept, never their values. */
 export interface StepCall { method: string; path: string; query: string[]; bodyKeys: string[]; status?: number; simulated?: boolean; pageUrl?: string }
@@ -124,7 +125,7 @@ export async function getDiscovery(project: string, key: string): Promise<Discov
   return (await fetch(`/api/discovery?project=${encodeURIComponent(project)}&key=${encodeURIComponent(key)}`)).json()
 }
 
-export interface TestsResponse { files: TestFile[]; problems: Diagnostic[]; history: History }
+export interface TestsResponse { files: TestFile[]; problems: Diagnostic[]; history: History; roles?: string[] }
 
 export type ServerEvent =
   | { type: 'run-start'; project: string; demo: boolean; scope: string }
@@ -133,7 +134,7 @@ export type ServerEvent =
   | { type: 'step'; key: string; step: string }
   | { type: 'test-end'; key: string; result: TestResult; done: number; total: number }
   | { type: 'log'; line: string }
-  | { type: 'run-end'; code: number | null }
+  | { type: 'run-end'; code: number | null; startFailed?: boolean }
   | { type: 'tests-changed'; project: string }
   | { type: 'discovery'; project: string; state: 'running' | 'done' }
   | { type: 'changes'; project: string }
@@ -147,7 +148,7 @@ export async function getTests(project: string): Promise<TestsResponse> {
   return (await fetch(`/api/tests?project=${encodeURIComponent(project)}`)).json()
 }
 
-export type RunScope = { key?: string; file?: string }
+export type RunScope = { key?: string; file?: string; keys?: string[] }
 
 export async function startRun(project: string, scope: RunScope, demo: boolean): Promise<{ ok?: true; error?: string; diagnostics?: Diagnostic[] }> {
   const res = await fetch('/api/run', {

@@ -1,0 +1,112 @@
+# The admin opens two ports and a route, the operator adds a ferry and a trip, a new traveller
+# signs up and books it, and the operator checks them in.
+#
+# Each run starts fresh. Afterwards everything is switched off, not deleted (names start "HumanTest").
+
+Test: From a new route to a traveller checked in
+
+  As admin:
+    go to ports page
+    click "Add Port"
+    type "HumanTest Bay {unique}" in "Port Name"
+    choose "America/Anguilla" for "Time Zone"
+    click "Create Port"
+    should see "Port created successfully"
+    backend should receive POST /api/v1/ports
+    backend should reply 201 Created
+    remember data.id as first port
+    at the end, call DELETE /api/v1/ports/{first port}
+
+    click "Add Port"
+    type "HumanTest Cove {unique}" in "Port Name"
+    choose "America/Anguilla" for "Time Zone"
+    click "Create Port"
+    should see "Port created successfully"
+    backend should receive POST /api/v1/ports
+    backend should reply 201 Created
+    remember data.id as second port
+    at the end, call DELETE /api/v1/ports/{second port}
+
+    go to routes page
+    click "Add Route"
+    in "Add New Ferry Route" dialog, should not see "Loading ports..."
+    press Escape
+    click "Add Route"
+    in "Add New Ferry Route" dialog, choose "HumanTest Bay {unique}" for "From"
+    in "Add New Ferry Route" dialog, choose "HumanTest Cove {unique}" for "To"
+    type "HumanTest route {unique}" in "Route Description"
+    upload "cover.png" to "Route Cover Photo"
+    in "Add New Ferry Route" dialog, "Replace" button should be visible
+    click "Create Route"
+    should see "Route created successfully"
+    backend should receive POST /api/v1/routes
+    backend should reply 201 Created
+    remember data.id as route
+    at the end, call PATCH /api/v1/routes/{route} with {"status": "INACTIVE"}
+
+  As operator:
+    go to fleet page
+    click "Add Ferry"
+    type "HumanTest ferry {unique}" in "Ferry Name"
+    type "40" in "Passenger Capacity"
+    in "Add New Ferry" dialog, click "Add Ferry"
+    backend should receive POST /api/v1/ferries
+    backend should reply 201 Created
+    remember data.id as ferry
+    at the end, call PATCH /api/v1/ferries/{ferry} with {"status": "MAINTENANCE"}
+    should see "Ferry vessel registered successfully"
+
+    go to schedules page
+    click "Add Schedule"
+    choose "HumanTest Bay {unique} ➔ HumanTest Cove {unique}" for "Ferry Route"
+    choose "HumanTest ferry {unique}" for "Assign Ferry"
+    type "{in 320 days}T09:00" in "Departure Time"
+    type "77" in "Adult Ticket Price"
+    click "Schedule Departure"
+    should see "Departure schedule slot created successfully"
+    backend should receive POST /api/v1/operator/schedules
+    backend should reply 201 Created
+    remember data.id as trip
+    at the end, call PATCH /api/v1/operator/schedules/{trip}/status with {"status": "CANCELLED"}
+
+  Given new traveller signs up as "traveller.{unique}@humantest.test"
+
+  As new traveller:
+    "traveller.{unique}@humantest.test" should get an email "Verify Your Email"
+    remember the code in the email as otp
+    type "{otp}" in "Verification code"
+    backend should receive POST /api/v1/auth/verify-email
+    backend should reply 200 OK
+    should see "Email Verified!"
+
+    # The page sends them on to the login page by itself.
+    should be on login page
+    type "traveller.{unique}@humantest.test" in "Enter your email"
+    type "Test@12345" in "Enter your password"
+    click "Sign In"
+    backend should receive POST /api/v1/auth/login
+    backend should reply 200 OK
+
+    go to "/ferries?from=HumanTest Bay {unique}&to=HumanTest Cove {unique}&departureDate={in 320 days}&adults=1&passengers=1 Passenger"
+    should see "HumanTest ferry {unique}"
+    click "Select Trip"
+    click "Continue to Passenger Details"
+    # The form starts with an example traveller ("Mohamed Solih", traveler@islandhop.mv), not the
+    # one logged in, so they put in their own name and email (found by the fields' example text).
+    type "HumanTest Traveller" in "e.g. Mohamed Solih"
+    type "traveller.{unique}@humantest.test" in "traveler@islandhop.mv"
+    click "Continue to Payment"
+    should see "Complete your booking"
+    click "Continue to pay"
+    backend should receive POST /api/v1/bookings
+    backend should reply 201 Created
+    should see "Manage booking"
+
+  As operator:
+    go to "/dashboard/operator/bookings"
+    type "traveller.{unique}@humantest.test" in "Search passenger, reference, route..."
+    should see "HumanTest Traveller"
+    click "Check In"
+    backend should receive PATCH /api/v1/operator/bookings/:id/check-in
+    backend should reply 200 OK
+    should see "Checked In"

@@ -11,12 +11,14 @@ Test: Admin adds a port and deletes it again
     type "HumanTest port {unique}" in "Port Name"
     choose "America/Anguilla" for "Time Zone"
     click "Create Port"
+    should see "Port created successfully"
     backend should receive POST /api/v1/ports
     backend should reply 201 Created
     remember data.id as port
     at the end, call DELETE /api/v1/ports/{port}
-    should see "Port created successfully"
     "Add New Port" dialog should be closed
+    # The list is paged and other test ports may be in it: find this one by name.
+    type "HumanTest port {unique}" in "Search ports by name..."
     in "HumanTest port {unique}" row, click "Open menu"
     click "Delete port"
     in "Delete Port" dialog, click "Delete"

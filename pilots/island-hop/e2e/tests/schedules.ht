@@ -14,11 +14,11 @@ Test: Operator schedules a trip and deletes it again
     type "{in 310 days}T10:00" in "Departure Time"
     type "77" in "Adult Ticket Price"
     click "Schedule Departure"
+    should see "Departure schedule slot created successfully"
     backend should receive POST /api/v1/operator/schedules
     backend should reply 201 Created
     remember data.id as trip
     at the end, call DELETE /api/v1/operator/schedules/{trip}
-    should see "Departure schedule slot created successfully"
     "Add Ferry Schedule" dialog should be closed
     type "{in 310 days}" in "Filter by date"
     in "Royal Alpha" row, click "Delete Schedule"
